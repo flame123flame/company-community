@@ -151,7 +151,17 @@ export function CheckersBoard({
               className={cn(
                 'relative grid place-items-center transition-colors',
                 /* ★ สองโทนจาก token พื้นผิว — กลมกลืนทั้งสองโหมด ไม่ hardcode สี */
-                isDark(i) ? 'bg-surface-hover' : 'bg-surface',
+/*
+             * ★★★ ช่องเข้มใช้ bg-ink/12 ไม่ใช่ bg-surface-hover
+             *
+             *     ★ surface-hover กับ surface ต่างกันไม่กี่เปอร์เซ็นต์ —
+             *       ลายหมากรุกจึงแทบมองไม่เห็นบนจอจริง
+             *       ★★ ซึ่งไม่ใช่แค่เรื่องสวย: หมากเดินได้เฉพาะช่องเข้ม
+             *          คนที่มองลายไม่ออกจะเล็งช่องปลายทางไม่ถูก
+             *     ★ ink คือสีตัวหนังสือ ซึ่งกลับขั้วตามโหมดอยู่แล้ว
+             *       ★★ ลายจึงชัดทั้งสองโหมดโดยไม่ต้องเขียนสีแยกสองชุด
+             */
+            isDark(i) ? 'bg-ink/12' : 'bg-surface',
                 isLast && 'ring-2 ring-inset ring-link/50',
                 isFrom && 'ring-2 ring-inset ring-accent',
               )}

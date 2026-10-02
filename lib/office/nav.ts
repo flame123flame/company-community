@@ -237,6 +237,10 @@ const WIDE_PAGES = new Set([
      และคำว่า "ใช้งาน" ถูกตัดเป็นสองบรรทัด — ข้อมูลหนาแน่นต้องการความกว้าง */
   '/office/admin/users',
   '/office/admin/codes',
+  /* ★ หน้าหมากฮอสใช้สองคอลัมน์บนจอกว้าง — คอลัมน์ 1000px บีบจนตารางรูป
+       เหลือสองคอลัมน์ ซึ่งเสียประโยชน์ทั้งหมดของการเปลี่ยนมาเป็นตาราง */
+  '/office/fun/checkers',
+  '/office/fun',
 ])
 
 export function isWidePage(pathname: string): boolean {

@@ -6,7 +6,9 @@ import { cn } from '@/lib/cn'
 import { Button } from '@/components/ui/Button'
 import { Untranslated, useOt } from '@/lib/i18n/office'
 import { botMove, type BotLevel, type Move } from '@/lib/games/checkers'
-import { CheckersLobby, CheckersOnline } from './CheckersOnline'
+import { CheckersOnline } from './CheckersOnline'
+import { CheckersLobby } from './CheckersLobby'
+import { MiniBoard, ModeCard } from './CheckersIntro'
 import {
   CheckersBoard,
   localOutcome,
@@ -66,108 +68,129 @@ export function CheckersGame() {
   /* ── หน้าเลือกโหมด ─────────────────────────────────────────── */
   if (!mode) {
     return (
-      <div className="mx-auto max-w-md py-2">
-        <div className="flex flex-col gap-3">
-          <Button
-            variant="primary"
-            className="min-h-14 text-base"
-            block
-            onClick={() => {
-              setGame(newLocalGame())
-              setMode('BOT')
-            }}
-          >
-            <Untranslated>{ot('game.checkers.vsBot')}</Untranslated>
-          </Button>
-
-          {/* ★★ "ท้าเพื่อน" อยู่เหนือ "2 คนบนเครื่องนี้"
-                 ★ การเล่นกับคนจริงคนละเครื่องคือสิ่งที่คนอยากได้มากกว่า
-                   ส่วนส่งเครื่องกันเล่นใช้เฉพาะตอนนั่งข้างกัน */}
-          <Button
-            variant="secondary"
-            className="min-h-14 text-base"
-            block
-            onClick={() => {
-              setOnlineId(null)
-              setMode('ONLINE')
-            }}
-          >
-            <Untranslated>{ot('game.checkers.challengeFriend')}</Untranslated>
-          </Button>
-
-          <Button
-            variant="ghost"
-            className="min-h-14 text-base"
-            block
-            onClick={() => {
-              setGame(newLocalGame())
-              setMode('PASS')
-            }}
-          >
-            <Untranslated>{ot('game.checkers.passPlay')}</Untranslated>
-          </Button>
-        </div>
-
-        {/* ★ ตั้งค่าเพิ่มยุบไว้ — ข้อกำหนดห้ามมีขั้นตอนตั้งค่าก่อนเล่น */}
-        <button
-          type="button"
-          onClick={() => setShowOptions((v) => !v)}
-          aria-expanded={showOptions}
-          className="mt-4 flex min-h-11 w-full items-center justify-between rounded-xl px-2 text-sm text-ink-soft transition-colors hover:text-ink"
-        >
-          <Untranslated>{ot('game.checkers.options')}</Untranslated>
-          <span aria-hidden="true">{showOptions ? '▲' : '▼'}</span>
-        </button>
-
-        {showOptions ? (
-          <div className="mt-2 rounded-2xl border border-line bg-elevated/40 p-4">
-            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-ink-faint">
-              <Untranslated>{ot('game.checkers.level')}</Untranslated>
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {(['EASY', 'MEDIUM', 'HARD'] as BotLevel[]).map((l) => (
-                <button
-                  key={l}
-                  type="button"
-                  onClick={() => setLevel(l)}
-                  aria-pressed={level === l}
-                  className={cn(
-                    'h-11 rounded-full px-4 text-sm transition-colors',
-                    level === l ? 'bg-ink font-medium text-page' : 'bg-surface text-ink-soft hover:bg-surface-hover',
-                  )}
-                >
-                  {ot(`game.checkers.level.${l}` as 'game.checkers.level.EASY')}
-                </button>
-              ))}
-            </div>
-
-            <button
-              type="button"
-              role="switch"
-              aria-checked={forceCapture}
-              onClick={() => setForceCapture((v) => !v)}
-              className="mt-4 flex min-h-11 w-full items-center justify-between gap-3 rounded-xl px-1 text-start"
-            >
-              <span className="text-sm text-ink">
-                <Untranslated>{ot('game.checkers.forceCapture')}</Untranslated>
-              </span>
-              <span
-                aria-hidden="true"
-                className={cn(
-                  'relative h-6 w-11 shrink-0 rounded-full transition-colors',
-                  forceCapture ? 'bg-accent' : 'bg-surface-hover',
-                )}
-              >
-                <span
-                  className={cn(
-                    'absolute top-0.5 size-5 rounded-full bg-page shadow transition-all',
-                    forceCapture ? 'start-[1.375rem]' : 'start-0.5',
-                  )}
-                />
-              </span>
-            </button>
+      <div className="py-2">
+        {/*
+          * ★★★ สองคอลัมน์บนจอกว้าง — กระดานตัวอย่างซ้าย ตัวเลือกขวา
+          *
+          *     ★ ของเดิมเป็นปุ่มสามปุ่มเรียงลงมาในคอลัมน์แคบกลางจอ
+          *       ★★ บนจอ 1900px ที่ว่างสองข้างกว้างกว่าเนื้อหาสามเท่า
+          *          และคนที่ไม่เคยเล่นไม่มีทางรู้ว่ากำลังจะเจออะไร
+          */}
+        <div className="grid items-center gap-8 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
+          <div className="mx-auto w-full max-w-[380px]">
+            <MiniBoard />
           </div>
-        ) : null}
+
+          <div>
+            <p className="text-sm leading-relaxed text-ink-soft">
+              <Untranslated>{ot('game.checkers.pitch')}</Untranslated>
+            </p>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <ModeCard
+                tone="primary"
+                title={ot('game.checkers.vsBot')}
+                detail={ot('game.checkers.vsBotDetail')}
+                icon="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM8 10h.01M16 10h.01M8 15c1.5 1.3 6.5 1.3 8 0"
+                onClick={() => {
+                  setGame(newLocalGame())
+                  setMode('BOT')
+                }}
+              />
+              <ModeCard
+                title={ot('game.checkers.challengeFriend')}
+                detail={ot('game.checkers.onlineDetail')}
+                icon="M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm8 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM2 20a7 7 0 0 1 14 0M16 20a6 6 0 0 1 6-6"
+                onClick={() => {
+                  setOnlineId(null)
+                  setMode('ONLINE')
+                }}
+              />
+              <ModeCard
+                title={ot('game.checkers.passPlay')}
+                detail={ot('game.checkers.passPlayDetail')}
+                icon="M5 7h14v10H5zM12 7v10"
+                onClick={() => {
+                  setGame(newLocalGame())
+                  setMode('PASS')
+                }}
+              />
+
+              {/* ── ตั้งค่าเพิ่ม ─────────────────────────────────── */}
+              <div className="rounded-2xl border border-line bg-elevated/30 p-5">
+                <button
+                  type="button"
+                  onClick={() => setShowOptions((v) => !v)}
+                  aria-expanded={showOptions}
+                  className="flex min-h-11 w-full items-center justify-between text-sm text-ink-soft transition-colors hover:text-ink"
+                >
+                  <Untranslated>{ot('game.checkers.options')}</Untranslated>
+                  <span aria-hidden="true">{showOptions ? '▲' : '▼'}</span>
+                </button>
+
+                {showOptions ? (
+                  <>
+                    <p className="mb-2 mt-3 text-[11px] uppercase tracking-wide text-ink-faint">
+                      <Untranslated>{ot('game.checkers.level')}</Untranslated>
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(['EASY', 'MEDIUM', 'HARD'] as BotLevel[]).map((l) => (
+                        <button
+                          key={l}
+                          type="button"
+                          onClick={() => setLevel(l)}
+                          aria-pressed={level === l}
+                          className={cn(
+                            'h-11 rounded-full px-4 text-sm transition-colors',
+                            level === l
+                              ? 'bg-ink font-medium text-page'
+                              : 'bg-surface text-ink-soft hover:bg-surface-hover',
+                          )}
+                        >
+                          {ot(`game.checkers.level.${l}` as 'game.checkers.level.EASY')}
+                        </button>
+                      ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={forceCapture}
+                      onClick={() => setForceCapture((v) => !v)}
+                      className="mt-3 flex min-h-11 w-full items-center justify-between gap-3 text-start"
+                    >
+                      <span className="text-sm text-ink">
+                        <Untranslated>{ot('game.checkers.forceCapture')}</Untranslated>
+                      </span>
+                      <span
+                        aria-hidden="true"
+                        className={cn(
+                          'relative h-6 w-11 shrink-0 rounded-full transition-colors',
+                          forceCapture ? 'bg-accent' : 'bg-surface-hover',
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            'absolute top-0.5 size-5 rounded-full bg-page shadow transition-all',
+                            forceCapture ? 'start-[1.375rem]' : 'start-0.5',
+                          )}
+                        />
+                      </span>
+                    </button>
+                  </>
+                ) : (
+                  <p className="mt-2 text-xs text-ink-faint">
+                    <Untranslated>
+                      {ot('game.checkers.optionsHint', {
+                        level: ot(`game.checkers.level.${level}` as 'game.checkers.level.EASY'),
+                      })}
+                    </Untranslated>
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
