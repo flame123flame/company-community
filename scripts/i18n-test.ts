@@ -25,6 +25,7 @@
  */
 import { chromium, type Page } from 'playwright-core'
 import { LOCALES, LOCALE_COOKIE, isRtl, type Locale } from '../lib/i18n/config'
+import { th as officeTh } from '../lib/i18n/office-dict/th'
 import { th } from '../lib/i18n/dict/th'
 
 const APP = process.env.APP_URL ?? 'http://localhost:3000'
@@ -37,8 +38,14 @@ const SECRET = process.env.SUPABASE_SECRET_KEY
  *  ar = ภาษาเดียวที่กลับด้าน · de = คำยาวที่สุด · lo = ไฟล์แปลใหญ่ที่สุด (ข้อความยาวสุด) */
 const DEEP: Locale[] = ['ar', 'de', 'lo']
 
-/** ★ รายชื่อกุญแจจริง — ดึงจากดิกชันนารีต้นฉบับ ไม่ได้เขียนซ้ำไว้ที่นี่ */
-const DICT_KEYS = Object.keys(th)
+/**
+ * ★ รายชื่อกุญแจจริง — ดึงจากดิกชันนารีต้นฉบับ ไม่ได้เขียนซ้ำไว้ที่นี่
+ *
+ * ★★ รวมกุญแจของโมดูลออฟฟิศเข้ามาด้วย ★ สองโมดูลมี provider คนละตัว
+ *    แต่ความผิดแบบ "กุญแจหลุดมาแทนข้อความ" เป็นเรื่องเดียวกัน
+ *    ★★ ถ้าเอาแต่ของห้องเพลงมาเทียบ กุญแจออฟฟิศที่หลุดจะผ่านด่านไปเงียบ ๆ
+ */
+const DICT_KEYS = [...Object.keys(th), ...Object.keys(officeTh)]
 
 const WIDE = { width: 1280, height: 900 }
 const NARROW = { width: 390, height: 844 }
@@ -77,10 +84,20 @@ async function thaiLeak(p: Page) {
     const THAI = /[฀-๿]/
     // ★ ตัดก้อนที่ fill() กั้นทิศไว้ทิ้งก่อน — นั่นคือค่าจากตัวแปร ไม่ใช่คำแปล
     const ISOLATED = /⁨[^⁩]*⁩/g
+    /*
+     * ★★★ ฿ อยู่ในบล็อกยูนิโคดของไทย แต่ไม่ใช่ตัวหนังสือไทย
+     *
+     *     ★ มันคือเครื่องหมายสกุลเงิน อยู่หมวดเดียวกับ $ และ €
+     *       ★★ เงินในระบบนี้เป็นบาททุกบาท ไม่ว่าใครอ่าน — การแปลงเป็น
+     *          สกุลอื่นคือการบอกตัวเลขที่ไม่มีใครรับจริง (ดู formatBaht)
+     *     ★ ถ้าไม่ตัดออก ด่านจะฟ้องทุกหน้าที่มีเงิน 30 ครั้งต่อรอบ
+     *       ★★ ด่านที่ฟ้องของที่ถูกอยู่แล้ว คือด่านที่คนเลิกอ่านผลของมัน
+     */
+    const BAHT = /฿/g
     const out: string[] = []
     const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
     for (let node = walk.nextNode(); node; node = walk.nextNode()) {
-      const text = (node.nodeValue ?? '').replace(ISOLATED, '').trim()
+      const text = (node.nodeValue ?? '').replace(ISOLATED, '').replace(BAHT, '').trim()
       if (!text || !THAI.test(text)) continue
       const el = node.parentElement
       if (!el) continue
@@ -155,11 +172,19 @@ async function overflow(p: Page) {
 }
 
 /** เปิดหน้าด้วยภาษาที่กำหนด — ★ ผ่าน cookie เพราะ server อ่านจาก cookie ตัวเดียว */
+/*
+ * ★★ เพดานเวลาสูงกว่าค่าเริ่มต้นมาก เพราะด่านนี้รันกับ Supabase จริง
+ *    ★ เคยล้มกลางคันตอนรอบที่ 13 จาก 16 ภาษา เพราะคำขอหนึ่งใช้ 26 วินาที
+ *      (read ETIMEDOUT ฝั่งเครือข่าย ไม่ใช่โค้ดช้า)
+ *      ★★ ด่านที่ล้มเพราะเน็ตสะดุด คือด่านที่คนเลิกเชื่อผลของมัน
+ */
+const NAV_TIMEOUT = 90_000
+
 async function openAs(p: Page, locale: Locale, path = '/') {
   await p.context().addCookies([
     { name: LOCALE_COOKIE, value: locale, url: APP },
   ])
-  await p.goto(`${APP}${path}`, { waitUntil: 'networkidle' })
+  await p.goto(`${APP}${path}`, { waitUntil: 'networkidle', timeout: NAV_TIMEOUT })
 }
 
 /** ตรวจชุดเดียวกันทุกที่: ป้ายภาษา ทิศทาง ไทยหลุด กุญแจหลุด ไม่ล้น */
@@ -191,8 +216,23 @@ async function audit(p: Page, locale: Locale, where: string) {
  *       ค่านี้จะไม่ขยับตอนเป็นอาหรับ — เป็นการตรวจว่าท่อ RTL ทั้งเส้นยังต่อกันอยู่
  *       ตั้งแต่ cookie → dir บน <html> → คลาส logical → ตำแหน่งจริงบนจอ
  */
+/**
+ * ★★★ เลือกปุ่มภาษาด้วยเมนูข้างใน ไม่ใช่ .first()
+ *
+ *     ★ หน้าเข้าใช้งานมีปุ่มเมนูสองอันแล้ว (ธีมกับภาษา) ★★ .first() จึง
+ *       ไปโดนปุ่มธีม แล้วด่านนับตัวเลือกได้ 3 แทนที่จะเป็น 16 ทั้ง 16 ภาษา
+ *     ★ ผูกกับ "เมนูนี้มีกี่ตัวเลือก" ไม่ได้เพราะต้องกดก่อนถึงจะนับได้
+ *       ★★ จึงผูกกับ aria-label ของเมนู ซึ่งเป็นของที่คอมโพเนนต์นั้นมีอยู่แล้ว
+ */
+function langButton(p: Page) {
+  return p
+    .locator('button[aria-haspopup="menu"]')
+    .filter({ has: p.locator('svg, span') })
+    .nth(1)
+}
+
 async function langButtonSide(p: Page, locale: Locale) {
-  const btn = p.locator('button[aria-haspopup="menu"]').first()
+  const btn = langButton(p)
   if (!(await btn.count())) return bad(`${locale} · หาปุ่มเปลี่ยนภาษาไม่เจอ`)
   const box = await btn.boundingBox()
   const vw = await p.evaluate(() => document.documentElement.clientWidth)
@@ -203,6 +243,33 @@ async function langButtonSide(p: Page, locale: Locale) {
   } else {
     check(mid > vw / 2, `${locale} · ปุ่มภาษาอยู่ฝั่งขวาตามปกติ`, `อยู่ที่ x=${Math.round(mid)} ของ ${vw}px`)
   }
+}
+
+/**
+ * สมัครบัญชีใหม่ผ่านฟอร์มจริง แล้วคืนชื่อผู้ใช้ไว้ให้ลบทีหลัง
+ *
+ * ★★★ เคยสมัครด้วยการกรอกแค่ชื่อผู้ใช้ที่หน้าแรก — ท่านั้นไม่มีอีกแล้ว
+ *
+ *     ★ ตอนเปิดให้ทุกคนสมัครได้ (0043) รหัสผ่านกลายเป็นข้อบังคับของทุกบัญชี
+ *       และเส้นทางสมัครแบบไม่มีรหัสผ่านถูกถอดออกทั้งเส้น
+ *     ★★ ด่านนี้จึงล้มที่ `waitForSelector('#create')` โดยที่สาเหตุจริง
+ *        อยู่ก่อนหน้านั้นหนึ่งก้าว — ฟอร์มไม่ได้ส่งสำเร็จเลยตั้งแต่แรก
+ *     ★ ใช้ฟอร์มเดียวกับที่คนจริงใช้ จึงพังพร้อมกับของจริงเสมอ ไม่พังคนละเวลา
+ */
+async function signUp(p: Page, locale: Locale, tag: string) {
+  const username = `i18n${tag}${process.hrtime.bigint() % 100000n}`
+  await openAs(p, locale, '/register')
+  await p.locator('input[autocomplete="username"]').fill(username)
+  const pw = p.locator('input[autocomplete="new-password"]')
+  await pw.nth(0).fill('I18nTest123!')
+  await pw.nth(1).fill('I18nTest123!')
+  await p.locator('input[maxlength="40"]').fill(`ทดสอบ ${locale}`)
+  await p.locator('select').first().selectOption({ index: 1 })
+  await p.locator('input[type="checkbox"]').first().check()
+  await p.locator('form button[type="submit"]').first().click()
+  /* ★ พอร์ทัล /office ถูกยุบ — สมัครเสร็จแล้วไปหน้าแรกของเว็บแทน */
+  await p.waitForURL((u) => new URL(u).pathname === '/', { timeout: NAV_TIMEOUT })
+  return username
 }
 
 async function main() {
@@ -226,13 +293,14 @@ async function main() {
       for (const [size, vp] of [['กว้าง', WIDE], ['แคบ', NARROW]] as const) {
         const ctx = await browser.newContext({ viewport: vp, deviceScaleFactor: 1 })
         const p = await ctx.newPage()
+        p.setDefaultTimeout(NAV_TIMEOUT)
         await openAs(p, locale, '/')
         await audit(p, locale, `${locale}/${size}`)
         if (size === 'กว้าง') {
           await langButtonSide(p, locale)
 
           // ★ กางเมนูด้วย — 16 แถวสองคอลัมน์คือที่ที่ล้นง่ายที่สุดในหน้านี้
-          await p.locator('button[aria-haspopup="menu"]').first().click()
+          await langButton(p).click()
           await p.waitForSelector('[role="menu"]')
           await sleep(350)
           const rows = await p.locator('[role="menuitemradio"]').count()
@@ -257,14 +325,12 @@ async function main() {
         console.log(`\n\x1b[1mหลังสมัคร · ${locale}\x1b[0m`)
         const ctx = await browser.newContext({ viewport: WIDE, deviceScaleFactor: 1 })
         const p = await ctx.newPage()
+        p.setDefaultTimeout(NAV_TIMEOUT)
 
         // ★ ชื่อผู้ใช้ต่างกันทุกภาษา ไม่งั้นรอบที่สองจะชนกับรอบแรกที่ยังไม่ถูกลบ
-        const username = `i18n${locale}${process.hrtime.bigint() % 100000n}`
+        cleanup.push(await signUp(p, locale, locale))
+        /* ★ สมัครเสร็จจะอยู่ที่พอร์ทัลออฟฟิศ — ด่านนี้ตรวจหน้าแรกของห้องเพลง */
         await openAs(p, locale, '/')
-        await p.locator('#username').fill(username)
-        await p.locator('form button[type="submit"]').first().click()
-        await p.waitForSelector('#create', { timeout: 25_000 })
-        cleanup.push(username)
         await sleep(800)
 
         await audit(p, locale, `${locale}/หน้าแรก`)
@@ -276,11 +342,20 @@ async function main() {
         await audit(p, locale, `${locale}/หน้าแรกแคบ`)
         await p.setViewportSize(WIDE)
 
-        // ── หน้าห้อง ──
+        /* ── หน้าห้อง ──
+         * ★★ กล่องสร้างห้องอยู่ที่ /music ไม่ใช่หน้าแรกอีกแล้ว
+         *    ★ หน้าแรกถูกยกใหม่เป็นหน้าแนะนำระบบ แล้วของที่ต้องกดจริง
+         *      ย้ายไปหน้าของห้องเพลงโดยเฉพาะ — ด่านนี้เคยค้างที่ #create
+         *      ซึ่งไม่มีอยู่บนหน้าแรกอีกต่อไป
+         */
+        await openAs(p, locale, '/music')
+        await p.waitForSelector('#create', { timeout: NAV_TIMEOUT })
+        await audit(p, locale, `${locale}/ห้องเพลง`)
+
         // ★ ปุ่มสร้างห้องกดไม่ได้จนกว่าจะมีชื่อห้อง — ตั้งใจให้เป็นอย่างนั้น
         await p.locator('#create input').first().fill(`ห้อง ${locale}`)
         await p.locator('#create button[type="submit"]').first().click()
-        await p.waitForURL(/\/room\/[A-Za-z0-9]+/, { timeout: 25_000 })
+        await p.waitForURL(/\/room\/[A-Za-z0-9]+/, { timeout: NAV_TIMEOUT })
         await sleep(3_000)
         await audit(p, locale, `${locale}/หน้าห้อง`)
         await p.screenshot({ path: `${SHOTS}/room-${locale}.png`, fullPage: true })
@@ -299,6 +374,60 @@ async function main() {
         await audit(p, locale, `${locale}/ลอบบี้`)
         await p.screenshot({ path: `${SHOTS}/lobby-${locale}.png` })
 
+        await ctx.close()
+      }
+
+      /* ── ด่านที่สาม: โมดูลออฟฟิศ ทั้ง 16 ภาษา ────────────────────────
+       *
+       * ★★★ ภาษาเดียวบัญชีเดียว แต่วน 16 ภาษาบนบัญชีนั้น
+       *
+       *     ★ ภาษามาจาก cookie ไม่ได้ผูกกับบัญชี ★★ จึงไม่ต้องสมัคร 16 ครั้ง
+       *       เหมือนด่านห้องเพลงที่ต้องสร้างห้องจริงต่างหากในแต่ละภาษา
+       *     ★ ได้ความครอบคลุมเท่าเดิมด้วยเวลาหนึ่งในสิบหก
+       *
+       * ★★ หน้าที่เลือกมาคือหน้าที่มีของที่พังได้ต่างกัน:
+       *    ★ พอร์ทัล = ป้ายสรุปที่มีตัวเลขแทรกในประโยค
+       *    ★ แชท = คำว่า "กำลังพิมพ์" ที่มีทั้งแบบ 1 · 2 · หลายคน
+       *    ★ ยอดค้าง/สร้างรายการ = ตัวเลขเงินกับ ฿ ซึ่งไม่แปลแต่จัดรูปตามภาษา
+       *    ★ สุ่มทีม = ชื่อทีมที่มาจากกุญแจเดียวคั่นด้วย ·
+       *    ★ สมัครสมาชิก = หน้าเดียวที่อยู่นอก /office แต่ใช้ดิกชันนารีออฟฟิศ
+       */
+      console.log(`\n\x1b[1mโมดูลออฟฟิศ · ${LOCALES.length} ภาษา\x1b[0m`)
+      {
+        const ctx = await browser.newContext({ viewport: WIDE, deviceScaleFactor: 1 })
+        const p = await ctx.newPage()
+        p.setDefaultTimeout(NAV_TIMEOUT)
+        cleanup.push(await signUp(p, 'th', 'off'))
+
+        const OFFICE_PAGES: [string, string][] = [
+          ['พอร์ทัล', '/office'],
+          ['แชท', '/office/chat'],
+          ['ยอดค้าง', '/office/wallet/owed'],
+          ['สร้างรายการ', '/office/wallet/create'],
+          ['ตลาดนัด', '/office/market'],
+          ['สุ่มทีม', '/office/fun/team'],
+          ['โปรไฟล์', '/office/profile'],
+        ]
+
+        for (const locale of LOCALES) {
+          console.log(`\n  \x1b[2m${locale}\x1b[0m`)
+          for (const [label, path] of OFFICE_PAGES) {
+            await openAs(p, locale, path)
+            await sleep(1_200)
+            await audit(p, locale, `${locale}/${label}`)
+          }
+          if (locale === 'ar' || locale === 'th') {
+            await p.screenshot({ path: `${SHOTS}/office-${locale}.png`, fullPage: true })
+          }
+        }
+
+        /* ★ หน้าสมัครต้องออกจากระบบก่อน ไม่งั้นมันเด้งไป /office */
+        await ctx.clearCookies()
+        for (const locale of LOCALES) {
+          await openAs(p, locale, '/register')
+          await sleep(900)
+          await audit(p, locale, `${locale}/สมัครสมาชิก`)
+        }
         await ctx.close()
       }
     }

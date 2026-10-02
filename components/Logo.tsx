@@ -10,7 +10,7 @@ import { cn } from '@/lib/cn'
 import { useT } from '@/lib/i18n/client'
 
 /**
- * ตรามาร์คของ Frame Room — กรอบสี่เหลี่ยมมนที่มีสามเหลี่ยม play อยู่ข้างใน
+ * ตรามาร์คของ AWA ROOM — กรอบสี่เหลี่ยมมนที่มีสามเหลี่ยม play อยู่ข้างใน
  *
  * ★★ ทำไมเปลี่ยนจากแคปซูลแดงทึบมาเป็นกรอบ
  *
@@ -53,7 +53,7 @@ export function Logo({ className, compact = false }: { className?: string; compa
         }
       >
         <span className="text-[20px] font-medium leading-none tracking-[-0.5px]">
-          Frame<span className="text-ink-soft">Room</span>
+          AWA<span className="text-ink-soft"> ROOM</span>
         </span>
 
         {/**

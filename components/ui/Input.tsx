@@ -18,6 +18,16 @@ type InputProps = InputHTMLAttributes<HTMLInputElement> & {
    *        prop ทำให้ "เลือกสีโฟกัสได้" เป็นความสามารถที่ประกาศไว้ชัด ๆ
    */
   focusTone?: 'link' | 'accent'
+  /**
+   * ความโค้งของมุม
+   *
+   * ★ ทำเป็น prop ด้วยเหตุผลเดียวกับ focusTone — cn() ของโปรเจกต์นี้
+   *   แค่ต่อสตริง ส่ง `rounded-xl` มาทาง className จึงไม่ชนะ rounded-[2px] แน่นอน
+   *
+   * ★★ ค่าเริ่มต้นเป็น 'sharp' เพื่อให้ห้องฟังเพลงหน้าตาเท่าเดิมทุกพิกเซล
+   *    ส่วนระบบออฟฟิศใช้ 'round' ให้เข้ากับการ์ดมุมโค้งของพอร์ทัล
+   */
+  radius?: 'sharp' | 'round'
   ref?: Ref<HTMLInputElement>
 }
 
@@ -25,12 +35,19 @@ type InputProps = InputHTMLAttributes<HTMLInputElement> & {
  * ช่องกรอกแบบ YouTube — พื้นเข้มกว่าพื้นหลัง มีเส้นขอบบาง
  * โฟกัสแล้วเส้นขอบเปลี่ยนเป็นฟ้า (#3ea6ff) ซึ่งเป็นสีเน้นใน dark mode ของ YouTube
  */
-export function Input({ className, invalid, focusTone = 'link', ...props }: InputProps) {
+export function Input({
+  className,
+  invalid,
+  focusTone = 'link',
+  radius = 'sharp',
+  ...props
+}: InputProps) {
   return (
     <input
       aria-invalid={invalid || undefined}
       className={cn(
-        'h-10 w-full rounded-[2px] bg-input px-4',
+        'h-10 w-full bg-input px-4',
+        radius === 'round' ? 'rounded-xl' : 'rounded-[2px]',
         'border border-line placeholder:text-ink-faint',
         'transition-colors focus:outline-none',
         focusTone === 'accent' ? 'focus:border-accent' : 'focus:border-link',

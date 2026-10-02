@@ -21,7 +21,7 @@
 # ============================================================================
 set -euo pipefail
 
-PROJECT_REF="${PROJECT_REF:-vackilhpblpkfzonlodl}"
+PROJECT_REF="${PROJECT_REF:-lklrbicnfuqsutodxyby}"
 
 pass() { printf '  \033[32m✓\033[0m %s\n' "$1"; }
 warn() { printf '  \033[33m!\033[0m %s\n' "$1"; }

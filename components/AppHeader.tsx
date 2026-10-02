@@ -29,6 +29,7 @@ export function AppHeader({
   onSearchChange,
   searchPlaceholder,
   right,
+  actions,
   center,
   exitLabel,
 }: {
@@ -37,6 +38,18 @@ export function AppHeader({
   onSearchChange?: (value: string) => void
   searchPlaceholder?: string
   right?: ReactNode
+  /**
+   * แทนกลุ่มปุ่มขวามือทั้งชุด รวมปุ่มภาษาและปุ่มธีม
+   *
+   * ★★★ มีไว้ให้หน้าที่ล็อกอินแล้วส่ง <HeaderActions /> เข้ามาเป็นชุดเดียว
+   *
+   *     ★ ใช้ `right` ไม่ได้ เพราะ `right` ต่อท้ายปุ่มภาษา/ธีมที่ไฟล์นี้
+   *       วางไว้แล้ว ★★ ผลคือได้ปุ่มภาษาสองอันติดกัน ซึ่งนอกจากจะดูพัง
+   *       แล้วยังทำให้ตัวทดสอบที่เลือกปุ่มด้วย aria-haspopup นับตำแหน่งผิด
+   *     ★ ลำดับปุ่มจึงถูกตัดสินที่ HeaderActions ที่เดียว — ไม่ใช่สองที่
+   *       ที่ต้องเดาว่าอีกที่วางอะไรไว้แล้ว
+   */
+  actions?: ReactNode
   /** แทนที่ช่องค้นหาทั้งหมด (ใช้ตอนไม่ต้องการค้นหา) */
   center?: ReactNode
   /**
@@ -560,9 +573,13 @@ export function AppHeader({
                 <SearchIcon className="size-6" />
               </IconButton>
             ) : null}
-            <LanguageToggle />
-            <ThemeToggle />
-            {right}
+            {actions ?? (
+              <>
+                <LanguageToggle />
+                <ThemeToggle />
+                {right}
+              </>
+            )}
           </div>
         ) : null}
       </div>
@@ -687,7 +704,7 @@ export function Avatar({
       }}
       title={name}
     >
-      {name.trim().charAt(0).toUpperCase() || '?'}
+      <span dir="auto">{name.trim().charAt(0).toUpperCase() || '?'}</span>
     </span>
   )
 }

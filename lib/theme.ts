@@ -20,6 +20,8 @@
 export type ThemePref = 'system' | 'light' | 'dark'
 export type Resolved = 'light' | 'dark'
 
+/* ★ ไม่เปลี่ยนตามชื่อแบรนด์ — เป็นกุญแจที่เก็บไว้ในเครื่องผู้ใช้แล้ว
+   ★★ เปลี่ยนแล้วค่าที่เขาตั้งไว้จะถูกมองว่าไม่มี แล้วรีเซ็ตเงียบ ๆ ทุกคน */
 export const THEME_KEY = 'frameroom:theme'
 
 const DARK_QUERY = '(prefers-color-scheme: dark)'

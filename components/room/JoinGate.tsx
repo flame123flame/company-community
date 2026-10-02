@@ -227,10 +227,10 @@ export function JoinGate({ preview }: { preview: RoomPreview }) {
                   size={38}
                 />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">
+                  <p dir="auto" className="truncate text-sm font-medium">
                     {profile?.displayName ?? t('join.noName')}
                   </p>
-                  <p className="truncate text-[11px] text-ink-faint">
+                  <p dir="auto" className="truncate text-[11px] text-ink-faint">
                     {profile?.nickname ?? t('join.asThisName')}
                   </p>
                 </div>

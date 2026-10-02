@@ -1,0 +1,11 @@
+import { chromium } from 'playwright'
+const b = await chromium.launch()
+const p = await b.newPage({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: 2 })
+await p.goto('http://localhost:3001/', { waitUntil: 'domcontentloaded', timeout: 120000 })
+await p.waitForTimeout(6000)
+console.log('title:', await p.title())
+console.log('หน้าที่เห็น:', (await p.locator('body').innerText()).replace(/\n+/g,' | ').slice(0,200))
+await p.screenshot({ path: '/tmp/fr-home.png', fullPage: true })
+const h = await p.evaluate(() => document.body.scrollHeight)
+console.log('ความสูงทั้งหน้า:', h)
+await b.close()

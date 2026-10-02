@@ -245,6 +245,25 @@ function drawHair(
   }
 }
 
+/*
+ * ★★★ ไม่มี document ตอนเรนเดอร์ฝั่งเซิร์ฟเวอร์ — ต้องกันไว้ที่นี่
+ *
+ *     อาการที่เจอบน production: /lobby ตอบ 500 ด้วย
+ *       ReferenceError: document is not defined
+ *     ★ Lobby เรียก spriteSheet() ใน useMemo ซึ่ง React รันตอน SSR ด้วย
+ *       ★★ "use client" แปลว่า "ทำงานบนเบราว์เซอร์ได้" ไม่ได้แปลว่า
+ *          "ไม่ถูกเรนเดอร์บนเซิร์ฟเวอร์" — คอมโพเนนต์ฝั่งไคลเอนต์ยังถูก
+ *          เรนเดอร์รอบแรกบนเซิร์ฟเวอร์เสมอเพื่อทำ HTML ชุดแรก
+ *
+ *     ★ คืนสตริงว่างแทนการโยน error ★★ ฝั่งเบราว์เซอร์จะคำนวณสไปรท์จริง
+ *       ตอน hydrate แล้ววาดทับเอง — ผู้ใช้ไม่เห็นความต่าง แต่ได้หน้าเว็บ
+ *       แทนที่จะได้ 500
+ *
+ * ★ แก้ที่ sprite.ts ไม่ใช่ที่ Lobby.tsx เพราะทุกคนที่เรียกฟังก์ชันนี้
+ *   เจอปัญหาเดียวกันหมด (AvatarStudio ก็เรียก) — กันที่ต้นทางครั้งเดียวจบ
+ */
+const noDom = typeof document === 'undefined'
+
 /**
  * แผ่นสไปรท์ทั้งใบของหน้าตาหนึ่งแบบ (4 ทิศ × 4 ท่า)
  *
@@ -252,6 +271,8 @@ function drawHair(
  *   ซึ่งแปลว่าตัวละครหนึ่งตัว = <div> หนึ่งอัน ไม่ใช่ canvas หนึ่งใบต่อคน
  */
 export function spriteSheet(a: Appearance): string {
+  if (noDom) return ''
+
   const key = appearanceKey(a)
   const hit = cache.get(key)
   if (hit) return hit
@@ -287,6 +308,8 @@ export function spriteSheet(a: Appearance): string {
 
 /** รูปหน้าตรงใบเดียว ไว้โชว์ในหน้าแต่งตัวและในรายชื่อ */
 export function portrait(a: Appearance, scale = 3): string {
+  if (noDom) return ''
+
   const canvas = document.createElement('canvas')
   canvas.width = SPRITE_W * scale
   canvas.height = SPRITE_H * scale
@@ -315,6 +338,8 @@ const stickerCache = new Map<string, string>()
  *      ซึ่งสำคัญกว่าความหลากหลายของท่า — คนต้องจำได้ว่านี่คือตัวเรา
  */
 export function avatarSticker(a: Appearance, pose: string, scale = 3): string {
+  if (noDom) return ''
+
   const key = `${appearanceKey(a)}|${pose}|${scale}`
   const hit = stickerCache.get(key)
   if (hit) return hit

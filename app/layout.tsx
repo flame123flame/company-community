@@ -44,9 +44,9 @@ const robotoMono = Roboto_Mono({
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getT()
   return {
-    title: { default: 'Frame Room', template: '%s · Frame Room' },
+    title: { default: 'AWA ROOM', template: '%s · AWA ROOM' },
     description: t('meta.description'),
-    applicationName: 'Frame Room',
+    applicationName: 'AWA ROOM',
     robots: { index: false, follow: false },
   }
 }

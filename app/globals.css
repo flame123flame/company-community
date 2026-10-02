@@ -187,15 +187,27 @@ body {
  *   (เห็นตอนเทียบภาพหน้าจอ ไม่ใช่ตอน build — build ผ่านปกติ)
  */
 
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-}
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ * ★★★ เว็บนี้ไม่ลดการเคลื่อนไหวตามค่า prefers-reduced-motion แล้ว
+ *
+ *     เดิมมีกฎ 18 ชุด นำโดยกฎกลางที่บีบ animation-duration ของทุก element
+ *     เหลือ 0.01ms ★ ผลคือเครื่องที่ตั้งค่านี้ไว้ไม่เห็นแอนิเมชันอะไรเลย
+ *     ทั้งเว็บ — ออโรรา · วงล้อ · สล็อต · ผีเดิน · จุดกำลังพิมพ์ · การ์ดพอร์ทัล
+ *
+ *     ★★ อาการที่เจอจริง: Windows ไม่เห็น Jump Scare เลย ส่วน Mac เห็นปกติ
+ *        ★ เพราะ Windows เปิด "ปิดเอฟเฟกต์แอนิเมชัน" ไว้เป็นค่าเริ่มต้น
+ *          ในหลายเครื่อง (Accessibility → Visual effects และ
+ *          Performance Options → Adjust for best performance)
+ *          ซึ่งคนตั้งไว้เพื่อให้เครื่องลื่น ไม่ใช่เหตุผลทางสุขภาพ
+ *
+ *     ★★★ เจ้าของระบบสั่งให้ทุกเครื่องได้แอนิเมชันเต็มโดยไม่ต้องตั้งค่าอะไร
+ *          จึงถอดออกทั้งหมด — เป็นการตัดสินใจที่รับทราบผลแล้ว ไม่ใช่การลืม
+ *          ★ ผลที่ตามมา: ผู้ใช้ที่ไวต่อการเคลื่อนไหวหรือแสงกะพริบไม่มีทาง
+ *            ปิดเอฟเฟกต์เหล่านี้จากฝั่งระบบปฏิบัติการได้อีกต่อไป
+ *          ★★ วันที่อยากคืนให้ ให้เพิ่มสวิตช์ในหน้าโปรไฟล์แทนการอ่านค่า OS
+ *             — จะได้แยก "อยากให้เครื่องลื่น" ออกจาก "ทนการเคลื่อนไหวไม่ได้"
+ * ══════════════════════════════════════════════════════════════════════════ */
 
 
 /* ---------------------------------------------------------------------------
@@ -260,18 +272,6 @@ input[type='range'].volume-range::-moz-range-track {
 }
 
 /* ★ ผู้ใช้ที่ตั้งค่าว่าไม่ชอบภาพเคลื่อนไหว ต้องไม่โดนยัดเยียด */
-@media (prefers-reduced-motion: reduce) {
-  .reaction-float {
-    animation-duration: 1s !important;
-    animation-name: reaction-fade;
-  }
-
-  @keyframes reaction-fade {
-    0% { opacity: 0; }
-    30% { opacity: 1; }
-    100% { opacity: 0; }
-  }
-}
 
 /* ---------------------------------------------------------------------------
  * วงแหวนกระเพื่อมของปุ่มไมค์ (หน้าต่างค้นหาด้วยเสียง)
@@ -304,13 +304,6 @@ input[type='range'].volume-range::-moz-range-track {
 }
 
 /* ★ ไม่ชอบภาพเคลื่อนไหว → เหลือวงนิ่ง ๆ จาง ๆ ไว้พอให้รู้ว่ากำลังฟัง */
-@media (prefers-reduced-motion: reduce) {
-  .voice-ring {
-    animation: none;
-    transform: scale(1.35);
-    opacity: 0.35;
-  }
-}
 
 /* ---------------------------------------------------------------------------
  * แสงเหนือบนหน้าแรก
@@ -410,11 +403,6 @@ html[data-theme='light'] {
 }
 
 /* ★ ไม่ชอบภาพเคลื่อนไหว → หยุดนิ่ง แต่ยังสวย ไม่ใช่หายไปทั้งหมด */
-@media (prefers-reduced-motion: reduce) {
-  .aurora-blob {
-    animation: none !important;
-  }
-}
 
 /* ---------------------------------------------------------------------------
  * ตัวอักษรไล่สี — ใช้กับคำเดียวในหัวเรื่องเท่านั้น
@@ -488,9 +476,6 @@ html[data-theme='light'] .grain-layer {
   to   { transform: scaleY(1); }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .eq-bar { animation: none; transform: scaleY(0.6); }
-}
 
 /* ---------------------------------------------------------------------------
  * ขอบเรืองแสงตอนชี้เมาส์
@@ -586,9 +571,6 @@ html[data-theme='light'] .lobby-floor {
   animation: notice-in 4.5s ease-out forwards;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .join-notice { animation: none; opacity: 0.9; }
-}
 
 /* ---------------------------------------------------------------------------
  * ชั้นดนตรีของหน้าแรก
@@ -692,11 +674,6 @@ html[data-theme='light'] {
   12%  { opacity: 0.5; }
   70%  { opacity: 0.5; }
   100% { transform: translate3d(var(--dx, 20px), -320px, 0) rotate(var(--rot, 22deg)); opacity: 0; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .vinyl { animation: none; }
-  .note-float { animation: none; opacity: 0; }
 }
 
 
@@ -1052,39 +1029,12 @@ html:not([data-reveal='off']) .curtain > span {
   to   { opacity: 1; transform: none; }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .menu-pop,
-  .menu-pop .menu-item {
-    animation: none !important;
-    opacity: 1 !important;
-    transform: none !important;
-  }
-}
 
 /* ══ ปิดทุกอย่างเมื่อผู้ใช้ขอ ═════════════════════════════════════════════
  * ★★★ ด่านที่พลาดไม่ได้: ปิดอนิเมชันแล้วเนื้อหาต้องไม่หายไปด้วย
  *    reveal ที่เริ่มจาก opacity 0 ถ้าลืมคืนค่า คนที่ตั้ง reduce motion
  *    จะเจอหน้าว่างเปล่า ซึ่งไม่ใช่ "ไม่มีลูกเล่น" แต่คือ "เว็บใช้ไม่ได้"
  */
-@media (prefers-reduced-motion: reduce) {
-  .hero-in,
-  .hero-stagger > *,
-  .curtain > span,
-  .reveal,
-  .reveal-scale,
-  .reveal-stagger > *,
-  .is-above,
-  .parallax-slow,
-  .parallax-slower {
-    animation: none !important;
-    transition: none !important;
-    opacity: 1 !important;
-    transform: none !important;
-    filter: none !important;
-  }
-
-  .lift, .zoom-media { transition: none; }
-}
 
 html[data-reveal='off'] .reveal,
 html[data-reveal='off'] .reveal-scale,
@@ -1281,17 +1231,2651 @@ html[data-theme='light'] .cta-glow { box-shadow: 0 8px 18px -12px rgb(0 0 0 / 0.
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .dialog-veil,
-  .dialog-pop,
-  .pop-step,
-  .cover-blob,
-  .cover-sheen {
-    animation: none !important;
-    opacity: 1 !important;
-    transform: none !important;
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * เดโมเคลื่อนไหวของฟีเจอร์บนหน้าแรก
+ *
+ * ★★★ ภาพเคลื่อนไหวที่ "แสดงของจริง" ไม่ใช่ของประดับ
+ *
+ *     การ์ดฟีเจอร์ที่มีแต่ไอคอนกับตัวหนังสือบอกได้แค่ว่า "มีฟีเจอร์นี้"
+ *     ★ เดโมที่วิ่งอยู่บอกว่า "มันทำงานแบบนี้" ภายในหนึ่งวินาทีที่ตากวาดผ่าน
+ *       ซึ่งเร็วกว่าการอ่านสามบรรทัดมาก
+ *
+ * ★★ ทุกอันเป็น CSS ล้วน ไม่มี JS ไม่มีรูป — มาพร้อม HTML เลย
+ *    และหยุดสนิทเมื่อผู้ใช้ขอลดการเคลื่อนไหว (ดูท้ายบล็อก)
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+.demo-box {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid var(--color-line);
+  background: color-mix(in oklab, var(--color-page) 55%, transparent);
+}
+
+/*
+ * ★★ กล่องเดโมรับสีประจำโมดูลจากแถวที่ครอบมันอยู่
+ *    ★ กล่องสีดำสี่ใบเรียงลงมาอ่านเป็น "ช่องว่างสี่ช่อง" ไม่ใช่หน้าจอสี่หน้าจอ
+ *      ★★ ขอบกับแสงมุมบนทำให้มันดูเป็นจอเล็ก ๆ ที่กำลังแสดงอะไรอยู่
+ * ★ ใช้ --tint ที่สืบทอดมา จึงไม่ต้องส่งสีเข้ามาซ้ำที่นี่
+ */
+.demo-box.tinted {
+  border-color: rgb(var(--tint) / 0.28);
+  background:
+    radial-gradient(110% 80% at 50% -10%, rgb(var(--tint) / 0.12), transparent 62%),
+    color-mix(in oklab, var(--color-page) 62%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.05),
+    0 18px 40px -26px rgb(var(--tint) / 0.85);
+}
+
+/* ── วงล้อสุ่มร้าน: แถบชื่อเลื่อนขึ้นวนไม่รู้จบ ─────────────────────────── */
+.demo-roll {
+  animation: demo-roll 5.5s cubic-bezier(0.35, 0, 0.2, 1) infinite;
+}
+
+/*
+ * ★ ใช้ steps ไม่ได้ เพราะต้องการให้ "ไหลแล้วหยุดค้าง" ไม่ใช่กระตุกทีละช่อง
+ *   ★★ ช่วง 0–55% คือช่วงไหล ส่วน 55–100% ค้างไว้ให้อ่านชื่อที่หยุด
+ *      ซึ่งเลียนจังหวะจริงของ planDraw() ที่หน่วงก่อนเฉลย
+ */
+/*
+ * ★★ ใช้พิกเซลตรง ๆ ไม่ใช่เปอร์เซ็นต์
+ *
+ *    เปอร์เซ็นต์ใน translateY อ้างอิง "ความสูงของตัวเอง" ไม่ใช่ของกล่อง —
+ *    ★ ตอนแรกเขียน -300% แล้วแถบเลื่อนไป 480px ซึ่งพ้นกล่องไปหมด
+ *      กล่องเลยว่างเปล่า (เห็นแต่เข็มชี้) โดยที่ไม่มี error อะไรเลย
+ *    ★★ แถวสูง 32px × 3 แถว = 96px คือระยะที่ทำให้แถวที่ 4 มาหยุดกลางกล่องพอดี
+ */
+@keyframes demo-roll {
+  0%   { transform: translate3d(0, 0, 0); }
+  55%  { transform: translate3d(0, -96px, 0); }
+  100% { transform: translate3d(0, -96px, 0); }
+}
+
+/*
+ * ── วงล้อเล็กบนการ์ดพอร์ทัล: หมุนแล้วหยุดค้าง ─────────────────────────────
+ *
+ * ★★ ต้องมีคลาสของตัวเอง ใช้ .demo-roll ไม่ได้
+ *    ★ .demo-roll เลื่อนขึ้น 96px เพราะออกแบบมาสำหรับ "แถบชื่อที่ไหลในกล่องที่ครอบไว้"
+ *      ★★ พอเอามาใส่วงกลมที่ไม่มีกล่องครอบ มันเลยลอยขึ้นไปทับชื่อการ์ด
+ *         — เห็นตอนถ่ายภาพหน้าจอ ไม่มี error อะไรเตือนเลย
+ * ★ อันนี้หมุนอยู่กับที่ แล้วค้างช่วงท้ายให้เหมือนวงล้อที่หยุดแล้ว
+ */
+.portal-spin {
+  animation: portal-spin 5.5s cubic-bezier(0.3, 0, 0.15, 1) infinite;
+}
+
+@keyframes portal-spin {
+  0%   { transform: rotate(0deg); }
+  62%  { transform: rotate(776deg); }
+  100% { transform: rotate(776deg); }
+}
+
+/* ── หารบิล: ยอดย่อยโผล่ทีละใบแล้ววนใหม่ ──────────────────────────────── */
+.demo-split > * {
+  animation: demo-fade-up 4.5s ease-in-out infinite both;
+}
+.demo-split > *:nth-child(2) { animation-delay: 0.35s; }
+.demo-split > *:nth-child(3) { animation-delay: 0.7s; }
+
+@keyframes demo-fade-up {
+  0%, 8%    { opacity: 0; transform: translate3d(0, 8px, 0); }
+  22%, 82%  { opacity: 1; transform: translate3d(0, 0, 0); }
+  96%, 100% { opacity: 0; transform: translate3d(0, 8px, 0); }
+}
+
+/* ── จับทีม: ชิปสองใบสลับฝั่งกันไปมา ──────────────────────────────────── */
+.demo-swap-a { animation: demo-swap-a 4s cubic-bezier(0.16, 1, 0.3, 1) infinite; }
+.demo-swap-b { animation: demo-swap-b 4s cubic-bezier(0.16, 1, 0.3, 1) infinite; }
+
+@keyframes demo-swap-a {
+  0%, 20%   { transform: translate3d(0, 0, 0); }
+  50%, 70%  { transform: translate3d(0, 130%, 0); }
+  100%      { transform: translate3d(0, 0, 0); }
+}
+@keyframes demo-swap-b {
+  0%, 20%   { transform: translate3d(0, 0, 0); }
+  50%, 70%  { transform: translate3d(0, -130%, 0); }
+  100%      { transform: translate3d(0, 0, 0); }
+}
+
+/* ── ตลาดนัด: ป้ายคิวเด้งเพิ่มเป็นระยะ ────────────────────────────────── */
+.demo-pulse { animation: demo-pulse 3.2s ease-in-out infinite; }
+
+@keyframes demo-pulse {
+  0%, 60%, 100% { transform: scale(1); }
+  70%           { transform: scale(1.18); }
+  80%           { transform: scale(1); }
+}
+
+/* ── เส้นแสงกวาดผ่านการ์ดตอนชี้ ───────────────────────────────────────── */
+/*
+ * ★ อยู่ใน @media (hover: hover) — บนมือถือไม่มีการชี้ ถ้าปล่อยไว้มันจะ
+ *   ค้างอยู่ที่เฟรมแรกตลอดเวลาโดยไม่มีใครเห็นว่ามันควรจะเคลื่อนไหว
+ */
+@media (hover: hover) {
+  .sheen::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(
+      100deg,
+      transparent 35%,
+      color-mix(in oklab, var(--color-ink) 7%, transparent) 50%,
+      transparent 65%
+    );
+    transform: translate3d(-100%, 0, 0);
+    opacity: 0;
   }
 
-  /* ★ แสงกวาดที่ไม่เคลื่อนคือแถบขาวพาดกลางปกค้างอยู่ — ต้องเอาออกทั้งชิ้น */
-  .cover-sheen { display: none; }
+  .sheen:hover::after {
+    opacity: 1;
+    animation: sheen-pass 900ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+}
+
+@keyframes sheen-pass {
+  from { transform: translate3d(-100%, 0, 0); }
+  to   { transform: translate3d(100%, 0, 0); }
+}
+
+/*
+ * ★★ ปิดทั้งหมดเมื่อผู้ใช้ขอลดการเคลื่อนไหว
+ *    ★ ไม่ใช่แค่หยุด แต่ต้อง "หยุดที่เฟรมที่อ่านรู้เรื่อง" —
+ *      วงล้อที่หยุดกลางทางจะเห็นชื่อร้านครึ่งบรรทัด ซึ่งแย่กว่าไม่มีเดโมเลย
+ */
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * ชั้นอนิเมชันของหน้าแรก — "จัดเต็ม" แบบที่ยังอ่านออก
+ *
+ * ★★★ กติกาที่ใช้ตัดสินทุกอันในบล็อกนี้
+ *
+ *     1. ห้ามขยับสิ่งที่คนกำลังอ่าน — ขยับได้แต่พื้นหลัง ขอบ และของประดับ
+ *     2. ทุกอย่างเป็น transform/opacity เท่านั้น (ชั้น compositor)
+ *        ★ animate width/top/filter จะทำให้เบราว์เซอร์คำนวณเลย์เอาต์ใหม่ทุกเฟรม
+ *          แล้วหน้าจะกระตุกตอนเลื่อน ซึ่งพังกว่าไม่มีอนิเมชันเลย
+ *     3. ปิดทั้งหมดเมื่อผู้ใช้ขอลดการเคลื่อนไหว
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── แถบความคืบหน้าการเลื่อน ─────────────────────────────────────────────
+ * ★ ใช้ไทม์ไลน์การเลื่อนของ CSS ล้วน ไม่มี scroll listener ให้กระตุก
+ */
+.scroll-progress {
+  position: fixed;
+  inset-inline: 0;
+  top: 0;
+  z-index: 60;
+  height: 2px;
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+  background: linear-gradient(
+    90deg,
+    rgb(var(--aurora-1)),
+    rgb(var(--aurora-2)),
+    rgb(var(--aurora-3))
+  );
+  pointer-events: none;
+}
+
+@supports (animation-timeline: scroll()) {
+  .scroll-progress {
+    animation: progress-grow linear both;
+    animation-timeline: scroll(root block);
+  }
+}
+
+@keyframes progress-grow {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+/* ── ตัวอักษรไล่สีที่ไหลช้า ๆ ──────────────────────────────────────────── */
+.shimmer-text {
+  background-size: 220% 100%;
+  animation: shimmer-slide 9s ease-in-out infinite;
+}
+
+@keyframes shimmer-slide {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+
+/* ── ของประดับลอยขึ้นลงเบา ๆ ──────────────────────────────────────────── */
+.float-slow { animation: float-slow 6s ease-in-out infinite; }
+.float-slow:nth-child(even) { animation-delay: -3s; }
+
+@keyframes float-slow {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50%      { transform: translate3d(0, -6px, 0); }
+}
+
+/* ── วงแหวนเต้นรอบปุ่มหลัก ────────────────────────────────────────────── */
+.pulse-ring { position: relative; }
+
+.pulse-ring::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 9999px;
+  border: 1px solid var(--color-accent);
+  opacity: 0;
+  animation: pulse-ring 3s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  pointer-events: none;
+}
+
+@keyframes pulse-ring {
+  0%       { transform: scale(1); opacity: 0.55; }
+  55%, 100% { transform: scale(1.22); opacity: 0; }
+}
+
+/* ── ขอบไล่สีหมุนรอบการ์ดปิดท้าย ──────────────────────────────────────── */
+/*
+ * ★ วาดด้วย conic-gradient ที่หมุนตัวเอง แล้วเจาะกลางด้วยพื้นทึบ
+ *   ★★ ทำแบบนี้แทน border-image เพราะ border-image ไม่รับมุมโค้ง
+ *      และ mask ที่ซับซ้อนกว่านี้ทำให้ Safari รุ่นเก่าวาดไม่ออก
+ */
+.conic-ring { position: relative; }
+
+.conic-ring::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(
+    from var(--ring-angle, 0deg),
+    transparent 0deg,
+    rgb(var(--aurora-2) / 0.9) 60deg,
+    rgb(var(--aurora-3) / 0.9) 120deg,
+    transparent 200deg,
+    transparent 360deg
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: ring-spin 7s linear infinite;
+  pointer-events: none;
+}
+
+@property --ring-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes ring-spin {
+  to { --ring-angle: 360deg; }
+}
+
+/* ── แถบคำวิ่ง ────────────────────────────────────────────────────────── */
+/*
+ * ★★ ทำสองชุดต่อกันแล้วเลื่อน -50% — พอจบรอบภาพจึงต่อกันสนิท
+ *    ★ ถ้ามีชุดเดียวแล้วเลื่อน -100% จะเห็นช่องว่างวิ่งผ่านทุกครั้งที่วน
+ */
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee-slide 38s linear infinite;
+}
+
+@keyframes marquee-slide {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(-50%, 0, 0); }
+}
+
+/* ── เส้นใต้หัวข้อที่ยืดออกตอนเลื่อนมาถึง ─────────────────────────────── */
+.title-underline {
+  display: block;
+  height: 3px;
+  width: 72px;
+  border-radius: 9999px;
+  transform-origin: 50% 50%;
+  background: linear-gradient(90deg, rgb(var(--aurora-1)), rgb(var(--aurora-3)));
+}
+
+@supports (animation-timeline: view()) {
+  html[data-reveal='css'] .title-underline {
+    animation: underline-grow linear both;
+    animation-timeline: view();
+    animation-range: cover 10% cover 42%;
+  }
+}
+
+@keyframes underline-grow {
+  from { transform: scaleX(0); opacity: 0; }
+  to   { transform: scaleX(1); opacity: 1; }
+}
+
+/* ── ดาวเล็ก ๆ ที่กะพริบในหัวหน้า ─────────────────────────────────────── */
+.spark {
+  position: absolute;
+  border-radius: 9999px;
+  background: rgb(var(--aurora-2));
+  animation: spark-blink var(--dur, 5s) ease-in-out var(--d, 0s) infinite;
+}
+
+@keyframes spark-blink {
+  0%, 100% { opacity: 0; transform: scale(0.6); }
+  50%      { opacity: 0.7; transform: scale(1); }
+}
+
+
+/* ── การ์ดที่มีสีประจำตัว ──────────────────────────────────────────────── */
+/*
+ * ★ สีมาจาก --tint ที่คอมโพเนนต์ส่งเข้ามา ไม่ใช่คลาสละสี
+ *   เพิ่มโมดูลใหม่จึงไม่ต้องแตะไฟล์นี้เลย
+ */
+.tint-glow {
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: radial-gradient(
+    120% 90% at 85% 0%,
+    rgb(var(--tint) / 0.16),
+    transparent 62%
+  );
+  opacity: 0;
+  transition: opacity 420ms cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+  z-index: -1;
+}
+
+@media (hover: hover) {
+  .tint-card:hover .tint-glow { opacity: 1; }
+
+  .tint-card:hover {
+    border-color: rgb(var(--tint) / 0.5);
+    box-shadow: 0 26px 70px -34px rgb(var(--tint) / 0.75);
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * ร่างที่เดินผ่าน
+ *
+ * ★★★ ไม่วาดผี — บิดแสงข้างหลังแทน
+ *
+ *     ผีที่วาดเป็นรูปทรงมีตามีปากคือการ์ตูน และพอวาดออกมาเป็นภาพนิ่ง
+ *     มันจะดู "ติด" อยู่บนหน้าจอตลอดเวลา
+ *     ★★ ของจริงที่ทำให้คนขนลุกคือ "มีบางอย่างผ่านไป" — พื้นหลังบิดตาม
+ *        ขอบมีแสงบาง ๆ แล้วก็หายไป ★ backdrop-filter ทำสิ่งนี้ได้ตรง ๆ
+ *        เพราะมันหักเหสิ่งที่อยู่ข้างหลังจริง ไม่ใช่รูปที่เราวาดทับ
+ *
+ *     ★ รูปร่างมาจาก mask สองชั้น (หัว-ไหล่ กับ ลำตัว) ที่เบลอจนไม่มีเส้นขอบ
+ *       ★★ จงใจไม่ให้คม — เส้นขอบคมเมื่อไหร่ สมองจะอ่านว่า "รูปที่วาดไว้"
+ *          ทันที และความรู้สึกว่ามันเป็นของจริงจะหายไปหมด
+ *
+ * ★ ต้นทุนของ backdrop-filter สูง จึงกว้างแค่ ~170px เดินรอบละ 26 วินาที
+ *   และปิดทิ้งบนจอเล็ก (มือถือเห็นไม่ชัดอยู่แล้วแต่จ่ายค่าวาดเต็ม ๆ)
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+.phantom {
+  position: absolute;
+  top: 2%;
+  left: 0;
+  width: 220px;
+  height: 420px;
+  pointer-events: none;
+  opacity: 0;
+  will-change: transform, opacity;
+  animation: phantom-cross 30s linear infinite;
+}
+
+/* ★ ชั้นในทำจังหวะย่ำเท้า แยกจากชั้นนอกที่เดินหน้า
+     ★★ รวมสอง transform ไว้ใน element เดียวไม่ได้ — อันหลังจะทับอันแรกเงียบ ๆ */
+.phantom-gait {
+  position: absolute;
+  inset: 0;
+  animation: phantom-gait 1.45s ease-in-out infinite;
+}
+
+.phantom-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  /*
+   * ★ เรืองแสงรอบตัวเล็กน้อย — ของที่สว่างกว่าพื้นหลังต้องมีแสงรั่วออกมา
+   *   ★★ ไม่มีแสงนี้ ตัวร่างจะดูเหมือนสติกเกอร์ที่แปะทับพื้นหลัง
+   */
+  filter: drop-shadow(0 0 26px rgb(210 226 255 / 0.20));
+}
+
+/* ★ พื้นหลังหักเหตามตัวที่เดินผ่าน — ทำให้ "มีมวล" ไม่ใช่ภาพโปร่งใสลอย ๆ */
+.phantom-warp {
+  position: absolute;
+  inset: 4% 12% 0 12%;
+  border-radius: 50% 50% 46% 46% / 34% 34% 66% 66%;
+  backdrop-filter: blur(5px) saturate(1.08) brightness(1.03);
+  -webkit-backdrop-filter: blur(5px) saturate(1.08) brightness(1.03);
+  -webkit-mask-image: radial-gradient(60% 60% at 50% 42%, #000 40%, transparent 78%);
+  mask-image: radial-gradient(60% 60% at 50% 42%, #000 40%, transparent 78%);
+}
+
+@keyframes phantom-cross {
+  0%   { transform: translate3d(-16vw, 0, 0) scaleX(1); opacity: 0; }
+  10%  { opacity: 0.62; }
+  50%  { transform: translate3d(48vw, 0, 0) scaleX(1.03); opacity: 0.72; }
+  88%  { opacity: 0.45; }
+  100% { transform: translate3d(115vw, 0, 0) scaleX(1); opacity: 0; }
+}
+
+/*
+ * ★ ย่ำเท้า: ขึ้นลงเล็กน้อย + เอียงสลับข้าง
+ *   ★★ คนเดินจริงหัวขยับขึ้นลงทุกก้าว ไม่ใช่ลอยนิ่ง ๆ
+ *      การลอยนิ่งคือสิ่งที่ทำให้อนิเมชันดูเป็นของปลอมทันที
+ */
+@keyframes phantom-gait {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0.7deg); }
+  25%      { transform: translate3d(0, -8px, 0) rotate(0deg); }
+  50%      { transform: translate3d(0, 0, 0) rotate(-0.7deg); }
+  75%      { transform: translate3d(0, -7px, 0) rotate(0deg); }
+}
+
+@media (max-width: 640px) {
+  .phantom { display: none; }
+}
+
+
+/* ── สามตนเดินคนละจังหวะ คนละทาง ───────────────────────────────────────── */
+/*
+ * ★★ ถ้าทุกตนใช้คาบเท่ากัน มันจะเดินเรียงหน้ากระดานเหมือนขบวนพาเหรด
+ *    ★ คาบที่เป็นเลขเฉพาะต่อกัน (30/41/26) ทำให้จังหวะไม่บรรจบกันง่าย ๆ
+ *      สามตนจึงแทบไม่เคยอยู่บนจอพร้อมกันในตำแหน่งเดิมซ้ำ
+ */
+.phantom--hooded {
+  top: 2%;
+  width: 220px;
+  height: 420px;
+  animation-duration: 30s;
+  animation-delay: -6s;
+}
+
+/* ★ ตนนี้เดินสวนทาง จึงกลับด้านทั้งตัวให้หันหน้าไปทางที่เดิน */
+.phantom--hair {
+  top: 14%;
+  width: 190px;
+  height: 370px;
+  animation-name: phantom-cross-rev;
+  animation-duration: 41s;
+  animation-delay: -22s;
+}
+
+.phantom--gaunt {
+  top: 26%;
+  width: 160px;
+  height: 320px;
+  animation-duration: 26s;
+  animation-delay: -13s;
+}
+
+@keyframes phantom-cross-rev {
+  0%   { transform: translate3d(112vw, 0, 0) scaleX(-1); opacity: 0; }
+  10%  { opacity: 0.55; }
+  50%  { transform: translate3d(44vw, 0, 0) scaleX(-1.03); opacity: 0.66; }
+  88%  { opacity: 0.4; }
+  100% { transform: translate3d(-18vw, 0, 0) scaleX(-1); opacity: 0; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * กล่องแจ้งเตือน
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+.notify-head {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--color-surface) 70%, transparent),
+    transparent
+  );
+}
+
+/*
+ * ★ ขอบล่างจางลงตอนเลื่อนไม่สุด
+ *   ★★ mask ทำงานกับ "กล่องที่เลื่อน" ทั้งใบ จึงจางเฉพาะส่วนที่ล้นออกไป
+ *      และหายเองเมื่อเลื่อนถึงท้ายสุด โดยไม่ต้องมี JS คอยฟัง scroll
+ */
+.notify-scroll {
+  mask-image: linear-gradient(180deg, #000 0 88%, transparent 100%);
+}
+
+/* ── แถวแจ้งเตือน ────────────────────────────────────────────────────────── */
+.notify-row {
+  position: relative;
+  transition: background 0.16s ease;
+}
+
+.notify-row + .notify-row,
+a .notify-row {
+  border-top: 1px solid color-mix(in oklab, var(--color-line) 70%, transparent);
+}
+
+/*
+ * ★★ ที่ยังไม่อ่านมีแถบสีประจำเรื่องชิดขอบซ้าย
+ *    ★ พื้นหลังจาง ๆ อย่างเดียวแยกจาก hover ไม่ออก — บทเรียนเดียวกับ
+ *      รายการห้องแชท ★★ แถบสีอ่านได้จากหางตาโดยไม่ต้องเทียบกับแถวข้าง ๆ
+ */
+.notify-row.is-unread {
+  background: color-mix(in oklab, var(--color-surface) 55%, transparent);
+}
+
+.notify-row.is-unread::before {
+  content: '';
+  position: absolute;
+  inset-block: 8px;
+  inset-inline-start: 0;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: rgb(var(--tint));
+}
+
+a:hover .notify-row {
+  background: color-mix(in oklab, var(--color-surface) 85%, transparent);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * ตู้สล็อต — ป้ายไฟ · กระจก · เส้นจ่ายเงิน · ปุ่มกด
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── ป้ายไฟหัวตู้ ────────────────────────────────────────────────────────── */
+.lotto-marquee {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid color-mix(in oklab, var(--color-accent) 42%, transparent);
+  background: color-mix(in oklab, var(--color-accent) 12%, transparent);
+}
+
+/*
+ * ★ หลอดไฟวิ่งวาดด้วย repeating-gradient ที่เลื่อนตำแหน่ง
+ *   ★★ ไม่ใช่ 20 <span> ที่กะพริบทีละดวง — ได้ผลเหมือนกันด้วย element เดียว
+ *      และไม่ต้องคิดว่าจะใส่กี่ดวงให้พอดีกับความกว้างที่เปลี่ยนตามข้อความ
+ */
+.lotto-lights {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--color-accent) 70%, transparent) 0 3px,
+    transparent 3px 14px
+  );
+  opacity: 0.5;
+  mask-image: linear-gradient(180deg, #000 0 3px, transparent 3px calc(100% - 3px), #000 calc(100% - 3px) 100%);
+  animation: lotto-lights 1.1s linear infinite;
+}
+
+@keyframes lotto-lights {
+  to { background-position-x: 14px; }
+}
+
+/* ── กรอบกระจกครอบวงล้อ ─────────────────────────────────────────────────── */
+.lotto-glass {
+  border: 1px solid color-mix(in oklab, var(--color-line-strong) 90%, transparent);
+  background: linear-gradient(180deg, rgb(0 0 0 / 0.28), rgb(0 0 0 / 0.14));
+  box-shadow:
+    inset 0 2px 10px rgb(0 0 0 / 0.55),
+    inset 0 -2px 10px rgb(0 0 0 / 0.35),
+    0 1px 0 rgb(255 255 255 / 0.06);
+}
+
+/*
+ * ── เส้นจ่ายเงิน ────────────────────────────────────────────────────────
+ * ★ พาดกลางวงล้อพอดี บอกว่า "แถวนี้คือแถวที่นับ"
+ *   ★★ ตอนหมุนให้สว่างขึ้นและเรืองแสง — เป็นตัวบอกว่าเครื่องกำลังทำงาน
+ *      โดยไม่ต้องมีข้อความว่า "กำลังสุ่ม…"
+ */
+.lotto-payline {
+  position: absolute;
+  inset-inline: 10px;
+  top: 50%;
+  height: 2px;
+  transform: translateY(-1px);
+  pointer-events: none;
+  z-index: 2;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in oklab, var(--color-accent) 55%, transparent),
+    transparent
+  );
+  opacity: 0.45;
+  transition: opacity 0.3s ease, box-shadow 0.3s ease;
+}
+
+.lotto-payline.is-live {
+  opacity: 1;
+  box-shadow: 0 0 14px 2px color-mix(in oklab, var(--color-accent) 60%, transparent);
+}
+
+/* ── ปุ่มกดของตู้ ────────────────────────────────────────────────────────── */
+.lotto-button {
+  display: inline-grid;
+  place-items: center;
+  height: 52px;
+  min-width: 112px;
+  padding-inline: 26px;
+  border-radius: 9999px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-accent-ink);
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--color-accent) 82%, #fff),
+    var(--color-accent) 45%,
+    color-mix(in oklab, var(--color-accent) 78%, #000)
+  );
+  /* ★ ขอบสว่างด้านบน + เงาใต้ปุ่ม = ปุ่มนูนที่กดลงไปได้ ไม่ใช่วงรีสี */
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.45),
+    inset 0 -2px 6px rgb(0 0 0 / 0.3),
+    0 8px 0 color-mix(in oklab, var(--color-accent) 55%, #000),
+    0 14px 30px -10px color-mix(in oklab, var(--color-accent) 80%, transparent);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+/* ★ กดแล้วจมลงไปเท่ากับความหนาของปุ่ม — เงาหายไปพร้อมกัน ไม่งั้นดูลอย */
+.lotto-button:active:not(:disabled) {
+  transform: translateY(6px);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.3),
+    inset 0 -2px 6px rgb(0 0 0 / 0.35),
+    0 2px 0 color-mix(in oklab, var(--color-accent) 55%, #000),
+    0 6px 16px -10px color-mix(in oklab, var(--color-accent) 80%, transparent);
+}
+
+.lotto-button:disabled {
+  cursor: default;
+}
+
+/* ★ ตอนหมุนให้ปุ่มเต้นตามจังหวะ — เครื่องกำลังทำงานอยู่ ไม่ใช่ค้าง */
+.lotto-button.is-spinning {
+  animation: lotto-button-beat 0.6s ease-in-out infinite;
+}
+
+@keyframes lotto-button-beat {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(3px); }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * สล็อตแมชชีนของหน้าสุ่มเลขเด็ด
+ *
+ * ★★★ สิ่งที่ทำให้สล็อตจริงน่าลุ้นไม่ใช่ตัวเลข แต่เป็น "เครื่อง"
+ *
+ *     เลขที่เปลี่ยนไปมาเฉย ๆ คือ setState เร็ว ๆ — ไม่มีใครลุ้นกับมัน
+ *     ★ ของจริงมีวงล้อที่หมุนจนเบลอ · ตัวเครื่องสั่น · แสงกวาด · เสียงกึกตอนหยุด
+ *       ★★ ทุกอันในบล็อกนี้ทำหน้าที่นั้น และหยุดหมดเมื่อผู้ใช้ขอลดการเคลื่อนไหว
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+.slot-machine {
+  position: relative;
+  overflow: hidden;
+}
+
+/* ★ เครื่องสั่นตอนหมุน — เบามากและไม่เป็นจังหวะ ไม่งั้นอ่านเป็นของเสีย */
+.slot-shake {
+  animation: slot-shake 0.42s ease-in-out infinite;
+}
+
+@keyframes slot-shake {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  20%      { transform: translate3d(-1.5px, 1px, 0); }
+  45%      { transform: translate3d(1px, -1.5px, 0); }
+  70%      { transform: translate3d(-1px, -0.5px, 0); }
+}
+
+/* ★ แสงกวาดผ่านหน้าเครื่องระหว่างหมุน */
+.slot-sweep::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    transparent 38%,
+    color-mix(in oklab, var(--color-ink) 10%, transparent) 50%,
+    transparent 62%
+  );
+  transform: translate3d(-100%, 0, 0);
+  animation: slot-sweep 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes slot-sweep {
+  to { transform: translate3d(100%, 0, 0); }
+}
+
+/*
+ * ★★ วงล้อแต่ละหลัก
+ *
+ *    ★ ขอบบน-ล่างมืดลง ทำให้ดูเหมือนมองผ่านช่องเข้าไปในเครื่อง
+ *      ไม่ใช่ตัวเลขที่ลอยอยู่บนพื้นราบ
+ */
+.slot-reel {
+  position: relative;
+  overflow: hidden;
+  border-radius: 14px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, #000 45%, var(--color-surface)),
+    var(--color-surface) 32%,
+    var(--color-surface) 68%,
+    color-mix(in oklab, #000 45%, var(--color-surface))
+  );
+  box-shadow:
+    inset 0 10px 14px -10px rgb(0 0 0 / 0.9),
+    inset 0 -10px 14px -10px rgb(0 0 0 / 0.9);
+}
+
+/* ★ เส้นกลางบาง ๆ — จุดอ้างอิงที่บอกว่า "ตรงนี้คือช่องที่นับ" */
+.slot-reel::after {
+  content: '';
+  position: absolute;
+  inset-inline: 6%;
+  top: 50%;
+  height: 1px;
+  transform: translateY(-0.5px);
+  background: color-mix(in oklab, var(--color-accent) 55%, transparent);
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+/* ★ วงล้อที่เพิ่งหยุด กระตุกหนึ่งทีเหมือนเฟืองล็อกเข้าที่ */
+.slot-locked {
+  animation: slot-lock 0.34s cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+
+@keyframes slot-lock {
+  0%   { transform: translate3d(0, -4px, 0); }
+  55%  { transform: translate3d(0, 2px, 0); }
+  100% { transform: translate3d(0, 0, 0); }
+}
+
+/* ★ แสงวาบตอนออกผล — สั้นมาก ทำหน้าที่ "ตัดฉาก" ให้ตารู้ว่าจบแล้ว */
+.slot-flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 45%, rgb(255 255 255 / 0.55), transparent 65%);
+  animation: slot-flash 0.5s ease-out both;
+}
+
+@keyframes slot-flash {
+  0%   { opacity: 0; }
+  12%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * จังหวะลุ้นของวงล้อกลม
+ *
+ * ★★★ ความลุ้นไม่ได้มาจากการหมุน แต่มาจาก "การรอ"
+ *
+ *     วงล้อที่หมุนแล้วหยุดแล้วโชว์ผลทันที จบใน 5 วินาทีโดยไม่มีใครกลั้นหายใจ
+ *     ★ สิ่งที่ทำให้ลุ้นคือ: เวทีมืดลง · วงแหวนพลังงานหมุน · เข็มสะบัดทุกครั้ง
+ *       ที่ช่องผ่าน · และช่วงเงียบก่อนเฉลย
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+/* ★ เวทีมืดลงรอบวงล้อตอนหมุน — บังคับให้ตาอยู่ที่วงล้อ ไม่ไถไปที่อื่น */
+.stage-dim {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 46%, transparent 26%, rgb(0 0 0 / 0.72) 76%);
+  animation: stage-dim 380ms ease-out both;
+}
+
+@keyframes stage-dim {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ★ วงแหวนพลังงานหมุนรอบขอบ — สัญญาณว่า "เครื่องกำลังทำงาน" */
+.energy-ring {
+  position: absolute;
+  inset: -10px;
+  border-radius: 9999px;
+  padding: 3px;
+  background: conic-gradient(
+    from var(--ring-angle, 0deg),
+    transparent 0deg,
+    rgb(var(--aurora-1) / 0.95) 50deg,
+    rgb(var(--aurora-2) / 0.9) 110deg,
+    transparent 190deg,
+    transparent 360deg
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: ring-spin 1.1s linear infinite;
+  pointer-events: none;
+}
+
+/* ★ เข็มสะบัดทุกครั้งที่ช่องผ่าน — เหมือนเข็มจริงที่ถูกซี่วงล้อดีด */
+.pointer-kick {
+  animation: pointer-kick 140ms cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+
+@keyframes pointer-kick {
+  0%   { transform: rotate(0deg); }
+  35%  { transform: rotate(13deg); }
+  100% { transform: rotate(0deg); }
+}
+
+/* ★ ชื่อผู้ชนะโผล่แบบกระแทก หลังช่วงเงียบ */
+.winner-pop {
+  animation: winner-pop 560ms cubic-bezier(0.16, 1.4, 0.3, 1) both;
+}
+
+@keyframes winner-pop {
+  0%   { opacity: 0; transform: scale(0.72); filter: blur(6px); }
+  60%  { opacity: 1; transform: scale(1.06); filter: blur(0); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * ภาพตัวอย่างเล็ก ๆ ในการ์ดพอร์ทัล
+ *
+ * ★★★ บอกว่า "ข้างในมีอะไร" ด้วยการทำให้ดู ไม่ใช่ด้วยการเขียนเพิ่ม
+ *
+ *     การ์ดที่มีไอคอนกับคำอธิบายบอกได้แค่ชื่อระบบ ★ ภาพที่ขยับบอกว่า
+ *     เข้าไปแล้วจะได้เจออะไร ภายในหนึ่งวินาทีที่ตากวาดผ่าน
+ *     ★★ ทุกอันใช้สีประจำโมดูล (--tint) จึงไม่ต้องเขียน CSS ใหม่ทีละใบ
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+/* วงล้อจิ๋วที่หมุนช้า ๆ — ตัวอย่างของหน้าสุ่มอาหาร */
+.mini-wheel {
+  animation: mini-wheel 7s linear infinite;
+}
+
+@keyframes mini-wheel {
+  to { transform: rotate(360deg); }
+}
+
+/* จุดที่สว่างไล่กัน — ตัวอย่างของหน้ารวม */
+.dot-seq > * {
+  animation: dot-seq 2.4s ease-in-out infinite;
+}
+.dot-seq > *:nth-child(2) { animation-delay: 0.16s; }
+.dot-seq > *:nth-child(3) { animation-delay: 0.32s; }
+.dot-seq > *:nth-child(4) { animation-delay: 0.6s; }
+.dot-seq > *:nth-child(5) { animation-delay: 0.76s; }
+.dot-seq > *:nth-child(6) { animation-delay: 0.92s; }
+
+@keyframes dot-seq {
+  0%, 70%, 100% { opacity: 0.22; }
+  35%           { opacity: 1; }
+}
+
+/* ลูกเต๋าที่พลิกหน้า — ตัวอย่างของหน้าสุ่มและเกม */
+.dice-flip {
+  animation: dice-flip 3.2s cubic-bezier(0.34, 1.4, 0.4, 1) infinite;
+}
+
+@keyframes dice-flip {
+  0%, 55%, 100% { transform: rotate(0deg) scale(1); }
+  12%           { transform: rotate(-18deg) scale(1.08); }
+  28%           { transform: rotate(14deg) scale(1.04); }
+  42%           { transform: rotate(-6deg) scale(1); }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * แชทสไตล์ LINE
+ *
+ * ★★★ ทำไมต้องลอกหน้าตาของ LINE จริง ๆ ไม่ใช่แค่ "คล้าย ๆ"
+ *
+ *     คนไทยทุกคนในออฟฟิศใช้ LINE ทุกวัน ★ ทุกตำแหน่งบนหน้าจอถูกจำไว้แล้ว
+ *     ว่าอะไรอยู่ตรงไหน — ฟองเขียวคือของเรา ฟองขาวคือของเขา เวลาอยู่ข้างฟอง
+ *     "อ่านแล้ว" อยู่เหนือเวลา ★★ การวางตำแหน่งให้ตรงกับที่เขาจำได้แปลว่า
+ *     ไม่ต้องเรียนรู้อะไรใหม่เลยแม้แต่นิดเดียว
+ *
+ * ★ สีพื้นหลังและสีฟองสลับตามธีม — ต้นฉบับเป็นฟ้าอมเทา ส่วนโหมดมืดใช้
+ *   โทนเดียวกันแต่เข้มลง ★★ ไม่ใช่บังคับพื้นฟ้าสว่างในโหมดมืด ซึ่งจะแสบตา
+ *   ในห้องมืดและขัดกับทั้งเว็บ
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --chat-wall: #8cabd8;
+  --chat-bubble-me: #8de055;
+  --chat-bubble-me-ink: #0f1a09;
+  --chat-bubble-you: #ffffff;
+  --chat-bubble-you-ink: #14161a;
+  --chat-meta: rgb(255 255 255 / 0.92);
+  --chat-pill: rgb(0 0 0 / 0.16);
+}
+
+html[data-theme='dark'] {
+  --chat-wall: #1b2430;
+  --chat-bubble-me: #06c755;
+  --chat-bubble-me-ink: #05140b;
+  --chat-bubble-you: #2b323c;
+  --chat-bubble-you-ink: #eef1f5;
+  --chat-meta: rgb(255 255 255 / 0.62);
+  --chat-pill: rgb(255 255 255 / 0.14);
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme='light']) {
+    --chat-wall: #1b2430;
+    --chat-bubble-me: #06c755;
+    --chat-bubble-me-ink: #05140b;
+    --chat-bubble-you: #2b323c;
+    --chat-bubble-you-ink: #eef1f5;
+    --chat-meta: rgb(255 255 255 / 0.62);
+    --chat-pill: rgb(255 255 255 / 0.14);
+  }
+}
+
+.chat-wall {
+  background-color: var(--chat-wall);
+  /*
+   * ★ ลายจุดจาง ๆ — ผนังเรียบสนิทอ่านเป็นกล่องเปล่า ไม่ใช่ห้องแชท
+   * ★★ ไล่เฉดบาง ๆ ทับอีกชั้น ให้ผนังมี "ความลึก"
+   *    ★ พื้นสีเดียวล้วนในโหมดมืดกลืนไปกับพื้นหน้าเว็บจนดูเหมือนช่องว่าง
+   *      ไล่เฉดทำให้ขอบห้องอ่านออกโดยไม่ต้องตีกรอบหนา ๆ
+   */
+  background-image:
+    radial-gradient(rgb(255 255 255 / 0.05) 1px, transparent 1px),
+    linear-gradient(180deg, rgb(255 255 255 / 0.06), transparent 22%, rgb(0 0 0 / 0.1));
+  background-size:
+    18px 18px,
+    100% 100%;
+}
+
+/*
+ * ── เปลือกของสองบาน ────────────────────────────────────────────────────────
+ *
+ * ★★ เงาทำให้รายการห้องกับห้องแชทอ่านเป็น "แผ่น" ที่ลอยอยู่บนหน้าเว็บ
+ *    ★ ในโหมดมืด กรอบเส้นบาง ๆ อย่างเดียวแทบมองไม่เห็น ทั้งสองบานเลยกลืน
+ *      เป็นพื้นดำผืนเดียวกัน ★★ เงาบวกขอบสว่างด้านบนคือสิ่งที่แยกมันออกจากกัน
+ */
+.chat-shell {
+  border-radius: 22px;
+  border: 1px solid var(--color-line);
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 0.05) inset,
+    0 18px 46px -20px rgb(0 0 0 / 0.55);
+}
+
+/* แถบหัวห้องและแถบพิมพ์ — ไล่เฉดอ่อน ๆ ให้ต่างจากผนังห้องชัดขึ้น */
+.chat-bar {
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--color-elevated) 92%, transparent),
+    color-mix(in oklab, var(--color-surface) 88%, transparent)
+  );
+  backdrop-filter: blur(12px);
+}
+
+/* ── แถวรายการห้อง ──────────────────────────────────────────────────────── */
+.chat-row {
+  position: relative;
+  transition:
+    background 0.16s ease,
+    padding-inline-start 0.16s ease;
+}
+
+/*
+ * ★ ห้องที่เปิดอยู่มีแถบสีชิดขอบซ้าย ไม่ใช่แค่พื้นหลังอ่อน ๆ
+ *   ★★ พื้นหลังจาง ๆ อย่างเดียวแยกจาก hover ไม่ออก — พอเลื่อนเมาส์ผ่าน
+ *      แถวอื่น สองแถวจะดูเหมือนถูกเลือกพร้อมกัน
+ */
+.chat-row-on {
+  background: color-mix(in oklab, var(--color-accent) 12%, transparent);
+  padding-inline-start: 16px;
+}
+
+.chat-row-on::before {
+  content: '';
+  position: absolute;
+  inset-block: 6px;
+  inset-inline-start: 0;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--color-accent);
+}
+
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ * ผืนหลังและท้ายหน้าของระบบออฟฟิศ
+ *
+ * ★★★ ปัญหาที่เห็นตอนไล่ถ่ายภาพทั้ง 22 หน้า: ทุกหน้าที่เนื้อหาสั้น
+ *     (ยอดค้าง · ผู้ใช้งาน · กล่องข้อความ · ร้านเด็ด …) จบลงกลางจอ
+ *     แล้วเหลือพื้นเรียบยาวลงไปจนสุด
+ *
+ *     ★ แก้ทีละหน้าด้วยการ "ใส่ของเพิ่ม" จะได้ 22 หน้าที่หน้าตาไม่เหมือนกัน
+ *       และของบางอย่างจะเป็นของประดับที่ไม่มีใครใช้
+ *     ★★ แก้ที่ชั้นร่วมทีเดียว — ทุกหน้าได้พื้นหลังกับท้ายหน้าชุดเดียวกัน
+ *        แล้วค่อยไปเติมเนื้อหาจริงเฉพาะหน้าที่ขาดจริง ๆ
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+.office-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      120% 60% at 50% -10%,
+      color-mix(in oklab, var(--color-accent) 7%, transparent),
+      transparent 62%
+    ),
+    radial-gradient(90% 50% at 100% 0%, rgb(120 90 255 / 0.07), transparent 58%),
+    radial-gradient(70% 45% at 0% 100%, rgb(255 60 110 / 0.05), transparent 62%);
+}
+
+/* ★ ลายจุดจาง ๆ ทับอีกชั้น — พื้นเรียบสนิทบนจอใหญ่อ่านเป็นพื้นที่ยังไม่ได้ใช้ */
+.office-canvas::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.5;
+  background-image: radial-gradient(
+    color-mix(in oklab, var(--color-ink-faint) 22%, transparent) 1px,
+    transparent 1px
+  );
+  background-size: 26px 26px;
+  mask-image: linear-gradient(180deg, transparent, #000 35%, #000 70%, transparent);
+}
+
+/*
+ * ── ความลึกของการ์ดในระบบออฟฟิศ ────────────────────────────────────────────
+ *
+ * ★★★ การ์ดทุกใบเดิมเป็นกล่องขอบเส้นบางบนพื้นสีใกล้เคียงกัน
+ *
+ *     ★ บนจอสว่างมันอ่านเป็น "ตารางสีเทา" ไม่ใช่ "การ์ด" ★★ ส่วนบนจอมืด
+ *       ขอบแทบมองไม่เห็นเลย การ์ดหลายใบเลยกลืนเป็นก้อนเดียวกัน
+ *     ★ เงาบาง ๆ กับขอบสว่างด้านในทำให้แต่ละใบแยกจากพื้นหลังได้โดยไม่ต้อง
+ *       เพิ่มเส้นขอบให้หนาขึ้น ซึ่งจะทำให้หน้าดูรก
+ *
+ * ★★ เขียนเป็นกฎเดียวครอบทั้งโมดูล แทนที่จะไล่ใส่คลาสทีละ 20 ไฟล์
+ *    ★ จำกัดขอบเขตด้วย .office-body ★★ ห้องฟังเพลงจึงไม่ถูกแตะแม้แต่พิกเซลเดียว
+ *      ซึ่งเป็นข้อกำหนดที่ห้ามพลาด
+ *
+ * ★ กฎนี้อยู่นอก @layer จึงชนะ utility ของ Tailwind ได้โดยไม่ต้องใส่ !important
+ *   (บทเรียนจากตอนที่ focus-visible:outline-none ใช้ไม่ได้เพราะเรื่องนี้)
+ */
+.office-body :is(.rounded-2xl, .rounded-3xl).border-line {
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 0.05) inset,
+    0 12px 32px -20px rgb(0 0 0 / 0.4);
+}
+
+/*
+ * ── การ์ดประกาศในตลาดนัด ───────────────────────────────────────────────────
+ */
+.market-card {
+  transition:
+    transform 0.2s cubic-bezier(0.2, 0.9, 0.3, 1.2),
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.market-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in oklab, var(--color-accent) 40%, transparent);
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 0.06) inset,
+    0 22px 44px -22px rgb(0 0 0 / 0.55);
+}
+
+/* ★ ขายแล้วให้ซีดลง แต่ไม่จางจนอ่านราคาไม่ออก — เจ้าของยังต้องจัดการมันอยู่ */
+.market-card.is-sold .market-media {
+  filter: grayscale(0.75);
+}
+
+.market-card.is-sold {
+  opacity: 0.78;
+}
+
+/* ★ รูปขยายเบา ๆ ตอนชี้ — บอกว่าการ์ดทั้งใบมีปฏิกิริยา ไม่ใช่แค่ปุ่ม */
+.market-media img {
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+.market-card:hover .market-media img {
+  transform: scale(1.045);
+}
+
+/*
+ * ★★ ผ้าคลุมไล่เฉดใต้รูป
+ *    ★ ตัวหนังสือสีขาวบนรูปอ่านไม่ออกถ้ารูปนั้นสว่าง ★★ ซึ่งเป็นเรื่องที่
+ *      ควบคุมไม่ได้เลยเพราะรูปมาจากมือถือของพนักงาน
+ */
+.market-scrim {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 48%;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent, rgb(0 0 0 / 0.55));
+}
+
+.market-status {
+  border-radius: 9999px;
+  background: rgb(0 0 0 / 0.5);
+  padding: 3px 10px;
+  font-size: 11px;
+  color: #fff;
+  backdrop-filter: blur(6px);
+}
+
+/*
+ * ห้องแชทตลาดนัด
+ *
+ * ★★★ บนมือถือเต็มจอ บนคอมเป็นการ์ดลอย
+ *
+ *     ★ ผู้ใช้สั่งว่า "ในมือถือเอาเต็มจอเลย" ★★ ซึ่งถูกตามธรรมชาติของสื่อ —
+ *       แอปแชททุกตัวบนมือถือกินเต็มจอ เพราะจอแคบอยู่แล้ว การเหลือขอบ
+ *       ข้างละ 16px คือการตัดพื้นที่อ่านข้อความทิ้งไป 10%
+ *     ★ ใช้ position: fixed ไม่ใช่แค่ขยายความกว้าง ★★ เพราะเหนือห้องแชท
+ *       ยังมีหัวข้อหน้ากับแถบแท็บของโมดูลอยู่ ซึ่งบนมือถือกินไปครึ่งจอ
+ *       ★ fixed ดึงห้องออกจากการไหลของหน้า แล้วมันจึงเต็มจอได้จริง
+ *
+ * ★★ เว้นที่ให้แถบบนของเว็บ (--spacing-header) ไม่ได้ทับมัน
+ *    ★ แถบบนมีปุ่มเปลี่ยนภาษา · แจ้งเตือน · เมนูผู้ใช้ ซึ่งต้องกดได้เสมอ
+ *      ★★ แชทที่ทับทางออกของตัวเองคือกับดัก
+ */
+.mkt-room {
+  position: fixed;
+  inset-inline: 0;
+  top: var(--spacing-header);
+  bottom: 0;
+  z-index: 40;
+  height: auto;
+  min-height: 0;
+  max-width: none;
+  border-radius: 0;
+  border-inline: 0;
+  border-block-end: 0;
+}
+
+@media (min-width: 640px) {
+  .mkt-room {
+    position: static;
+    height: calc(100dvh - 20rem);
+    min-height: 26rem;
+    max-width: 64rem;
+    border-radius: 1.5rem;
+    border-width: 1px;
+  }
+}
+
+/* ── แกลเลอรีรูปประกาศ ──────────────────────────────────────────────────── */
+
+/*
+ * ★★ ปุ่มลูกศรจางไว้ แล้วชัดขึ้นตอนชี้ที่รูป
+ *    ★ ปุ่มทึบสองปุ่มทับบนรูปตลอดเวลา คือการบังของที่คนมาดู
+ *      ★★ แต่ซ่อนสนิทก็ไม่ได้ — บนมือถือไม่มี hover จึงต้องเห็นอยู่บ้าง
+ */
+.gal-arrow {
+  position: absolute;
+  top: 50%;
+  translate: 0 -50%;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9999px;
+  background: rgb(0 0 0 / 0.42);
+  color: #fff;
+  opacity: 0.72;
+  backdrop-filter: blur(6px);
+  transition:
+    opacity 0.16s ease,
+    background-color 0.16s ease;
+}
+
+.gal-arrow:hover {
+  background: rgb(0 0 0 / 0.68);
+  opacity: 1;
+}
+
+.gal-dots {
+  position: absolute;
+  bottom: 8px;
+  inset-inline: 0;
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  pointer-events: none;
+}
+
+.gal-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 0.5);
+  /* ★ เงาดำบาง ๆ ให้จุดขาวยังเห็นบนรูปที่สว่าง — เหตุผลเดียวกับ .market-scrim */
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.25);
+  transition: background-color 0.16s ease;
+}
+
+.gal-dot-on {
+  background: #fff;
+}
+
+.gal-thumb {
+  flex-shrink: 0;
+  overflow: hidden;
+  width: 64px;
+  height: 64px;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  opacity: 0.62;
+  transition:
+    opacity 0.16s ease,
+    border-color 0.16s ease;
+}
+
+.gal-thumb:hover {
+  opacity: 1;
+}
+
+.gal-thumb-on {
+  border-color: var(--color-accent);
+  opacity: 1;
+}
+
+/* ── ช่องวางรูปในฟอร์ม ───────────────────────────────────────────────────── */
+.dropzone {
+  border: 1.5px dashed color-mix(in oklab, var(--color-line-strong) 90%, transparent);
+  background: color-mix(in oklab, var(--color-surface) 45%, transparent);
+  color: var(--color-ink-faint);
+  transition:
+    border-color 0.16s ease,
+    background 0.16s ease,
+    color 0.16s ease;
+}
+
+.dropzone:hover:not(:disabled) {
+  border-color: color-mix(in oklab, var(--color-accent) 60%, transparent);
+  background: color-mix(in oklab, var(--color-accent) 8%, transparent);
+  color: var(--color-accent);
+}
+
+/* ── การ์ดตัวเลขที่กดได้ ─────────────────────────────────────────────────── */
+.figure-card {
+  transition:
+    transform 0.18s cubic-bezier(0.2, 0.9, 0.3, 1.2),
+    box-shadow 0.18s ease,
+    border-color 0.18s ease;
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 0.05) inset,
+    0 12px 32px -20px rgb(0 0 0 / 0.4);
+}
+
+.figure-card:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 0.06) inset,
+    0 18px 38px -20px rgb(0 0 0 / 0.5);
+}
+
+/*
+ * ── หัวหน้าโปรไฟล์ ─────────────────────────────────────────────────────────
+ * ★ ไล่เฉดสีประจำระบบจาง ๆ ทำให้ส่วนหัวแยกจากการ์ดข้อมูลด้านล่าง
+ *   ★★ โดยไม่ต้องใช้เส้นขอบหนาหรือสีพื้นทึบ ซึ่งจะแย่งความสนใจจากรูปโปรไฟล์
+ */
+.profile-hero {
+  border: 1px solid var(--color-line);
+  background:
+    radial-gradient(90% 120% at 12% 0%, color-mix(in oklab, var(--color-accent) 10%, transparent), transparent 60%),
+    color-mix(in oklab, var(--color-elevated) 55%, transparent);
+  backdrop-filter: blur(12px);
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 0.05) inset,
+    0 14px 38px -22px rgb(0 0 0 / 0.45);
+}
+
+/* ── กล่องสรุปการหารบิล ──────────────────────────────────────────────────── */
+.split-preview {
+  border: 1px solid color-mix(in oklab, var(--color-accent) 30%, transparent);
+  background:
+    radial-gradient(90% 120% at 100% 0%, color-mix(in oklab, var(--color-accent) 10%, transparent), transparent 62%),
+    color-mix(in oklab, var(--color-surface) 50%, transparent);
+}
+
+/* ── กล่องสถานะว่าง ─────────────────────────────────────────────────────── */
+.empty-state {
+  border: 1px dashed color-mix(in oklab, var(--color-line-strong) 85%, transparent);
+  background:
+    radial-gradient(
+      70% 80% at 50% 0%,
+      color-mix(in oklab, var(--color-accent) 5%, transparent),
+      transparent 70%
+    ),
+    color-mix(in oklab, var(--color-elevated) 45%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.empty-state-orb {
+  color: color-mix(in oklab, var(--color-accent) 80%, var(--color-ink-faint));
+  background: color-mix(in oklab, var(--color-accent) 10%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-accent) 18%, transparent);
+}
+
+.office-footer {
+  border-top: 1px solid var(--color-line);
+  background: linear-gradient(
+    180deg,
+    transparent,
+    color-mix(in oklab, var(--color-elevated) 55%, transparent)
+  );
+}
+
+/*
+ * ── หน้าที่กว้างกว่ามาตรฐาน ────────────────────────────────────────────────
+ *
+ * ★★★ ดันออกจากกรอบ 1000px ของ layout โดยไม่แก้ layout
+ *
+ *     ★ ถ้าไปขยาย max-width ของ layout ทุกหน้าในระบบจะกว้างตาม แล้วหน้า
+ *       ที่เป็นฟอร์มหรือรายการจะอ่านยากขึ้นเพราะบรรทัดยาวเกินไป
+ *     ★★ หน้าไหนอยากกว้างก็ติดคลาสนี้เอง — หน้าอื่นไม่รู้สึกอะไรเลย
+ *
+ * ★ margin-inline ติดลบวัดจากความกว้างของกล่องแม่ (50%) จึงยืดออกทั้งสองข้าง
+ *   เท่ากันเสมอ และเมื่อจอแคบกว่า 1000px ค่าจะกลายเป็น 0 เองโดยไม่ต้องมี
+ *   media query
+ */
+.page-wide {
+  /*
+   * ★★ ลบ 2rem ออกจากความกว้างเต็ม เพราะหัวเรื่องมี px-4 อยู่ข้างใน
+   *    ★ วัดจากเบราว์เซอร์จริงตอนแรกได้หัวเรื่องที่ x=102 แต่เนื้อหาที่ x=86
+   *      — เยื้องกัน 16px พอดีกับ padding ข้างเดียวของหัวเรื่อง
+   *    ★★ ใช้ min(...) กับ 100vw เฉย ๆ แล้วค่อยลบ เพื่อให้จอแคบได้ค่าเท่ากับ
+   *       ความกว้างของหัวเรื่องพอดีด้วย ไม่ใช่แคบกว่าอีก 2rem
+   */
+  --page-wide: calc(min(1340px, 100vw) - 2rem);
+  width: var(--page-wide);
+  margin-inline: calc(50% - var(--page-wide) / 2);
+}
+
+/* ── ป้ายจำนวนที่ยังไม่อ่าน ──────────────────────────────────────────────── */
+.chat-badge {
+  background: #06c755;
+  box-shadow: 0 2px 8px rgb(6 199 85 / 0.45);
+}
+
+/*
+ * ── การ์ดสรุปข้อความค้าง ───────────────────────────────────────────────────
+ */
+.chat-unread-card {
+  border: 1px solid color-mix(in oklab, #06c755 35%, transparent);
+  background:
+    linear-gradient(135deg, rgb(6 199 85 / 0.16), transparent 62%),
+    color-mix(in oklab, var(--color-elevated) 70%, transparent);
+  backdrop-filter: blur(12px);
+}
+
+.chat-unread-ring {
+  position: relative;
+  background: #06c755;
+  box-shadow: 0 6px 18px rgb(6 199 85 / 0.4);
+  animation: chat-unread-beat 2.4s ease-in-out infinite;
+}
+
+/* ★ วงคลื่นที่แผ่ออกแล้วจาง — ไม่ใช่การกะพริบซึ่งกวนสายตาเมื่อเปิดค้างทั้งวัน */
+.chat-unread-ring::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 2px solid #06c755;
+  animation: chat-unread-wave 2.4s ease-out infinite;
+}
+
+@keyframes chat-unread-beat {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  8% {
+    transform: scale(1.07);
+  }
+  16% {
+    transform: scale(1);
+  }
+}
+
+@keyframes chat-unread-wave {
+  0% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  70%,
+  100% {
+    transform: scale(1.55);
+    opacity: 0;
+  }
+}
+
+/*
+ * ── หน้าต้อนรับบานขวา ──────────────────────────────────────────────────────
+ *
+ * ★ ฟองสามใบไล่กันขึ้นมาเหมือนมีคนกำลังคุยกันอยู่ — เป็นภาพประกอบที่บอกว่า
+ *   หน้านี้คืออะไรโดยไม่ต้องมีไฟล์รูป
+ */
+.chat-welcome-art {
+  position: relative;
+  width: 190px;
+  height: 92px;
+}
+
+.chat-welcome-bubble {
+  position: absolute;
+  border-radius: 16px;
+  animation: chat-welcome-pop 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.25) both;
+}
+
+.chat-welcome-bubble-you {
+  inset-inline-start: 0;
+  top: 0;
+  width: 96px;
+  height: 30px;
+  border-bottom-left-radius: 4px;
+  background: var(--chat-bubble-you);
+  animation-delay: 0.05s;
+}
+
+.chat-welcome-bubble-me {
+  inset-inline-end: 0;
+  top: 32px;
+  width: 116px;
+  height: 30px;
+  border-bottom-right-radius: 4px;
+  background: var(--chat-bubble-me);
+  animation-delay: 0.18s;
+}
+
+.chat-welcome-bubble-you2 {
+  inset-inline-start: 0;
+  top: 64px;
+  width: 68px;
+  height: 28px;
+  border-bottom-left-radius: 4px;
+  background: var(--chat-bubble-you);
+  animation-delay: 0.31s;
+}
+
+@keyframes chat-welcome-pop {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* การ์ดคุณสมบัติบนผนังห้อง — โปร่งพอให้เห็นผนังข้างหลัง */
+.chat-feat {
+  border: 1px solid rgb(255 255 255 / 0.16);
+  background: rgb(255 255 255 / 0.1);
+  backdrop-filter: blur(6px);
+  animation: chat-stat-in 0.5s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+/* ── ชิปเริ่มแชทด่วน ─────────────────────────────────────────────────────── */
+.chat-quick {
+  transition:
+    transform 0.16s cubic-bezier(0.2, 0.9, 0.3, 1.3),
+    border-color 0.16s ease,
+    background 0.16s ease;
+}
+
+.chat-quick:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in oklab, var(--color-accent) 55%, transparent);
+  background: color-mix(in oklab, var(--color-accent) 10%, transparent);
+}
+
+.chat-quick:active {
+  transform: translateY(0);
+}
+
+/* ── การ์ดตัวเลขสรุป ─────────────────────────────────────────────────────── */
+.chat-stat {
+  animation: chat-stat-in 0.45s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+@keyframes chat-stat-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+
+/*
+ * ── ฟอง "กำลังพิมพ์" ───────────────────────────────────────────────────────
+ *
+ * ★ จุดเต้นสามจุด เหลื่อมกันทีละ 0.16 วินาที
+ *   ★★ เหลื่อมน้อยกว่านี้จะดูเหมือนเต้นพร้อมกันทั้งสามจุด ซึ่งอ่านเป็น
+ *      "กะพริบ" ไม่ใช่ "คลื่น" — คลื่นคือสิ่งที่สื่อว่ามีคนกำลังทำอะไรอยู่
+ */
+.chat-typing {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 11px 14px;
+}
+
+.chat-typing i {
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+  background: currentColor;
+  opacity: 0.45;
+  animation: chat-typing-dot 1.15s ease-in-out infinite;
+}
+
+.chat-typing i:nth-child(2) {
+  animation-delay: 0.16s;
+}
+.chat-typing i:nth-child(3) {
+  animation-delay: 0.32s;
+}
+
+@keyframes chat-typing-dot {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.35;
+  }
+  30% {
+    transform: translateY(-4px);
+    opacity: 0.9;
+  }
+}
+
+/* ★ ปิดการเต้นให้คนที่ตั้งค่าลดการเคลื่อนไหว — ฟองยังอยู่ แค่ไม่ขยับ */
+
+/*
+ * ── ช่องพิมพ์ ──────────────────────────────────────────────────────────────
+ *
+ * ★★ ไม่ปิดวงโฟกัสทิ้ง แค่ทำให้เป็นสีของธีม
+ *    ★ คนที่ใช้คีย์บอร์ดอย่างเดียวต้องเห็นว่าเคอร์เซอร์อยู่ตรงไหน การลบวง
+ *      โฟกัสออกคือการตัดคนกลุ่มนั้นทิ้ง เพื่อความสวยของคนที่ใช้เมาส์
+ *    ★★ ปัญหาเดิมไม่ใช่ "มีวงโฟกัส" แต่คือ "วงเป็นสีฟ้าของระบบ" ซึ่งชนกับ
+ *       สีแดงของธีมจนอ่านเป็นช่องกรอกผิดพลาด
+ *
+ * ★ กฎนี้ต้องมี specificity สูงกว่า :where(textarea):focus-visible ด้านบน
+ *   และต้องอยู่นอก @layer เหมือนกัน — ไม่งั้นแพ้เหมือนที่ utility แพ้มาแล้ว
+ */
+/*
+ * ★★★ ใช้กับทุกช่องกรอกในเว็บ ไม่ใช่เฉพาะช่องแชท
+ *
+ *     ★ ตอนแรกตั้งชื่อ .chat-input เพราะเจอปัญหาที่ช่องแชทก่อน
+ *       ★★ แต่สาเหตุเป็นเรื่องของทั้งเว็บ — กฎ focus กลางอยู่นอก @layer
+ *          จึงชนะ utility ของ Tailwind ทุกช่องเหมือนกันหมด
+ *     ★ <textarea> ของฟอร์มสมัครและฟอร์มลงประกาศเจออาการเดียวกัน:
+ *       ขอบฟ้าของระบบซ้อนขอบแดงของธีม อ่านเป็นช่องกรอกผิดพลาด
+ *     ★★ จึงรับทั้งสองชื่อ — ของเดิมไม่ต้องแก้ ของใหม่ใช้ชื่อที่ตรงความหมาย
+ */
+.field-input:focus-visible,
+.chat-input:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--color-accent) 62%, transparent);
+  outline-offset: 0;
+  border-color: transparent;
+}
+
+/* ── ปุ่มส่ง ─────────────────────────────────────────────────────────────── */
+.chat-send {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 9999px;
+  background: var(--color-surface);
+  color: var(--color-ink-faint);
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s cubic-bezier(0.2, 0.9, 0.3, 1.3),
+    box-shadow 0.18s ease;
+}
+
+/* ★ พร้อมส่งแล้วค่อยเปลี่ยนเป็นเขียวและเด้งขึ้นนิดเดียว
+     — การเปลี่ยนสีคือคำตอบของคำถาม "กดได้หรือยัง" */
+.chat-send-on {
+  background: #06c755;
+  color: #fff;
+  box-shadow: 0 4px 14px rgb(6 199 85 / 0.38);
+}
+
+.chat-send-on:hover {
+  transform: scale(1.07);
+  box-shadow: 0 6px 18px rgb(6 199 85 / 0.5);
+}
+
+.chat-send-on:active {
+  transform: scale(0.94);
+}
+
+/* ── ฟองข้อความ ─────────────────────────────────────────────────────────── */
+.bubble {
+  position: relative;
+  max-width: 100%;
+  padding: 8px 12px;
+  border-radius: 18px;
+  font-size: 14px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.bubble-me {
+  background: var(--chat-bubble-me);
+  color: var(--chat-bubble-me-ink);
+  border-bottom-right-radius: 4px;
+}
+
+.bubble-you {
+  background: var(--chat-bubble-you);
+  color: var(--chat-bubble-you-ink);
+  border-bottom-left-radius: 4px;
+}
+
+/*
+ * ★ หางฟองวาดด้วยสามเหลี่ยม ไม่ใช่รูป
+ *   ★★ โผล่เฉพาะฟองแรกของช่วง — ฟองที่ติดกันแล้วมีหางทุกใบอ่านเป็นฟันเลื่อย
+ */
+.bubble-tail-me::after,
+.bubble-tail-you::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  width: 0;
+  height: 0;
+  border-top: 8px solid transparent;
+  border-bottom: 0 solid transparent;
+}
+
+.bubble-tail-me::after {
+  right: -5px;
+  border-left: 9px solid var(--chat-bubble-me);
+}
+
+.bubble-tail-you::after {
+  left: -5px;
+  border-right: 9px solid var(--chat-bubble-you);
+}
+
+/* ป้ายคั่นวัน — เม็ดยาสีจาง ๆ กลางจอ เหมือนต้นฉบับ */
+.chat-daypill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  background: var(--chat-pill);
+  padding: 3px 12px;
+  font-size: 11px;
+  color: var(--chat-meta);
+}
+
+.chat-meta {
+  color: var(--chat-meta);
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+/*
+ * กล่องแชทที่กางจากแถบบน
+ *
+ * ★★★ บนจอแคบต้องเกาะ "ขอบจอ" ไม่ใช่เกาะปุ่มที่กด
+ *
+ *     ★ เดิมใช้ absolute + end-0 ซึ่งถูกต้องบนคอม — กล่องห้อยใต้ปุ่มพอดี
+ *       ★★ แต่บนมือถือ ปุ่มแชทอยู่กลางแถบ (มีปุ่มอื่นต่อท้ายอีกสี่ปุ่ม)
+ *          กล่องกว้าง 352px ที่เกาะขอบขวาของปุ่มจึงยื่นออกนอกจอทางซ้าย
+ *     ★ วัดจากเบราว์เซอร์จริงที่ 390px: ขอบซ้ายของกล่องอยู่ที่ x = -153
+ *       ★★ แปลว่าชื่อคนกับรูปโปรไฟล์ซึ่งอยู่ซ้ายสุดของแถว หายไปนอกจอทั้งหมด
+ *          — เหลือให้เห็นแค่เวลากับจุดแดง ซึ่งไม่ได้บอกอะไรเลย
+ *     ★ max-width อย่างเดียวแก้ไม่ได้ เพราะปัญหาคือ "ตำแหน่ง" ไม่ใช่ "ความกว้าง"
+ *
+ * ★★ fixed + inset-inline ทำให้กล่องกว้างเท่าจอลบขอบ ไม่ว่าปุ่มจะอยู่ตรงไหน
+ *    ★ และใช้ inset-inline ไม่ใช่ left/right — ภาษาอาหรับกลับด้านทั้งหน้า
+ */
+.chat-pop {
+  position: fixed;
+  inset-inline: 12px;
+  top: calc(var(--spacing-header) + 4px);
+  width: auto;
+}
+
+@media (min-width: 640px) {
+  .chat-pop {
+    position: absolute;
+    inset-inline: auto 0;
+    top: 2.75rem;
+    width: 22rem;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+ * ตอบกลับ · ลบ · อิโมจิความรู้สึก
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+/*
+ * แถวปุ่มข้างฟองข้อความ
+ *
+ * ★★★ ซ่อนเฉพาะบนเครื่องที่ชี้เมาส์ได้ ไม่ใช่ซ่อนทุกเครื่อง
+ *
+ *     ★ ปุ่มที่โผล่ตอน hover เป็นลายเซ็นของแชทบนคอม — มันทำให้ผนังห้อง
+ *       สะอาดโดยที่ปุ่มยังอยู่ตรงที่มือไปถึง
+ *     ★★ แต่บนมือถือไม่มี hover เลย ★ ถ้าซ่อนด้วย opacity: 0 เฉย ๆ
+ *        ปุ่มตอบกลับกับปุ่มลบจะ "ไม่มีอยู่" สำหรับคนใช้มือถือทั้งหมด
+ *        ★★ ซึ่งคือคนส่วนใหญ่ของระบบนี้ (ดูคอมเมนต์เรื่องแถบล่างในหน้าแชท)
+ *
+ *     ★ @media (hover: hover) ถามความสามารถของอุปกรณ์ ไม่ใช่ความกว้างจอ
+ *       ★★ การเดาจากความกว้างจะพลาดทั้งสองทาง: แท็บเล็ตจอใหญ่ที่ไม่มีเมาส์
+ *          และหน้าต่างเบราว์เซอร์แคบ ๆ บนคอมที่มีเมาส์
+ */
+.msg-acts {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0.45;
+  transition: opacity 0.14s ease;
+}
+
+@media (hover: hover) {
+  .msg-acts {
+    opacity: 0;
+  }
+}
+
+/* ★ focus-within ด้วย ไม่ใช่ hover อย่างเดียว — คนที่เดินด้วย Tab
+     ต้องเห็นปุ่มที่ตัวเองกำลังโฟกัสอยู่ ไม่ใช่กดปุ่มที่มองไม่เห็น */
+.msg-row:hover .msg-acts,
+.msg-row:focus-within .msg-acts {
+  opacity: 1;
+}
+
+.msg-act {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  color: var(--chat-meta);
+  transition:
+    background-color 0.14s ease,
+    color 0.14s ease;
+}
+
+.msg-act:hover {
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+
+/*
+ * เม็ดอิโมจิใต้ฟอง
+ *
+ * ★★ ซ้อนขึ้นมาทับขอบล่างของฟอง 6px ไม่ได้วางต่อท้ายเป็นบรรทัดใหม่
+ *    ★ เป็นรูปทรงที่เฟซบุ๊กกับ LINE ใช้ตรงกัน และมีเหตุผล: มันบอกว่า
+ *      "อิโมจินี้เป็นของฟองใบนี้" โดยไม่ต้องมีเส้นโยง
+ *      ★★ ถ้าวางห่างออกมา คนจะอ่านว่าเป็นข้อความใหม่ที่มีแต่อิโมจิ
+ */
+.rx-row {
+  position: relative;
+  /* ★ ลอยเหนือฟอง ไม่ใช่ใต้ฟอง — เม็ดกับฟองซ้อนกัน 4px
+       ★★ ไม่มี z-index แล้วเม็ดจะถูกฟองทับครึ่งหนึ่ง ซึ่งอ่านเป็น "เรนเดอร์พัง" */
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: -4px;
+  padding-inline: 2px;
+}
+
+.rx-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  /* ★★ กำหนดความสูงขั้นต่ำ ไม่ปล่อยให้ความสูงมาจาก line-height ของตัวอักษร
+       ★ อีโมจิสูงกว่ากล่องบรรทัดของฟอนต์ปกติ ★★ ปล่อยไว้แล้วมันจะล้น
+         ออกนอกเม็ดแล้วถูกตัดครึ่ง — เห็นชัดตอนวัดจากเบราว์เซอร์จริง */
+  min-height: 22px;
+  border: 1px solid var(--color-line);
+  border-radius: 9999px;
+  background: var(--color-elevated);
+  padding: 1px 8px 1px 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--color-ink-soft);
+  transition:
+    border-color 0.14s ease,
+    background-color 0.14s ease;
+}
+
+/* ★ ตัวอีโมจิเองใหญ่กว่าตัวเลข — มันคือเนื้อหา ตัวเลขเป็นแค่ของประกอบ */
+.rx-chip > :first-child {
+  font-size: 13px;
+  line-height: 1;
+}
+
+.rx-chip:hover {
+  border-color: color-mix(in oklab, var(--color-accent) 45%, var(--color-line));
+}
+
+/*
+ * ★★★ เม็ดที่เรากดเองต้องต่างจากเม็ดที่คนอื่นกด "ด้วยสายตา" ไม่ใช่ด้วยตัวเลข
+ *
+ *     ★ ถ้าหน้าตาเหมือนกันหมด คนจะไม่รู้ว่าตัวเองกดไปแล้วหรือยัง
+ *       ★★ แล้วจะกดซ้ำ ซึ่งในระบบนี้แปลว่า "ถอน" — คนจะเห็นตัวเลขลดลง
+ *          ทั้งที่เพิ่งกดเพิ่ม และอ่านว่าปุ่มพัง
+ */
+.rx-chip-mine {
+  border-color: color-mix(in oklab, var(--color-accent) 60%, transparent);
+  background: color-mix(in oklab, var(--color-accent) 14%, var(--color-elevated));
+  color: var(--color-ink);
+}
+
+/* ★ กล่องเลือกอิโมจิ — ลอยอยู่เหนือฟอง ไม่ดันผนังห้องให้ขยับ */
+/*
+ * แท็บกรองในกล่อง "ใครกดบ้าง"
+ *
+ * ★ flex-shrink: 0 สำคัญกว่าที่คิด — ข้อความที่มีอีโมจิหกแบบจะมีเจ็ดแท็บ
+ *   ★★ ถ้าปล่อยให้หด แท็บจะบีบจนอ่านตัวเลขไม่ออก แทนที่จะเลื่อนดูได้
+ */
+.rx-tab {
+  flex-shrink: 0;
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  padding: 3px 11px;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.6;
+  color: var(--color-ink-soft);
+  transition:
+    background-color 0.14s ease,
+    color 0.14s ease;
+}
+
+.rx-tab:hover {
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+
+.rx-tab-on,
+.rx-tab-on:hover {
+  background: color-mix(in oklab, var(--color-accent) 16%, transparent);
+  border-color: color-mix(in oklab, var(--color-accent) 55%, transparent);
+  color: var(--color-ink);
+}
+
+.rx-pop {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  z-index: 30;
+  display: flex;
+  gap: 2px;
+  border: 1px solid var(--color-line);
+  border-radius: 9999px;
+  background: var(--color-elevated);
+  padding: 4px 6px;
+  box-shadow: 0 10px 28px rgb(0 0 0 / 0.22);
+}
+
+.rx-pick {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9999px;
+  font-size: 17px;
+  line-height: 1;
+  transition: transform 0.12s ease, background-color 0.12s ease;
+}
+
+.rx-pick:hover {
+  background: var(--color-surface);
+  /* ★ โตขึ้นตอนชี้ — ยืนยันว่าชี้ตรงอันไหนอยู่ ซึ่งสำคัญเมื่อปุ่มเรียงติดกัน
+       และตัวอิโมจิเองก็ไม่มีกรอบให้เห็นขอบ */
+  transform: scale(1.18);
+}
+
+/*
+ * ข้อความต้นทางในฟองที่ตอบกลับ
+ *
+ * ★★ เส้นขีดข้างซ้ายคือ "คำพูดที่ยกมา" ซึ่งเป็นรูปทรงที่คนอ่านได้ทันที
+ *    เพราะมันเป็นรูปทรงเดียวกับ blockquote ในทุกที่
+ *
+ * ★★ ตัดเหลือสองบรรทัด ไม่ใช่บรรทัดเดียว
+ *    ★ บรรทัดเดียวตัดข้อความสั้น ๆ ทิ้งทั้งที่ยังมีที่ว่าง ★★ สองบรรทัด
+ *      ครอบคลุมข้อความส่วนใหญ่ได้ครบและยังไม่สูงจนกลืนฟองของตัวเอง
+ */
+/*
+ * ★★★ กล่องทึบในฟอง ไม่ใช่เส้นขีดข้างซ้าย
+ *
+ *     ★ เส้นขีดเป็นรูปทรงของ blockquote ในเอกสาร ซึ่งอ่านว่า "ยกคำพูดมา"
+ *       ★★ แต่ในแชทคำถามไม่ใช่ "นี่คือคำพูดของใครสักคน" — คือ "ตอบใบไหน"
+ *          ★ กล่องที่มีรูปกับชื่ออยู่ข้างในตอบข้อนั้นได้ในเสี้ยววินาที
+ *     ★ รูปทรงเดียวกับ LINE/เฟซบุ๊ก ซึ่งคนในออฟฟิศใช้อยู่แล้วทุกวัน —
+ *       ★★ ของที่หน้าตาคุ้นแล้วไม่ต้องสอนวิธีอ่าน
+ *
+ * ★ สีมาจาก currentColor ผสมความโปร่ง ไม่ได้ตรึงเป็นสีใดสีหนึ่ง
+ *   ★★ ฟองของเราเป็นเขียว ฟองคนอื่นเป็นเทา และยังมีโหมดสว่าง/มืดอีกสองชุด
+ *      ★ สีตรึงไว้ค่าเดียวจะจมหรือแสบตาในสามจากสี่กรณีนั้น
+ */
+.quote {
+  display: block;
+  margin-bottom: 5px;
+  border-radius: 10px;
+  background: color-mix(in oklab, currentColor 11%, transparent);
+  padding: 5px 8px;
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+
+.quote-head {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  /* ★ ชื่อคนเต็มสี ส่วนข้อความที่ยกมาหรี่ลง — ไม่หรี่ทั้งกล่อง
+       ★★ "ตอบใคร" คือข้อมูลที่ต้องอ่านออกทันที ส่วนเนื้อความเดิม
+          ผู้อ่านส่วนใหญ่จำได้อยู่แล้วเพราะเพิ่งเลื่อนผ่านมา */
+  margin-bottom: 1px;
+}
+
+.quote-text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  opacity: 0.72;
+}
+
+/* แถบ "กำลังตอบกลับ…" เหนือช่องพิมพ์ */
+.reply-bar {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  border-top: 1px solid var(--color-line);
+  background: var(--color-elevated);
+  padding: 7px 12px;
+}
+
+/*
+ * รูปในแชท
+ *
+ * ★★ จำกัดความสูง ไม่ใช่แค่ความกว้าง
+ *    ★ รูปแนวตั้งจากมือถือสูงกว่ากว้างสองเท่า ถ้าคุมแต่ความกว้าง
+ *      รูปเดียวจะกินทั้งหน้าจอจนบทสนทนาที่เหลือหายไปหมด
+ * ★ aspect-ratio ว่างไว้ให้รูปกำหนดเอง แต่ min-height กัน layout กระตุก
+ *   ตอนรูปยังโหลดไม่เสร็จ
+ */
+.chat-photo {
+  display: block;
+  overflow: hidden;
+  border-radius: 18px;
+  background: var(--chat-pill);
+  line-height: 0;
+  transition: filter 0.15s ease;
+}
+
+.chat-photo:hover {
+  filter: brightness(0.94);
+}
+
+.chat-photo img {
+  display: block;
+  max-width: 100%;
+  max-height: 320px;
+  min-height: 48px;
+  width: auto;
+  object-fit: cover;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * หน้าเข้าใช้งาน — ชิ้นส่วนที่มีแต่หน้านี้ใช้
+ *
+ * ★★★ หน้านี้คือหน้าเดียวที่คนยังไม่มีบัญชีได้เห็น
+ *
+ *     ★ ทุกอย่างในนี้จึงต้องอ่านออกและดูดีทั้งโหมดมืดและโหมดสว่าง
+ *       ★★ ไม่มีแถบบนให้สลับธีมเหมือนหน้าอื่น — ปุ่มธีมจึงอยู่บนหน้านี้เอง
+ *          (เหตุผลเดียวกับปุ่มเปลี่ยนภาษาที่ต้องมีที่นี่)
+ *     ★ สีทุกค่าอ้าง token ของธีม ไม่ฝังค่าสีตรง ๆ สักที่
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── กล่องลอยมุมบน: ธีม + ภาษา ─────────────────────────────────────────── */
+.signin-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+  border-radius: 9999px;
+  border: 1px solid var(--color-line);
+  background: color-mix(in oklab, var(--color-elevated) 72%, transparent);
+  padding: 0.25rem;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 18px 40px -28px rgb(0 0 0 / 0.55);
+}
+
+/* ── ป้ายเล็กเหนือพาดหัว ──────────────────────────────────────────────── */
+/*
+ * ★ จุดเต้นข้าง ๆ บอกว่า "ระบบเปิดอยู่" โดยไม่ต้องเขียนคำว่าเปิดอยู่
+ *   ★★ เป็นสัญญาณที่คนอ่านได้ก่อนตัวหนังสือเสมอ
+ */
+.signin-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in oklab, var(--color-line) 100%, transparent);
+  background: color-mix(in oklab, var(--color-elevated) 55%, transparent);
+  padding: 0.3rem 0.8rem 0.3rem 0.6rem;
+  font-size: 11.5px;
+  letter-spacing: 0.01em;
+  color: var(--color-ink-soft);
+  backdrop-filter: blur(12px);
+}
+
+.signin-dot {
+  position: relative;
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+  background: rgb(var(--aurora-1));
+  flex-shrink: 0;
+}
+
+.signin-dot::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  background: rgb(var(--aurora-1) / 0.35);
+  animation: signin-pulse 2.6s ease-out infinite;
+}
+
+@keyframes signin-pulse {
+  0%   { transform: scale(0.6); opacity: 0.9; }
+  70%  { transform: scale(1.5); opacity: 0; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+
+/* ── การ์ดโมดูลในคอลัมน์ซ้าย ──────────────────────────────────────────── */
+/*
+ * ★★ ใช้ --tint ชุดเดียวกับการ์ดบนหน้าพอร์ทัล
+ *    ★ คนที่เห็นสีเขียว = กระเป๋าเงิน ที่นี่ แล้วเข้าไปเจอสีเขียวอันเดิม
+ *      จะรู้ว่าเดินมาถูกที่ — สีคือป้ายชื่อที่จำได้เร็วกว่าตัวหนังสือ
+ */
+.signin-card {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  border-radius: 1rem;
+  border: 1px solid var(--color-line);
+  background: color-mix(in oklab, var(--color-elevated) 46%, transparent);
+  padding: 0.8rem 0.85rem;
+  backdrop-filter: blur(14px);
+}
+
+.signin-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(120% 90% at 88% -20%, rgb(var(--tint) / 0.10), transparent 60%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.signin-icon {
+  display: grid;
+  place-items: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  flex-shrink: 0;
+  border-radius: 0.7rem;
+  border: 1px solid rgb(var(--tint) / 0.28);
+  background: rgb(var(--tint) / 0.13);
+  color: rgb(var(--tint));
+}
+
+@media (hover: hover) {
+  .signin-card:hover {
+    border-color: rgb(var(--tint) / 0.45);
+    box-shadow: 0 20px 48px -30px rgb(var(--tint) / 0.7);
+  }
+}
+
+/* ── วงแสงหลังการ์ดฟอร์ม ──────────────────────────────────────────────── */
+/*
+ * ★★★ งานเดียวของมันคือดึงตาไปที่ช่องกรอก
+ *
+ *     ★ หน้านี้มีของให้อ่านเยอะขึ้นกว่าเดิมมาก ★★ ถ้าไม่มีอะไรบอกว่า
+ *       "เริ่มตรงนี้" คนจะอ่านคอลัมน์ซ้ายจบแล้วค่อยหาฟอร์ม ซึ่งช้ากว่าที่ควร
+ *     ★ จางมาก ตั้งใจให้รู้สึกมากกว่าให้เห็น
+ */
+.signin-ring {
+  position: absolute;
+  inset: -14%;
+  border-radius: 9999px;
+  background: radial-gradient(
+    closest-side,
+    rgb(var(--aurora-1) / 0.16),
+    rgb(var(--aurora-2) / 0.10) 55%,
+    transparent 78%
+  );
+  filter: blur(26px);
+  pointer-events: none;
+  z-index: -1;
+}
+
+html[data-theme='light'] .signin-ring {
+  /* ★ บนพื้นขาว แสงฟุ้งกลายเป็นคราบเทา — ลดลงจนเหลือแค่ไออุ่น ๆ */
+  background: radial-gradient(
+    closest-side,
+    rgb(var(--aurora-1) / 0.10),
+    rgb(var(--aurora-2) / 0.07) 55%,
+    transparent 78%
+  );
+}
+
+/* ── แถวจุดขายใต้การ์ด ────────────────────────────────────────────────── */
+.signin-perk {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 11.5px;
+  color: var(--color-ink-faint);
+  white-space: nowrap;
+}
+
+/* ── การ์ดฟอร์มเข้าใช้งาน ──────────────────────────────────────────────── */
+/*
+ * ★★★ การ์ดนี้คือสิ่งเดียวบนหน้าที่คนต้อง "ทำอะไรสักอย่าง" กับมัน
+ *
+ *     ★ ของรอบ ๆ ทั้งหมดมีไว้ให้อ่าน มีแค่กล่องนี้ที่มีไว้ให้กรอก
+ *       ★★ มันจึงต้องดูหนักแน่นกว่าทุกอย่างบนหน้า ไม่ใช่กลมกลืนไปกับพื้น
+ *     ★ ของเดิมเป็นกล่องโปร่งขอบบาง ซึ่งบนพื้นที่มีแสงเหนือวิ่งอยู่
+ *       แทบแยกไม่ออกว่าตรงไหนคือขอบกล่อง
+ */
+.auth-card {
+  position: relative;
+  border-radius: 1.5rem;
+  border: 1px solid var(--color-line);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--color-elevated) 92%, transparent),
+      color-mix(in oklab, var(--color-elevated) 74%, transparent)
+    );
+  backdrop-filter: blur(22px);
+  box-shadow:
+    0 2px 0 0 color-mix(in oklab, #fff 6%, transparent) inset,
+    0 40px 90px -50px rgb(0 0 0 / 0.9);
+}
+
+html[data-theme='light'] .auth-card {
+  box-shadow:
+    0 2px 0 0 color-mix(in oklab, #fff 70%, transparent) inset,
+    0 34px 80px -46px rgb(15 15 15 / 0.28);
+}
+
+/*
+ * ★★ เส้นไล่สีบาง ๆ ที่ขอบบน — เส้นเดียวที่ทำให้กล่องดู "ตั้งใจทำ"
+ *    ★ ใช้สีแสงเหนือชุดเดียวกับพาดหัว จึงผูกกล่องนี้เข้ากับหน้าที่เหลือ
+ *      แทนที่จะดูเหมือนคอมโพเนนต์ที่หยิบมาจากที่อื่น
+ */
+.auth-card::before {
+  content: '';
+  position: absolute;
+  inset-inline: 1.25rem;
+  top: -1px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgb(var(--aurora-1) / 0.85),
+    rgb(var(--aurora-2) / 0.85) 55%,
+    transparent
+  );
+  pointer-events: none;
+}
+
+/* ── ตราประจำหัวการ์ด ─────────────────────────────────────────────────── */
+.auth-badge {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 1rem;
+  border: 1px solid color-mix(in oklab, var(--color-accent) 35%, transparent);
+  background: color-mix(in oklab, var(--color-accent) 14%, transparent);
+  color: var(--color-accent);
+  box-shadow: 0 16px 36px -22px color-mix(in oklab, var(--color-accent) 85%, transparent);
+}
+
+/* ── ไอคอนนำหน้าช่องกรอก ──────────────────────────────────────────────── */
+/*
+ * ★★ start-* ไม่ใช่ left-* — "ต้นบรรทัด" ต้องอยู่หน้าตัวหนังสือเสมอ
+ *    ทั้งภาษาที่อ่านซ้ายไปขวาและขวาไปซ้าย
+ */
+.auth-lead {
+  position: absolute;
+  inset-inline-start: 0.95rem;
+  top: 50%;
+  translate: 0 -50%;
+  color: var(--color-ink-faint);
+  pointer-events: none;
+  display: grid;
+  place-items: center;
+}
+
+/* ── ปุ่มดู/ซ่อนรหัสผ่าน ──────────────────────────────────────────────── */
+/*
+ * ★★★ มีไว้เพราะ "พิมพ์ผิดแล้วไม่รู้ตัว" คือสาเหตุที่คนเข้าไม่ได้บ่อยที่สุด
+ *
+ *     ★ ไม่มีปุ่มนี้ คนที่พิมพ์ผิดจะเห็นแต่ "เข้าใช้งานไม่สำเร็จ" ซึ่งอ่านได้ว่า
+ *       "บัญชีมีปัญหา" ทั้งที่แค่กดโดนปุ่มข้าง ๆ
+ *     ★★ ต้องเป็น type="button" — ไม่งั้นมันจะกลายเป็นปุ่มส่งฟอร์มตัวที่สอง
+ *        แล้วการกดดูรหัสผ่านจะส่งฟอร์มทิ้งไปเลย
+ */
+.auth-eye {
+  position: absolute;
+  inset-inline-end: 0.5rem;
+  top: 50%;
+  translate: 0 -50%;
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.6rem;
+  color: var(--color-ink-faint);
+  transition: color 150ms, background-color 150ms;
+}
+
+.auth-eye:hover {
+  color: var(--color-ink);
+  background: var(--color-surface);
+}
+
+/* ── เส้นคั่นก่อนลิงก์สมัคร ────────────────────────────────────────────── */
+.auth-rule {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--color-line), transparent);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * หน้าห้องฟังเพลง
+ *
+ * ★★★ หน้านี้เหลือแค่ "ห้องเพลง" แล้ว — เนื้อหาแนะนำตัวถูกตัดออกทั้งก้อน
+ *
+ *     ★ ของที่ตัดไป (วิธีใช้ · ตัวอย่าง · คำถามที่พบบ่อย) เขียนไว้สำหรับคน
+ *       ที่ยังไม่รู้จักเว็บ ★★ แต่คนที่เดินมาถึง /music คือคนที่กดการ์ด
+ *       "ห้องฟังเพลง" มาจากพอร์ทัลแล้ว — เขารู้อยู่แล้วว่ามาทำอะไร
+ *     ★ ปล่อยไว้เท่ากับให้เขาเลื่อนผ่านของที่อ่านจบไปแล้วทุกครั้งที่เข้ามา
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+.music-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-bottom: 1px solid var(--color-line);
+}
+
+/* ★ แสงอุ่นพาดบนสุด แล้วจางหายก่อนถึงเนื้อหา — ไม่ตัดเป็นเส้นคม */
+.music-hero::before {
+  content: '';
+  position: absolute;
+  inset: -40% 0 auto 0;
+  height: 150%;
+  background:
+    radial-gradient(60% 55% at 50% 0%, rgb(var(--aurora-1) / 0.20), transparent 70%),
+    radial-gradient(45% 45% at 15% 10%, rgb(var(--aurora-2) / 0.16), transparent 70%),
+    radial-gradient(45% 45% at 85% 5%, rgb(var(--aurora-3) / 0.14), transparent 70%);
+  filter: blur(40px);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ── ป้ายตัวเลขสด ─────────────────────────────────────────────────────── */
+/*
+ * ★ ตัวเลขจริงทำให้หน้ารู้สึกมีชีวิต ซึ่งสโลแกนทำไม่ได้
+ *   ★★ เป็นเหตุผลเดียวกับป้ายบนพอร์ทัลออฟฟิศ
+ */
+.music-stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  border-radius: 9999px;
+  border: 1px solid var(--color-line);
+  background: color-mix(in oklab, var(--color-elevated) 62%, transparent);
+  padding: 0.4rem 0.9rem;
+  backdrop-filter: blur(14px);
+}
+
+.music-stat b {
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink);
+}
+
+.music-stat span {
+  font-size: 11.5px;
+  color: var(--color-ink-soft);
+}
+
+/* ── จุดแดงเต้นตอนมีคนฟังอยู่จริง ─────────────────────────────────────── */
+.music-live {
+  position: relative;
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+  background: rgb(var(--aurora-1));
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.music-live::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  background: rgb(var(--aurora-1) / 0.35);
+  animation: signin-pulse 2.4s ease-out infinite;
+}
+
+/* ── การ์ดลงมือทำ ─────────────────────────────────────────────────────── */
+.music-act {
+  position: relative;
+  border-radius: 1.5rem;
+  border: 1px solid var(--color-line);
+  background: color-mix(in oklab, var(--color-elevated) 58%, transparent);
+  backdrop-filter: blur(18px);
+  transition: border-color 200ms, box-shadow 200ms;
+}
+
+.music-act-primary {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--color-elevated) 88%, transparent),
+      color-mix(in oklab, var(--color-elevated) 64%, transparent)
+    );
+  box-shadow: 0 34px 80px -54px rgb(var(--aurora-1) / 0.9);
+}
+
+/* ★ เส้นไล่สีขอบบน เหมือนการ์ดฟอร์มเข้าใช้งาน — ผูกสองหน้าเข้าด้วยกัน */
+.music-act-primary::before {
+  content: '';
+  position: absolute;
+  inset-inline: 1.25rem;
+  top: -1px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgb(var(--aurora-1) / 0.85),
+    rgb(var(--aurora-2) / 0.85) 55%,
+    transparent
+  );
+  pointer-events: none;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * ตัวเลือกผู้ร่วมจ่าย
+ *
+ * ★★★ เปลี่ยนจาก "ป้ายห่อบรรทัด" เป็น "รายการจัดกลุ่มตามฝ่าย"
+ *
+ *     ★ ของเดิมเป็น chip ที่กว้างไม่เท่ากัน (ชื่อ + ฝ่ายต่อท้าย) ห่อลงมาเรื่อย ๆ
+ *       ★★ บนมือถือ chip หนึ่งอันกินเกือบเต็มบรรทัด — พนักงาน 30 คน
+ *          กลายเป็นบล็อกสูงกว่าสองหน้าจอ และหาคนที่ต้องการไม่เจอ
+ *          เพราะไม่มีลำดับให้กวาดตา
+ *
+ *     ★ แถวสูงเท่ากันกวาดตาได้เร็วกว่ามาก และกดโดนง่ายกว่าบนมือถือ
+ *       ★★ หัวกลุ่มฝ่ายทำให้ "หารกับทีม IT" จบในการกดครั้งเดียว
+ *          แทนที่จะต้องไล่หาทีละคนจากกองที่ไม่ได้เรียง
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+.pick-box {
+  border-radius: 1rem;
+  border: 1px solid var(--color-line);
+  background: color-mix(in oklab, var(--color-elevated) 40%, transparent);
+  overflow: hidden;
+}
+
+/*
+ * ★ ความสูงคงที่ — หน้าไม่ยืดตามจำนวนคน
+ *   ★★ นี่คือหัวใจของการแก้: 5 คนกับ 50 คนทำให้หน้าสูงเท่ากัน
+ *      ปุ่ม "บันทึก" จึงอยู่ที่เดิมเสมอ ไม่ต้องเลื่อนตามหา
+ */
+.pick-scroll {
+  max-height: 17.5rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* ── หัวกลุ่มฝ่าย ─────────────────────────────────────────────────────── */
+/*
+ * ★ sticky — เลื่อนอยู่กลางรายชื่อยาว ๆ แล้วยังรู้ว่ากำลังดูฝ่ายไหน
+ */
+.pick-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: color-mix(in oklab, var(--color-surface) 94%, transparent);
+  backdrop-filter: blur(10px);
+  border-block: 1px solid var(--color-line);
+}
+
+/* ── แถวคน ────────────────────────────────────────────────────────────── */
+.pick-row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.5rem 0.75rem;
+  text-align: start;
+  transition: background-color 140ms;
+}
+
+.pick-row:hover {
+  background: color-mix(in oklab, var(--color-surface) 70%, transparent);
+}
+
+.pick-row[aria-pressed='true'] {
+  background: color-mix(in oklab, var(--color-accent) 10%, transparent);
+}
+
+/* ── ช่องติ๊ก ──────────────────────────────────────────────────────────── */
+/*
+ * ★★ ใช้กรอบสี่เหลี่ยมมุมมน ไม่ใช่วงกลม
+ *    ★ วงกลมอ่านเป็น "เลือกได้อันเดียว" (radio) ซึ่งตรงข้ามกับความจริง
+ *      ของหน้านี้ที่เลือกได้หลายคน
+ */
+.pick-check {
+  display: grid;
+  place-items: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+  border-radius: 0.4rem;
+  border: 1.5px solid var(--color-line);
+  color: transparent;
+  transition: background-color 140ms, border-color 140ms, color 140ms;
+}
+
+.pick-row[aria-pressed='true'] .pick-check {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #fff;
+}
+
+/* ── ป้ายคนที่เลือกแล้ว ───────────────────────────────────────────────── */
+/*
+ * ★★★ อยู่เหนือช่องค้นหา ไม่ใช่ปนอยู่ในรายการ
+ *
+ *     ★ ของเดิมดันคนที่เลือกแล้วขึ้นบนสุดของรายการเดียวกัน
+ *       ★★ พอพิมพ์ค้นหา รายการเปลี่ยนทั้งก้อน — คนกรอกเลยไม่แน่ใจว่า
+ *          ที่เลือกไว้ยังอยู่ไหม และเลือกซ้ำหรือตกหล่น
+ *     ★ แยกออกมาเป็นแถวของตัวเองแล้ว "ใครอยู่ในบิลนี้" ตอบได้ตลอดเวลา
+ *       ไม่ว่าจะพิมพ์ค้นอะไรอยู่
+ */
+.pick-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in oklab, var(--color-accent) 35%, transparent);
+  background: color-mix(in oklab, var(--color-accent) 12%, transparent);
+  padding: 0.2rem 0.3rem 0.2rem 0.55rem;
+  font-size: 12px;
+  color: var(--color-ink);
+  max-width: 12rem;
+}
+
+.pick-tag-x {
+  display: grid;
+  place-items: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  color: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  transition: background-color 140ms, color 140ms;
+}
+
+.pick-tag-x:hover {
+  background: color-mix(in oklab, var(--color-accent) 25%, transparent);
+  color: var(--color-ink);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * เลือกคนที่จะคุยด้วย (หน้าแชท)
+ *
+ * ★★★ เดิมเป็นป้ายกลมเรียงกันที่มีแต่ชื่อ
+ *
+ *     ★ ป้ายขนาดเท่าชื่อทำให้ตาไล่หาคนไม่เจอ — ไม่มีจุดยึดให้กวาด
+ *       ★★ และไม่มีทางรู้ว่าทักไปแล้วอีกฝ่ายจะเห็นเมื่อไหร่
+ *          ซึ่งเป็นคำถามแรกที่คนถามก่อนกดทัก
+ *     ★ การ์ดที่มีรูปจริงกับจุดเขียวตอบทั้งสองเรื่องในรูปเดียว
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+.who-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
+  gap: 0.5rem;
+  max-height: 19rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0.125rem;
+}
+
+.who-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  border-radius: 0.9rem;
+  border: 1px solid var(--color-line);
+  background: color-mix(in oklab, var(--color-elevated) 50%, transparent);
+  padding: 0.5rem 0.6rem;
+  text-align: start;
+  transition: background-color 150ms, border-color 150ms, transform 150ms;
+}
+
+.who-card:hover {
+  background: color-mix(in oklab, var(--color-surface) 85%, transparent);
+  border-color: var(--color-line-strong);
+}
+
+.who-card:active {
+  transform: scale(0.98);
+}
+
+.who-card[aria-pressed='true'] {
+  border-color: color-mix(in oklab, var(--color-accent) 55%, transparent);
+  background: color-mix(in oklab, var(--color-accent) 12%, transparent);
+}
+
+/* ── รูปโปรไฟล์ + จุดสถานะ ────────────────────────────────────────────── */
+/*
+ * ★★ จุดอยู่มุมล่างของรูป และมีวงแหวนสีพื้นหลังคั่น
+ *    ★ ไม่มีวงแหวน จุดเขียวจะกลืนไปกับรูปที่มีสีเขียวอยู่แล้ว
+ *      ★★ วงแหวนใช้สีพื้นของการ์ด ไม่ใช่สีขาวตายตัว — ไม่งั้นโหมดมืด
+ *         จะได้จุดขาวล้อมจุดเขียว ซึ่งเด่นเกินกว่าที่ควรเป็น
+ */
+.who-ava {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.who-dot {
+  position: absolute;
+  inset-inline-end: -1px;
+  bottom: -1px;
+  width: 11px;
+  height: 11px;
+  border-radius: 9999px;
+  background: var(--color-ink-faint);
+  box-shadow: 0 0 0 2px var(--color-elevated);
+}
+
+.who-dot-on {
+  background: #22c55e;
+}
+
+/* ★ วงจาง ๆ กระเพื่อมออก — บอกว่า "ตอนนี้จริง ๆ" ไม่ใช่ค่าที่ค้างไว้ */
+.who-dot-on::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: #22c55e59;
+  animation: signin-pulse 2.8s ease-out infinite;
+}
+
+/* ── แถบหัว: ออนไลน์กี่คน ─────────────────────────────────────────────── */
+.who-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 11px;
+  color: var(--color-ink-soft);
+}
+
+/*
+ * ★★★ จุดของแถบหัวเป็นคลาสของตัวเอง ไม่ใช่ .who-dot ที่ปรับ position
+ *
+ *     ★ เคยใช้ .who-dot who-dot-on แล้วเขียนทับเป็น position: static
+ *       ★★ ผลคือ ::after ที่เป็น absolute ไปอิงกล่องนอกสุดที่มี position แทน
+ *          แล้ววงกระเพื่อมที่ควรกว้าง 15px บานออกคลุมทั้งแผงเลือกคน
+ *          เป็นวงเขียวจาง ๆ ขนาดครึ่งจอ
+ *     ★ เห็นตอนถ่ายจอ ไม่ใช่ตอนเขียน — เพราะมันจาง และ animation
+ *       ทำให้มันอยู่ที่ opacity 0 เกือบตลอดเวลา
+ */
+.who-count-dot {
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background: #22c55e;
 }

@@ -24,6 +24,24 @@ export const APP_ERRORS = {
   STALE_PLAYBACK: { status: 409 },
   PREMATURE_END: { status: 409 },
   RATE_LIMITED: { status: 429 },
+
+  /* ── ระบบกิจกรรมออฟฟิศ (0023) ─────────────────────────────────────────
+   * ★ ชื่อต้องตรงกับที่ RPC `raise exception` เป๊ะ ๆ
+   *   fromPostgresError() จับคู่ด้วยการ match ชื่อในข้อความ error
+   */
+  /** ไม่มีรหัสพนักงานนี้ในรายชื่อ */
+  CODE_NOT_FOUND: { status: 404 },
+  /** รหัสนี้มีคนสมัครไปแล้ว — 1 รหัสต่อ 1 บัญชี */
+  CODE_TAKEN: { status: 409 },
+  /** รหัสถูกเปลี่ยนสถานะเป็นลาออก */
+  CODE_INACTIVE: { status: 403 },
+  /** บัญชีนี้ผูกรหัสพนักงานไว้แล้ว */
+  ALREADY_LINKED: { status: 409 },
+  /** บัญชีถูกระงับ */
+  ACCOUNT_SUSPENDED: { status: 403 },
+  /** ยังไม่ได้ผูกรหัสพนักงาน — เข้าโมดูลออฟฟิศไม่ได้ */
+  NEEDS_EMPLOYEE_CODE: { status: 403 },
+
   NOT_CONFIGURED: { status: 503 },
   YOUTUBE_QUOTA_EXCEEDED: { status: 503 },
   YOUTUBE_UNAVAILABLE: { status: 502 },

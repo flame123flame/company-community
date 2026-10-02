@@ -3,6 +3,7 @@
 import type { CSSProperties } from 'react'
 
 import { useState, type FormEvent } from 'react'
+import Link from 'next/link'
 import { Logo } from '@/components/Logo'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -49,6 +50,9 @@ export function SignInForm({
 }) {
   const t = useT()
   const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  /* ★ เริ่มที่ซ่อนเสมอ — คนกรอกต่อหน้าคนอื่นได้โดยไม่ต้องระวัง */
+  const [reveal, setReveal] = useState(false)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -87,9 +91,18 @@ export function SignInForm({
       const { tokenHash, username: saved } = await apiFetch<{
         tokenHash: string
         username: string
-      }>('/api/auth/username', {
+        /*
+         * ★★★ ต้องเป็น /api/auth/login ไม่ใช่ /api/auth/username
+         *
+         *     ★ ทางเดิมออก session ให้ทุกคนที่พิมพ์ชื่อถูก โดยไม่ดูรหัสผ่านเลย
+         *       ★★ ถ้ายังเรียกทางนั้น คนที่ตั้งรหัสผ่านไว้จะถูกข้ามรหัสผ่าน
+         *          ได้ด้วยการเข้าจากฟอร์มนี้ — รหัสผ่านกลายเป็นของประดับ
+         *     ★ ทางใหม่ตรวจว่าบัญชีนั้น "เคยตั้งรหัสผ่านหรือยัง" แล้วบังคับ
+         *       เฉพาะคนที่ตั้งไว้ ★★ บัญชีรุ่นเก่าจึงยังเข้าได้เหมือนเดิม
+         */
+      }>('/api/auth/login', {
         method: 'POST',
-        body: { username: clean },
+        body: { username: clean, password },
         signal: AbortSignal.timeout(25_000),
       })
 
@@ -135,11 +148,25 @@ export function SignInForm({
         *   "ตรงนี้คือที่ที่ต้องกรอก" — การ์ดทำหน้าที่นั้นโดยไม่ต้องมีคำอธิบาย
         */}
       <div
-        className="hero-in rounded-3xl border border-line bg-elevated/60 p-6 backdrop-blur-md sm:p-8"
+        className="auth-card hero-in p-6 sm:p-7"
         style={{ '--d': '90ms' } as CSSProperties}
       >
-        <h1 className="text-center text-[22px] font-semibold leading-snug">{t('auth.title')}</h1>
-        <p className="mt-2 text-center text-xs leading-relaxed text-ink-soft">
+        {/* ★ ตราเล็ก ๆ เหนือหัวเรื่อง — บอกว่ากล่องนี้คือ "ประตู" ไม่ใช่แบบฟอร์ม
+            ★★ รูปกุญแจอ่านได้ทุกภาษาโดยไม่ต้องแปล และตอบคำถามแรกสุด
+               ("นี่ต้องกรอกเพื่ออะไร") เร็วกว่าหัวเรื่องหนึ่งจังหวะ */}
+        <div className="flex justify-center">
+          <span className="auth-badge" aria-hidden="true">
+            <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="8.2" cy="12" r="3.3" />
+              <path d="M11.5 12H21M18.4 12v3M15.4 12v2.2" />
+            </svg>
+          </span>
+        </div>
+
+        <h1 className="mt-3.5 text-center text-[23px] font-semibold leading-snug tracking-tight">
+          {t('auth.title')}
+        </h1>
+        <p className="mx-auto mt-2 max-w-[300px] text-center text-[11.5px] leading-relaxed text-ink-soft">
           {t('auth.hint1')}
           <br />
           {t('auth.hint2')}
@@ -151,12 +178,9 @@ export function SignInForm({
           </label>
           <div className="relative">
             {/* ★ @ นำหน้าช่อง — บอกว่านี่คือ "ชื่อผู้ใช้" ไม่ใช่ชื่อจริง โดยไม่ต้องเขียน
-                 ★★ start-4 ไม่ใช่ left-4 — "ต้นบรรทัด" ต้องอยู่หน้าตัวหนังสือเสมอ
-                    ทั้งภาษาที่อ่านซ้ายไปขวาและขวาไปซ้าย */}
-            <span
-              aria-hidden="true"
-              className="pointer-events-none absolute start-4 top-1/2 -translate-y-1/2 font-mono text-[15px] text-ink-faint"
-            >
+                 ★★ ระยะใช้ start-* ไม่ใช่ left-* — "ต้นบรรทัด" ต้องอยู่หน้าตัวหนังสือ
+                    เสมอ ทั้งภาษาที่อ่านซ้ายไปขวาและขวาไปซ้าย (ดู .auth-lead) */}
+            <span aria-hidden="true" className="auth-lead font-mono text-[15px]">
               @
             </span>
             <Input
@@ -176,10 +200,63 @@ export function SignInForm({
               disabled={pending}
               invalid={Boolean(error)}
               focusTone="accent"
-              className="h-12 rounded-xl ps-9 text-[15px] sm:text-[15px]"
+              className="h-12 rounded-xl ps-11 text-[15px] sm:text-[15px]"
             />
           </div>
           <p className="mt-1.5 text-[11px] text-ink-faint">{t('auth.rule')}</p>
+        </div>
+
+        {/* ★ บังคับทั้งที่ฟอร์มและที่เซิร์ฟเวอร์ — ทุกบัญชีมีรหัสผ่านแล้ว
+            ★★ required ที่ฟอร์มช่วยให้รู้ตั้งแต่ก่อนกดส่ง ไม่ต้องรอเน็ต */}
+        <div className="mt-3">
+          <label className="mb-1.5 block text-xs text-ink-soft" htmlFor="password">
+            {t('auth.password')}
+          </label>
+          <div className="relative">
+            <span aria-hidden="true" className="auth-lead">
+              <svg viewBox="0 0 24 24" className="size-[17px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17 10V7a5 5 0 0 0-10 0v3M6 10h12a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1z" />
+              </svg>
+            </span>
+            <Input
+              id="password"
+              type={reveal ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value)
+                setError(null)
+              }}
+              maxLength={72}
+              autoComplete="current-password"
+              aria-label={t('auth.password')}
+              required
+              disabled={pending}
+              invalid={Boolean(error)}
+              focusTone="accent"
+              className="h-12 rounded-xl ps-11 pe-11 text-[15px] sm:text-[15px]"
+            />
+            {/* ★★ type="button" บังคับ — ไม่งั้นมันกลายเป็นปุ่มส่งฟอร์มตัวที่สอง
+                   แล้วการกดดูรหัสผ่านจะส่งฟอร์มทิ้งไปเลย */}
+            <button
+              type="button"
+              onClick={() => setReveal((v) => !v)}
+              className="auth-eye"
+              aria-label={t(reveal ? 'auth.hidePassword' : 'auth.showPassword')}
+              aria-pressed={reveal}
+              tabIndex={-1}
+            >
+              {reveal ? (
+                <svg viewBox="0 0 24 24" className="size-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 3l18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.4 5.2A9.8 9.8 0 0 1 12 5c5 0 9 4.5 9 7a12 12 0 0 1-2.4 3.4M6.3 6.8C3.9 8.3 3 10.6 3 12c0 2.5 4 7 9 7a9.6 9.6 0 0 0 3.6-.7" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" className="size-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 12s3.5-7 9-7 9 7 9 7-3.5 7-9 7-9-7-9-7z" />
+                  <circle cx="12" cy="12" r="2.6" />
+                </svg>
+              )}
+            </button>
+          </div>
         </div>
 
         {error ? (
@@ -210,13 +287,13 @@ export function SignInForm({
         </Button>
 
         {/**
-          * ★★ คำเตือนอยู่ในกรอบของตัวเอง ไม่ใช่ตัวหนังสือจาง ๆ ใต้ปุ่ม
+          * ★★ กล่องนี้เคยเป็น "คำเตือน" ว่าระบบไม่มีรหัสผ่าน
           *
-          *    ของเดิมเป็นข้อความสีจางสองบรรทัดที่ตาข้ามไปเลย ★ ทั้งที่มันคือ
-          *      ข้อมูลสำคัญที่สุดในหน้า: ระบบนี้ไม่มีรหัสผ่าน
-          *
-          *    ★ คนที่กำลังจะตั้งชื่อว่า "frame" ควรรู้เดี๋ยวนี้ว่ามันแปลว่าอะไร
-          *      ไม่ใช่รู้ตอนที่มีคนอื่นเข้ามาเป็นเขาไปแล้ว
+          *    ★ พอมีรหัสผ่านจริงแล้ว ข้อความเดิมกลายเป็นคำโกหกที่น่าตกใจ —
+          *      บอกว่า "ใครรู้ชื่อคุณก็เข้าเป็นคุณได้" ทั้งที่มีช่องรหัสผ่าน
+          *      อยู่เหนือมันสองนิ้ว
+          *    ★★ เปลี่ยนหน้าที่เป็น "บอกว่ารหัสผ่านปลอดภัยแค่ไหน และลืมแล้วทำยังไง"
+          *       ★ ซึ่งเป็นคำถามที่คนยืนอยู่หน้านี้ถามจริง
           */}
         <div className="mt-5 flex gap-2.5 rounded-2xl bg-surface px-3.5 py-3">
           <svg
@@ -250,6 +327,16 @@ export function SignInForm({
           )}
         </ul>
       ) : null}
+      {/* ★ เส้นคั่นบาง ๆ แยก "ของที่ต้องกรอก" ออกจาก "ทางอื่นที่ไปได้"
+          ★★ ไม่มีเส้น ลิงก์สมัครจะอ่านเหมือนเป็นส่วนหนึ่งของฟอร์ม */}
+      <div className="auth-rule mx-auto mt-5 w-32" aria-hidden="true" />
+      <p className="mt-4 text-center text-xs text-ink-soft">
+        {t('auth.noAccount')}{' '}
+        <Link href="/register" className="font-medium text-link hover:underline">
+          {t('auth.register')}
+        </Link>
+      </p>
+
     </form>
   )
 }

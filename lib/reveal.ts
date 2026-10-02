@@ -34,6 +34,5 @@ export type RevealMode = 'css' | 'js'
  */
 export const REVEAL_BOOT_SCRIPT = `(function(){try{
 var css=window.CSS&&CSS.supports&&CSS.supports('animation-timeline','view()');
-var still=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
-document.documentElement.dataset.reveal=still?'off':(css?'css':'js');
+document.documentElement.dataset.reveal=css?'css':'js';
 }catch(e){document.documentElement.dataset.reveal='off';}})();`

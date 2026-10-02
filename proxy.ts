@@ -18,7 +18,25 @@ export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request })
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  /**
+   * ★★★ ต้องรับชื่อคีย์ทั้งสองยุคเหมือน lib/env.ts
+   *
+   *     เดิมอ่านแต่ NEXT_PUBLIC_SUPABASE_ANON_KEY ซึ่งเป็นชื่อยุคเก่า
+   *     project ที่สร้างใหม่ได้คีย์ชื่อ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+   *     → ตัวแปรเป็น undefined → ฟังก์ชันนี้ return ตั้งแต่บรรทัดถัดไป
+   *
+   *     ★ อาการที่เกิด: ไม่มี error ให้เห็นเลยสักบรรทัด แต่ session
+   *       ไม่เคยถูกรีเฟรช พอ access token หมดอายุ (~1 ชม.) Server Component
+   *       จะเห็นว่าผู้ใช้ logged out ทั้งที่ยังเปิดเว็บค้างอยู่ —
+   *       ซึ่งคืออาการที่คอมเมนต์ด้านบนของไฟล์นี้เตือนไว้เป๊ะ ๆ
+   *
+   *     ★★ เขียน process.env.X เต็ม ๆ ทั้งสองตัว ห้ามใช้ process.env[key]
+   *        Next.js แทนค่า NEXT_PUBLIC_* ตอน build ด้วยการ match ข้อความตรง ๆ
+   *        (เหตุผลเดียวกับที่ lib/env.ts อธิบายไว้)
+   */
+  const anonKey =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 
   // ยังไม่ได้ตั้งค่า env → ปล่อยผ่าน ไม่ทำให้ทั้งเว็บล่ม
   // (หน้าเว็บจะแสดง setup notice ให้เองว่าต้องตั้งค่าอะไรบ้าง)

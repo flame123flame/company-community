@@ -28,6 +28,8 @@ export type Locale = (typeof LOCALES)[number]
 
 export const DEFAULT_LOCALE: Locale = 'th'
 
+/* ★ ไม่เปลี่ยนตามชื่อแบรนด์ — เป็นกุญแจที่เก็บไว้ในเครื่องผู้ใช้แล้ว
+   ★★ เปลี่ยนแล้วค่าที่เขาตั้งไว้จะถูกมองว่าไม่มี แล้วรีเซ็ตเงียบ ๆ ทุกคน */
 export const LOCALE_COOKIE = 'frameroom:lang'
 
 /** ป้ายในเมนูเลือกภาษา — ★ เขียนด้วยภาษานั้นเอง ไม่ใช่ภาษาไทย

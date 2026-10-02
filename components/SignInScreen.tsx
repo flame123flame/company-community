@@ -1,11 +1,13 @@
 'use client'
 
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { SignInForm } from '@/components/SignInForm'
 import { LanguageToggle } from '@/components/LanguageToggle'
+import { ThemeToggle } from '@/components/ThemeToggle'
 import { Logo } from '@/components/Logo'
 import { useT } from '@/lib/i18n/client'
+import type { DictKey } from '@/lib/i18n/dict'
 
 /**
  * หน้าเข้าใช้งานเต็มจอ — สิ่งเดียวที่ผู้ใช้ที่ยังไม่สมัครจะได้เห็น
@@ -16,70 +18,119 @@ import { useT } from '@/lib/i18n/client'
  *    ต่างจากการซ่อนด้วย CSS หรือ overlay ฝั่ง client ซึ่งข้อมูลยังอยู่ใน DOM
  *    ให้ใครก็ได้เปิด devtools อ่าน
  *
- * ★★★ ปุ่มเปลี่ยนภาษาต้องอยู่ที่นี่ด้วย ไม่ใช่มีแค่ในแถบบนของแอป
+ * ★★★ ปุ่มเปลี่ยนภาษา "และปุ่มเปลี่ยนธีม" ต้องอยู่ที่นี่ด้วย
  *
  *     หน้านี้คือหน้าเดียวที่คนยังไม่สมัครจะได้เห็น และมันไม่มีแถบบน
  *     ★ คนเกาหลีที่เปิดมาแล้วเจอภาษาไทย (เพราะ Accept-Language ของเขา
  *       ไม่ตรงกับที่เรารองรับ) จะติดอยู่ตรงนี้โดยไม่มีปุ่มให้กดเลยแม้แต่ปุ่มเดียว
+ *     ★★ ธีมก็เรื่องเดียวกัน — คนที่เครื่องตั้งเป็นโหมดสว่างแล้วเจอหน้าดำสนิท
+ *        ไม่มีทางเปลี่ยนได้เลยจนกว่าจะสมัครเสร็จ ซึ่งกลับหัวกลับหาง:
+ *        หน้าที่คนเจอก่อนที่สุด กลับเป็นหน้าเดียวที่ปรับไม่ได้
  *
- *     เจอตอนรันจริง ไม่ใช่ตอนอ่านโค้ด — สคริปต์ทดสอบหาปุ่มสลับภาษาไม่เจอ
- *     เพราะมันกำลังยืนอยู่หน้านี้
+ *     ทั้งสองเรื่องเจอตอนรันจริง ไม่ใช่ตอนอ่านโค้ด
  *
- * ★ refresh() ไม่ใช่ push() หลังสมัครเสร็จ
+ * ★ refresh() ไม่ใช่ push() หลังเข้าสู่ระบบเสร็จ
  *   ยังอยู่ URL เดิม แค่ให้ server render ใหม่โดยเห็นว่าเรามี session แล้ว
  *   — คนที่กดลิงก์ห้องมาจึงเข้าห้องนั้นต่อได้เลย ไม่ถูกเด้งกลับหน้าแรก
  */
-/**
- * ★ ค่าคงที่ ห้ามสุ่มตอน render
- *   ค่าที่ server กับ client สุ่มได้ไม่มีทางตรงกัน แล้ว React จะทิ้ง
- *   ต้นไม้ทั้งหน้าไปวาดใหม่ (บทเรียนเดิมจากกล่องโปรไฟล์)
+
+/*
+ * ★★★ จุดขายบนหน้าล็อกอินต้องเป็น "ทั้งระบบ" ไม่ใช่ห้องฟังเพลง
+ *
+ *     ★ เดิมโฆษณาซิงก์เพลง · แชทสติกเกอร์ · คิวร่วม พร้อมพาดหัวว่า
+ *       "ฟังเพลงด้วยกันแบบวินาทีต่อวินาที"
+ *       ★★ ซึ่งเป็นหน้าตาของเว็บเวอร์ชันก่อนทั้งหน้า — คนเปิดเข้ามาแล้ว
+ *          อ่านว่ามาผิดที่ ทั้งที่ของที่เขาจะมาใช้คือหารบิลหรือสุ่มร้านข้าว
+ *     ★ ห้องฟังเพลงยังอยู่ แต่อยู่ในฐานะหนึ่งในห้าโมดูล — จึงวางไว้ท้ายสุด
+ *
+ * ★★ ใช้คีย์ hub.* ชุดเดียวกับการ์ดบนหน้าพอร์ทัล
+ *    ★ คีย์พวกนี้แปลครบ 16 ภาษาอยู่แล้วตั้งแต่ตอนทำพอร์ทัล จึงไม่ต้อง
+ *      แปลเพิ่มสักคำ และวันที่แก้คำโฆษณาก็แก้ที่เดียวได้ทั้งสองหน้า
+ *
+ * ★★ tint ตรงกับการ์ดบนหน้าพอร์ทัลเป๊ะ — สีคือป้ายชื่อที่คนจำได้เร็วกว่าคำ
+ *    ★ กดจากที่นี่เข้าไปเจอสีเดิม = รู้ว่ามาถูกที่โดยไม่ต้องอ่านซ้ำ
  */
-/** ★ ไอคอนวาดตรงนี้เลย ไม่ดึงไลบรารีมาเพื่อสามรูป */
-const FEATURES = [
+type Feature = { title: DictKey; detail: DictKey; tint: string; icon: ReactNode }
+
+const FEATURES: Feature[] = [
   {
-    title: 'home.feature.sync',
-    detail: 'home.feature.syncDetail',
+    title: 'hub.food',
+    detail: 'hub.foodDetail',
+    tint: '255 149 0',
     icon: (
-      <svg viewBox="0 0 24 24" className="size-[18px]" fill="currentColor">
-        <path d="M12 4V1L8 5l4 4V6a6 6 0 0 1 6 6c0 1.1-.3 2.1-.8 3l1.5 1.5A7.9 7.9 0 0 0 20 12a8 8 0 0 0-8-8zm0 14a6 6 0 0 1-6-6c0-1.1.3-2.1.8-3L5.3 7.5A7.9 7.9 0 0 0 4 12a8 8 0 0 0 8 8v3l4-4-4-4v3z" />
+      <svg viewBox="0 0 24 24" className="size-[17px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M7 3v8a3 3 0 0 0 3 3v7M7 3v5M10 3v5M17 3c-1.5 2-2 4-2 6s.5 3 2 3v9" />
       </svg>
     ),
   },
   {
-    title: 'home.feature.chat',
-    detail: 'home.feature.chatDetail',
+    title: 'hub.wallet',
+    detail: 'hub.walletDetail',
+    tint: '52 199 123',
     icon: (
-      <svg viewBox="0 0 24 24" className="size-[18px]" fill="currentColor">
+      <svg viewBox="0 0 24 24" className="size-[17px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 8a2 2 0 0 1 2-2h13a1 1 0 0 1 1 1v2M3 8v9a2 2 0 0 0 2 2h14a1 1 0 0 0 1-1v-3M3 8h1m17 3h-4a2 2 0 0 0 0 4h4a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1z" />
+      </svg>
+    ),
+  },
+  {
+    title: 'hub.chat',
+    detail: 'hub.chatDetail',
+    tint: '48 209 176',
+    icon: (
+      <svg viewBox="0 0 24 24" className="size-[17px]" fill="currentColor">
         <path d="M20 2H4a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zM7 9h10v2H7V9zm7 5H7v-2h7v2zm3-6H7V6h10v2z" />
       </svg>
     ),
   },
   {
-    title: 'home.feature.queue',
-    detail: 'home.feature.queueDetail',
+    title: 'hub.market',
+    detail: 'hub.marketDetail',
+    tint: '10 132 255',
     icon: (
-      <svg viewBox="0 0 24 24" className="size-[18px]" fill="currentColor">
-        <path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.2a3 3 0 1 0 2 2.8V8h3V6h-5z" />
+      <svg viewBox="0 0 24 24" className="size-[17px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 7h16l-1 12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2zM9 7V5a3 3 0 0 1 6 0v2" />
       </svg>
     ),
   },
-] as const
-
-const NOTES = [
-  { glyph: '\u266a', left: 8, delay: 0, dur: 21, size: 20, dx: 24, rot: 16 },
-  { glyph: '\u266b', left: 22, delay: 5.5, dur: 24, size: 14, dx: -18, rot: -12 },
-  { glyph: '\u266c', left: 37, delay: 11, dur: 19, size: 12, dx: 14, rot: 22 },
-  { glyph: '\u266a', left: 63, delay: 3, dur: 23, size: 16, dx: -20, rot: -18 },
-  { glyph: '\u266b', left: 78, delay: 8.5, dur: 20, size: 22, dx: 18, rot: 14 },
-  { glyph: '\u266c', left: 92, delay: 14, dur: 18, size: 13, dx: -16, rot: 20 },
+  /* ★ ห้องฟังเพลงอยู่ท้ายสุด — ยังอยู่ครบ แต่ไม่ใช่ตัวเว็บอีกแล้ว */
+  {
+    title: 'hub.music',
+    detail: 'hub.musicDetail',
+    tint: '255 0 51',
+    icon: (
+      <svg viewBox="0 0 24 24" className="size-[17px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 18V6l10-2v12M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zm10-2a3 3 0 1 1-6 0 3 3 0 0 1 6 0z" />
+      </svg>
+    ),
+  },
 ]
+
+/**
+ * ★ ค่าคงที่ ห้ามสุ่มตอน render
+ *   ค่าที่ server กับ client สุ่มได้ไม่มีทางตรงกัน แล้ว React จะทิ้ง
+ *   ต้นไม้ทั้งหน้าไปวาดใหม่ (บทเรียนเดิมจากกล่องโปรไฟล์)
+ */
+const NOTES = [
+  { glyph: '♪', left: 8, delay: 0, dur: 21, size: 20, dx: 24, rot: 16 },
+  { glyph: '♫', left: 22, delay: 5.5, dur: 24, size: 14, dx: -18, rot: -12 },
+  { glyph: '♬', left: 37, delay: 11, dur: 19, size: 12, dx: 14, rot: 22 },
+  { glyph: '♪', left: 63, delay: 3, dur: 23, size: 16, dx: -20, rot: -18 },
+  { glyph: '♫', left: 78, delay: 8.5, dur: 20, size: 22, dx: 18, rot: 14 },
+  { glyph: '♬', left: 92, delay: 14, dur: 18, size: 13, dx: -16, rot: 20 },
+]
+
+const PERKS: DictKey[] = ['auth.perk1', 'auth.perk2', 'auth.perk3']
 
 export function SignInScreen() {
   const router = useRouter()
   const t = useT()
 
+  /* ★ pt-24 บนมือถือ — โลโก้อยู่กลางจอ ส่วนปุ่มธีม/ภาษาอยู่มุมบน
+     ★★ บนจอแคบทั้งสองไปอยู่บรรทัดเดียวกันพอดีจนดูเบียด
+        จอกว้างไม่มีปัญหาเพราะเนื้อหาเริ่มที่คอลัมน์ซ้าย */
   return (
-    <main className="relative grid min-h-[100dvh] place-items-center overflow-hidden px-4 py-10">
+    <main className="relative grid min-h-[100dvh] place-items-center overflow-hidden px-4 pb-10 pt-24 lg:py-10">
       {/* ── แสงเหนือ ─────────────────────────────────────────────── */}
       {/**
         * ★★ ใช้ชุดเดียวกับหน้าแรกเป๊ะ ไม่ได้ทำขึ้นใหม่
@@ -88,8 +139,8 @@ export function SignInScreen() {
         *      แล้วเด้งเข้าหน้าแรกทันที ต้องรู้สึกว่ายังอยู่ที่เดิม
         *      ไม่ใช่โดนโยนไปอีกเว็บหนึ่ง
         *
-        *    ของเดิมเป็นพื้นดำล้วน — ฟอร์มลอยกลางความว่าง ดูเหมือนหน้า error
-        *    มากกว่าหน้าต้อนรับ
+        *    ★ โทนสว่างมีค่า --aurora-* ของตัวเองอยู่แล้ว (สีอิ่มกว่า จางกว่า)
+        *      จึงไม่ต้องเขียนเงื่อนไขธีมที่นี่เลยสักบรรทัด
         */}
       <div className="aurora-field" aria-hidden="true">
         <div className="aurora-blob aurora-blob-1" />
@@ -99,12 +150,10 @@ export function SignInScreen() {
 
       {/* ── โน้ตลอย ──────────────────────────────────────────────── */}
       {/**
-        * ★ จางมากและช้ามาก — หน้านี้มีงานเดียวคือให้คนพิมพ์ชื่อให้เสร็จ
+        * ★ จางมากและช้ามาก — หน้านี้มีงานเดียวคือให้คนกรอกให้เสร็จ
         *   อะไรที่ดึงสายตาออกจากช่องกรอกถือว่าทำร้ายหน้านี้ ไม่ใช่ทำให้สวย
-        */}
-      {/*
-        * ★★ z-0 ไม่ใช่ -z-10
         *
+        * ★★ z-0 ไม่ใช่ -z-10
         *    ค่าลบทำให้ชั้นนี้ไปอยู่ "หลังพื้นหลังของ body" ซึ่งทึบอยู่ —
         *    ★ โน้ตถูกทาทับจนมองไม่เห็นเลยสักตัว (บทเรียนเดียวกับฉากหลัง
         *      ของหน้ารอเข้าห้องที่เคยหายไปทั้งชั้นด้วยเหตุผลนี้เป๊ะ)
@@ -139,30 +188,30 @@ export function SignInScreen() {
         *
         *     end-3 แปลว่า "ปลายบรรทัด" — ขวาในภาษาปกติ ซ้ายในอาหรับ
         *     ★ เบราว์เซอร์สลับให้เอง ไม่ต้องเขียนเงื่อนไขภาษาไว้ในโค้ดเลย
-        */}
-      {/**
+        *
         * ★★★ z-20 ไม่ใช่ z-10 — ครึ่งล่างของเมนูภาษาเคยกดไม่ได้
         *
         *     กล่องนี้เป็น z-10 เท่ากับกล่องเนื้อหาข้างล่าง ★ แต่เนื้อหาอยู่
         *       หลังในลำดับ DOM จึงชนะการเสมอ แล้วทับขึ้นมาบนเมนู
-        *
         *     ★★ z-50 ที่อยู่บนตัวเมนูช่วยไม่ได้เลย เพราะมันแข่งกันแค่
         *        ภายในกล่องนี้ซึ่งถูกตรึงไว้ที่ 10 แล้ว — ลูกไม่มีทางขึ้นไป
         *        สูงกว่าเพดานที่พ่อยืนอยู่
-        *
-        *     อาการคือกด 6 ภาษาแรกได้ ที่เหลือกดไม่ติดเพราะแถวล่าง ๆ
-        *     ★ ทับกับการ์ดฟอร์มพอดี — เจอตอนไล่กดทั้ง 16 ภาษาด้วยเครื่อง
+        *     อาการคือกด 6 ภาษาแรกได้ ที่เหลือกดไม่ติด — เจอตอนไล่กดด้วยเครื่อง
         */}
       <div className="absolute end-3 top-3 z-20">
-        <LanguageToggle />
+        <div className="signin-tools">
+          <ThemeToggle />
+          <span aria-hidden="true" className="h-5 w-px bg-line" />
+          <LanguageToggle />
+        </div>
       </div>
 
       {/**
         * ★★★ สองคอลัมน์บนจอกว้าง — ซ้ายบอกว่าเว็บนี้คืออะไร ขวาคือฟอร์ม
         *
-        *     ของเดิมมีแต่ฟอร์มอยู่กลางจอ ★ คนที่เพิ่งเปิดมาเจอถูกขอให้
-        *       "ตั้งชื่อผู้ใช้" ก่อนจะได้เห็นอะไรสักอย่าง — โดยไม่มีใครบอกเลยว่า
-        *       ตั้งไปแล้วจะได้อะไร และที่นี่คือที่อะไร
+        *     ของเดิมมีแต่ฟอร์มอยู่กลางจอ ★ คนที่เพิ่งเปิดมาเจอถูกขอให้กรอก
+        *       ก่อนจะได้เห็นอะไรสักอย่าง — โดยไม่มีใครบอกเลยว่ากรอกไปแล้ว
+        *       จะได้อะไร และที่นี่คือที่อะไร
         *
         *     ★★ หน้าเข้าใช้งานของเว็บที่คนยังไม่รู้จัก ต้องทำสองหน้าที่พร้อมกัน:
         *        อธิบายตัวเอง และรับข้อมูล — ทำแต่อย่างหลังคือสมมติว่าทุกคน
@@ -171,67 +220,104 @@ export function SignInScreen() {
         *     ★ บนมือถือเรียงลงมาเป็นแถวเดียว: คำอธิบายอยู่บน ฟอร์มอยู่ล่าง
         *       ลำดับเดียวกับที่คนอ่าน — รู้ก่อนว่าคืออะไร แล้วค่อยกรอก
         */}
-      <div className="relative z-10 mx-auto grid w-full max-w-[1000px] items-center gap-10 lg:grid-cols-[1fr_400px] lg:gap-16">
+      <div className="relative z-10 mx-auto grid w-full max-w-[1060px] items-center gap-12 lg:grid-cols-[1.05fr_400px] lg:gap-16">
         {/* ── ซ้าย: เว็บนี้คืออะไร ──────────────────────────────── */}
         <div className="text-center lg:text-start">
           <div className="hero-in flex justify-center lg:justify-start">
             <Logo />
           </div>
 
-          <h1
-            className="hero-in mt-6 text-[32px] font-bold leading-[1.15] tracking-tight sm:text-[42px]"
-            style={{ '--d': '80ms' } as CSSProperties}
+          {/* ★ ป้ายเล็กมาก่อนพาดหัว — บอก "ที่นี่คือที่ไหน" ในบรรทัดเดียว
+              ★★ จุดเต้นข้าง ๆ บอกว่าระบบเปิดอยู่โดยไม่ต้องเขียนว่าเปิดอยู่ */}
+          <div
+            className="hero-in mt-5 flex justify-center lg:justify-start"
+            style={{ '--d': '60ms' } as CSSProperties}
           >
-            {t('home.hero.title1')}
-            <span className="text-aurora">{t('home.hero.title2')}</span>
+            <span className="signin-eyebrow">
+              <span className="signin-dot" aria-hidden="true" />
+              {t('auth.eyebrow')}
+            </span>
+          </div>
+
+          {/* ★ ใหญ่ขึ้นกว่าเดิมและโตตามจอด้วย clamp
+              ★★ พาดหัวคือสิ่งเดียวที่คนอ่านแน่ ๆ ก่อนตัดสินใจว่าจะอ่านต่อไหม */}
+          <h1
+            className="hero-in mt-4 text-[clamp(30px,5.2vw,46px)] font-bold leading-[1.12] tracking-tight"
+            style={{ '--d': '130ms' } as CSSProperties}
+          >
+            {t('hub.hero1')}
+            <span className="text-aurora">{t('hub.hero2')}</span>
             <br />
-            {t('home.hero.title3')}
+            {t('hub.hero3')}
           </h1>
 
           <p
-            className="hero-in mx-auto mt-4 max-w-[440px] text-[15px] leading-relaxed text-ink-soft lg:mx-0"
-            style={{ '--d': '170ms' } as CSSProperties}
+            className="hero-in mx-auto mt-4 max-w-[460px] text-[15px] leading-relaxed text-ink-soft lg:mx-0"
+            style={{ '--d': '200ms' } as CSSProperties}
           >
-            {t('auth.what')}
+            {t('hub.heroDetail')}
           </p>
 
-          {/* ── สามอย่างที่ได้ ─────────────────────────────────── */}
+          {/* ── ห้าอย่างที่ได้ ─────────────────────────────────── */}
           {/**
-            * ★ ใช้คำชุดเดียวกับการ์ดบนหน้าแรก — ไม่ต้องแปลเพิ่มสักคำ
-            *   และคนที่ผ่านหน้าแรกมาแล้วจะจำได้ว่าเป็นที่เดียวกัน
+            * ★★ เปลี่ยนจากรายการจุดกลม ๆ เป็นการ์ดมีสีประจำโมดูล
+            *    ★ ของเดิมเป็นบรรทัดเรียงลงมาห้าบรรทัด อ่านแล้วเหมือนรายการ
+            *      ข้อกำหนด ไม่ใช่ของที่อยากลอง
+            *    ★★ การ์ดที่มีสีของตัวเองทำให้ตากวาดเจอ "อันที่ใช่" ได้ก่อนอ่าน
+            *       และตรงกับสีที่เขาจะเจออีกครั้งหลังเข้าระบบ
+            *
+            * ★ สองคอลัมน์ตั้งแต่จอ sm — ห้าใบเรียงเดี่ยวยาวเกินไปบนมือถือ
+            *   ★★ ใบสุดท้าย (ห้องฟังเพลง) กินเต็มแถวเอง จึงไม่มีช่องโหว่
             */}
           <ul
-            className="hero-in mx-auto mt-7 grid max-w-[440px] gap-3 text-start lg:mx-0"
-            style={{ '--d': '260ms' } as CSSProperties}
+            className="hero-in mx-auto mt-7 grid max-w-[520px] gap-2.5 text-start sm:grid-cols-2 lg:mx-0"
+            style={{ '--d': '280ms' } as CSSProperties}
           >
-            {FEATURES.map(({ title, detail, icon }) => (
-              <li key={title} className="flex items-start gap-3">
-                <span
-                  aria-hidden="true"
-                  className="grid size-9 shrink-0 place-items-center rounded-xl border border-line bg-elevated/60 text-ink backdrop-blur-md"
-                >
-                  {icon}
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-sm font-medium leading-snug">{t(title)}</span>
-                  <span className="mt-0.5 block text-xs leading-snug text-ink-soft">
-                    {t(detail)}
+            {FEATURES.map(({ title, detail, tint, icon }, i) => (
+              <li
+                key={title}
+                className={i === FEATURES.length - 1 ? 'sm:col-span-2' : undefined}
+                style={{ '--tint': tint } as CSSProperties}
+              >
+                <div className="signin-card lift">
+                  <span className="signin-icon" aria-hidden="true">
+                    {icon}
                   </span>
-                </span>
+                  <span className="min-w-0">
+                    <span className="block text-[13.5px] font-medium leading-snug">{t(title)}</span>
+                    <span className="mt-0.5 block text-[11.5px] leading-snug text-ink-soft">
+                      {t(detail)}
+                    </span>
+                  </span>
+                </div>
               </li>
             ))}
           </ul>
 
-          <p
-            className="hero-in mt-6 text-[11px] uppercase tracking-[0.18em] text-ink-faint"
-            style={{ '--d': '340ms' } as CSSProperties}
+          {/* ── จุดขายสั้น ๆ ที่ตอบคำถามว่า "ต้องเตรียมอะไรไหม" ──── */}
+          {/**
+            * ★ คำถามแรกของคนที่ยังไม่เคยใช้คือ "ต้องลงโปรแกรมไหม"
+            *   ★★ ตอบตรงนี้เลยด้วยสามคำสั้น ๆ ถูกกว่าปล่อยให้เขาเดาเอง
+            */}
+          <div
+            className="hero-in mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 lg:justify-start"
+            style={{ '--d': '360ms' } as CSSProperties}
           >
-            {t('auth.free')}
-          </p>
+            {PERKS.map((key) => (
+              <span key={key} className="signin-perk">
+                <svg viewBox="0 0 24 24" className="size-3.5 text-accent" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="m5 13 4 4L19 7" />
+                </svg>
+                {t(key)}
+              </span>
+            ))}
+          </div>
         </div>
 
         {/* ── ขวา: ฟอร์ม ───────────────────────────────────────── */}
-        <div className="flex justify-center lg:justify-end">
+        {/* ★ วงแสงจาง ๆ หลังการ์ด — บอกว่า "เริ่มตรงนี้" โดยไม่ต้องมีลูกศร */}
+        <div className="relative flex justify-center lg:justify-end">
+          <span className="signin-ring" aria-hidden="true" />
           <SignInForm variant="page" onDone={() => router.refresh()} />
         </div>
       </div>

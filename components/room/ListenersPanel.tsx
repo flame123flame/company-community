@@ -195,7 +195,7 @@ function Row({
           </div>
 
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">
+            <p dir="auto" className="truncate text-sm font-medium">
               <span dir="auto">{listener.displayName}</span>
               {listener.isMe ? (
                 <span className="font-normal text-ink-faint"> {t('listeners.you')}</span>

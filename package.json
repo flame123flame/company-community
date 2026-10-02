@@ -28,7 +28,10 @@
     "test:live": "npm run test:clock && npm run test:play-item && npm run test:listeners && npm run test:handover && npm run test:suggest && npm run test:mobile && npm run test:i18n",
     "test:mobile": "tsx --env-file=.env.local --tsconfig tsconfig.json scripts/mobile-test.ts",
     "test:i18n": "tsx --env-file=.env.local --tsconfig tsconfig.json scripts/i18n-test.ts",
-    "db:reset-data": "node scripts/reset-data.mjs"
+    "db:reset-data": "node scripts/reset-data.mjs",
+    "test:wallet": "tsx scripts/wallet-test.ts",
+    "test:split": "tsx scripts/split-test.ts",
+    "test:promptpay": "tsx scripts/promptpay-test.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

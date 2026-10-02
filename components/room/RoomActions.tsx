@@ -95,7 +95,7 @@ export function RoomActions({
               size={40}
             />
             <div className="min-w-0">
-              <p className="truncate text-sm font-medium">
+              <p dir="auto" className="truncate text-sm font-medium">
                 {nowPlaying.channelTitle ?? t('room.unknownChannel')}
               </p>
               <p className="truncate text-xs text-ink-soft">
@@ -112,7 +112,7 @@ export function RoomActions({
               size={40}
             />
             <div className="min-w-0">
-              <p className="truncate text-sm font-medium">{me.displayName}</p>
+              <p dir="auto" className="truncate text-sm font-medium">{me.displayName}</p>
               <p className="truncate text-xs text-ink-soft">
                 {t(roleLabelKey(me.role))} · {t('common.listeners', { n: listeners })}
               </p>
