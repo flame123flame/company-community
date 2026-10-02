@@ -145,55 +145,62 @@ export function OfficePageChrome({ isAdmin }: { isAdmin: boolean }) {
 
         {shownSiblings.length > 1 ? (
           /*
-           * ★★ แท็บเลื่อนแนวนอนได้บนจอแคบ ไม่ตัดบรรทัด
+           * ══ การ์ดหน้าในหมวด ══════════════════════════════════════
            *
-           *    ชิปที่ตัดบรรทัดทำให้ความสูงของหัวหน้าเปลี่ยนตามความยาวชื่อ
-           *    ★ แล้วเนื้อหาข้างล่างจะกระโดดเวลาเปลี่ยนหน้าในหมวดเดียวกัน
+           * ★★★ เปลี่ยนจากชิปแบบแท็บมาเป็นการ์ด
+           *     ★ ชิปบอกได้แค่ชื่อ — "สายการแข่งขัน" กับ "ห้องสุ่มกลุ่ม"
+           *       อ่านแล้วยังไม่รู้ว่าต่างกันตรงไหนจนกว่าจะกดเข้าไปดู
+           *       ★★ การ์ดมีที่ให้คำอธิบายหนึ่งบรรทัด ซึ่งตอบคำถามนั้น
+           *          ก่อนกด — ใช้ descKey ที่ PAGE_META มีอยู่แล้วทุกหน้า
            *
-           * ★★★ มีไอคอนทุกอัน — ตากวาดเจอรูปก่อนอ่านตัวอักษรเสมอ
-           *     โดยเฉพาะเมนูที่ชื่อยาวใกล้เคียงกัน ("สร้างรายการเงิน" กับ "สรุปค่าข้าว")
+           * ★★ ยังเลื่อนแนวนอนบนจอแคบ ไม่ตัดบรรทัด
+           *    ★ การ์ดที่ตัดบรรทัดทำให้ความสูงของหัวหน้าเปลี่ยนตามจำนวนหน้า
+           *      แล้วเนื้อหาข้างล่างกระโดดทุกครั้งที่เปลี่ยนหมวด
            */
           <nav
             aria-label={ot(meta.titleKey)}
             className={cn(
-              'hero-in scrollbar-none -mx-4 flex gap-2 overflow-x-auto px-4 pb-2',
+              'hero-in scrollbar-none -mx-4 flex gap-2.5 overflow-x-auto px-4 pb-2',
               groups.length > 0 ? 'mt-3' : 'mt-6',
             )}
           >
             {shownSiblings.map((child, i) => {
               const on = active === child.href
+              const desc = pageMetaOf(child.href)?.descKey
               return (
                 <Link
                   key={child.href}
                   href={child.href}
                   aria-current={on ? 'page' : undefined}
-                  /* ★ --i คือลำดับในแถว ใช้หน่วงแอนิเมชันให้คลี่ทีละอัน */
                   style={{ '--i': i } as React.CSSProperties}
                   className={cn(
-                    'tab-chip overflow-hidden',
-                    on && 'tab-chip-on',
-                    'group relative inline-flex h-11 shrink-0 items-center gap-2 rounded-full ps-3 pe-4',
-                    'text-sm transition-all duration-300',
+                    /*
+                     * ★ 14rem ไม่ใช่เลขสวย — มันคือความกว้างที่ทำให้สี่การ์ด
+                     *   (หมวดกระเป๋าเงินและตลาดนัด) พอดีคอลัมน์ 1000px
+                     *   ★★ 15.5rem เกินไปราว 30px ซึ่งทำให้ใบสุดท้ายถูกตัดขอบ
+                     *      ดูเหมือนหน้าเรนเดอร์ไม่เสร็จ ทั้งที่มันแค่เลื่อนได้
+                     */
+                    'tab-chip group relative flex w-56 shrink-0 items-start gap-3 overflow-hidden',
+                    'rounded-2xl border p-3.5 transition-all duration-300',
                     on
-                      ? /* ★ แท็บที่เปิดอยู่: พื้นสีเน้น + เงาเรืองที่หายใจช้า ๆ */
-                        'bg-accent font-medium text-accent-ink [--tab-glow:color-mix(in_oklab,var(--color-accent)_70%,transparent)]'
-                      : /* ★ แท็บอื่น: กระจกจาง ๆ ยกขึ้นเล็กน้อยตอนชี้ */
-                        'border border-line bg-page/50 text-ink-soft backdrop-blur-md hover:-translate-y-0.5 hover:border-line-strong hover:bg-surface hover:text-ink',
+                      ? /* ★ หน้าที่เปิดอยู่: ขอบและพื้นสีเน้น + เงาเรืองที่หายใจช้า ๆ */
+                        'tab-chip-on border-accent/50 bg-accent/12 [--tab-glow:color-mix(in_oklab,var(--color-accent)_55%,transparent)]'
+                      : 'border-line bg-page/50 backdrop-blur-md hover:-translate-y-0.5 hover:border-line-strong hover:bg-surface',
                   )}
                 >
                   <span
                     aria-hidden="true"
                     className={cn(
-                      'grid size-7 shrink-0 place-items-center rounded-full transition-colors',
-                      on ? 'bg-accent-ink/15' : 'bg-surface group-hover:bg-elevated',
+                      'grid size-10 shrink-0 place-items-center rounded-xl transition-colors',
+                      on ? 'bg-accent text-accent-ink' : 'bg-surface text-ink-soft group-hover:bg-elevated',
                     )}
                   >
                     <svg
                       viewBox="0 0 24 24"
-                      className="tab-icon size-4"
+                      className="tab-icon size-5"
                       fill="none"
                       stroke="currentColor"
-                      strokeWidth="1.9"
+                      strokeWidth="1.8"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                     >
@@ -201,7 +208,22 @@ export function OfficePageChrome({ isAdmin }: { isAdmin: boolean }) {
                     </svg>
                   </span>
 
-                  {ot(child.labelKey)}
+                  <span className="min-w-0 flex-1">
+                    <span
+                      className={cn(
+                        'block truncate text-sm font-semibold',
+                        on ? 'text-ink' : 'text-ink',
+                      )}
+                    >
+                      {ot(child.labelKey)}
+                    </span>
+                    {desc ? (
+                      /* ★ สองบรรทัดพอ — ยาวกว่านี้การ์ดจะสูงจนดันเนื้อหาลงไปอีก */
+                      <span className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-ink-soft">
+                        {ot(desc)}
+                      </span>
+                    ) : null}
+                  </span>
                 </Link>
               )
             })}

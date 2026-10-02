@@ -254,6 +254,7 @@ const WIDE_PAGES = new Set([
        เหลือสองคอลัมน์ ซึ่งเสียประโยชน์ทั้งหมดของการเปลี่ยนมาเป็นตาราง */
   '/office/fun/checkers',
   '/office/fun/typing',
+  '/office/fun/cup',
   '/office/fun',
 ])
 

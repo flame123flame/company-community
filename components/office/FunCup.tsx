@@ -114,74 +114,153 @@ export function FunCup() {
 
   /* ── รายการทัวร์นาเมนต์ ────────────────────────────────────── */
   if (!open) {
-    return (
-      <div className="max-w-3xl py-2">
+    const live = list.filter((t) => t.status === 'OPEN')
+    const past = list.filter((t) => t.status === 'DONE')
+    const podium = stats.slice(0, 3)
+    const rest = stats.slice(3)
+    const totalMatches = stats.reduce((a, x) => a + x.matches, 0)
 
+    return (
+      <div className="py-2">
         {error ? (
-          <p role="alert" className="mt-3 text-sm text-danger">
+          <p role="alert" className="mb-4 text-sm text-danger">
             {error}
           </p>
         ) : null}
 
-        <div className="mt-5 flex flex-col gap-2">
-          {list.length === 0 ? (
-            <EmptyState icon={'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm0 4v5l3 3'} title={ot('fun.cup.empty')} />
-          ) : (
-            list.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => void loadBracket(t.id)}
-                className="flex items-center gap-3 rounded-2xl border border-line bg-elevated/60 backdrop-blur-md p-4 text-start transition-colors hover:bg-surface"
-              >
-                <span className="min-w-0 flex-1 truncate font-medium text-ink" dir="auto">{t.name}</span>
-                <span
-                  className={cn(
-                    'rounded-full px-2 py-0.5 text-xs',
-                    t.status === 'DONE' ? 'bg-surface text-ink-faint' : 'bg-accent/15 text-accent',
-                  )}
-                >
-                  {t.status === 'DONE' ? ot('fun.cup.done') : ot('fun.cup.open')}
-                </span>
-              </button>
-            ))
-          )}
+        {/*
+          * ══ แถบสรุป ══════════════════════════════════════════════
+          * ★★ สามตัวเลขที่ตอบว่า "ที่นี่มีอะไรเกิดขึ้นบ้าง" ก่อนเลื่อนดูรายละเอียด
+          *    ★ หน้าเดิมเปิดมาเจอรายการเปล่า ๆ ซึ่งไม่บอกว่าของพวกนี้มีคนใช้จริงไหม
+          */}
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Metric label={ot('fun.cup.statTours')} value={String(list.length)} />
+          <Metric label={ot('fun.cup.statMatches')} value={String(Math.round(totalMatches / 2))} />
+          <Metric
+            label={ot('fun.cup.statTop')}
+            value={podium[0]?.name ?? '—'}
+            text
+          />
         </div>
 
-        {/* ── ตารางสถิติ (FR-C09) ──────────────────────────────── */}
-        <div className="mt-6 rounded-2xl border border-line bg-elevated/30 backdrop-blur-md p-4">
-          <p className="text-sm font-medium text-ink">{ot('fun.stats.title')}</p>
-          {stats.length === 0 ? (
-            <p className="mt-1.5 text-xs text-ink-faint">{ot('fun.stats.empty')}</p>
-          ) : (
-            <ol className="mt-2 flex flex-col gap-1.5">
-              {stats.map((s, i) => (
-                <li key={s.userId} className="flex items-center gap-3 text-sm">
-                  <span className="w-5 text-xs text-ink-faint">{i + 1}.</span>
-                  <span className="min-w-0 flex-1 truncate text-ink">{s.name}</span>
-                  {/* ★ แถบยาวตามอัตราชนะ — เทียบกันได้ด้วยตาโดยไม่ต้องอ่านเลข */}
-                  <span className="h-1.5 w-24 overflow-hidden rounded-full bg-surface">
-                    <span
-                      className="block h-full rounded-full bg-accent"
-                      style={{ width: `${s.skill * 100}%` }}
-                    />
-                  </span>
-                  <span className="w-12 text-end text-xs tabular-nums text-ink-soft">
-                    {Math.round(s.skill * 100)}%
-                  </span>
-                  <span className="w-14 text-end text-xs text-ink-faint">
-                    {ot('fun.stats.matches', { n: s.matches })}
-                  </span>
-                </li>
-              ))}
-            </ol>
-          )}
+        <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_400px]">
+          {/* ══ ซ้าย · ทัวร์นาเมนต์ ══════════════════════════════ */}
+          <div className="flex flex-col gap-6">
+            {list.length === 0 ? (
+              <EmptyState
+                icon={'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm0 4v5l3 3'}
+                title={ot('fun.cup.empty')}
+              />
+            ) : null}
+
+            {live.length > 0 ? (
+              <section>
+                <h2 className="mb-2 text-sm font-semibold text-ink">{ot('fun.cup.live')}</h2>
+                <ul className="grid gap-2.5 sm:grid-cols-2">
+                  {live.map((t) => (
+                    <TourCard key={t.id} t={t} onOpen={() => void loadBracket(t.id)} />
+                  ))}
+                </ul>
+              </section>
+            ) : null}
+
+            {past.length > 0 ? (
+              <section>
+                <h2 className="mb-2 text-sm font-semibold text-ink">{ot('fun.cup.history')}</h2>
+                <ul className="grid gap-2.5 sm:grid-cols-2">
+                  {past.map((t) => (
+                    <TourCard key={t.id} t={t} onOpen={() => void loadBracket(t.id)} />
+                  ))}
+                </ul>
+              </section>
+            ) : null}
+          </div>
+
+          {/* ══ ขวา · สถิติผู้เล่น ══════════════════════════════ */}
+          <aside className="lg:sticky lg:top-4 lg:self-start">
+            <h2 className="mb-2 text-sm font-semibold text-ink">{ot('fun.stats.title')}</h2>
+
+            {stats.length === 0 ? (
+              <p className="rounded-2xl border border-dashed border-line px-4 py-10 text-center text-sm text-ink-faint">
+                {ot('fun.stats.empty')}
+              </p>
+            ) : (
+              <div className="overflow-hidden rounded-2xl border border-line bg-elevated/40">
+                {/*
+                  * ★★★ สามอันดับแรกเป็นแท่นโพเดียม ไม่ใช่แถวที่ 1-2-3 ของตาราง
+                  *     ★ ตารางเรียงเท่ากันหมดทำให้ "ที่หนึ่ง" ไม่ต่างจาก "ที่แปด"
+                  *       เลยนอกจากตำแหน่ง ★★ ซึ่งลบความหมายของการแข่งทิ้งไป
+                  *     ★ แท่นกลางสูงกว่าสองข้าง — อ่านได้ทันทีโดยไม่ต้องดูตัวเลข
+                  */}
+                {podium.length > 0 ? (
+                  <div className="flex items-end justify-center gap-3 bg-gradient-to-b from-accent/10 to-transparent px-4 pt-6 pb-4">
+                    {[podium[1], podium[0], podium[2]].map((s, i) =>
+                      s ? (
+                        <div key={s.userId} className="flex min-w-0 flex-1 flex-col items-center">
+                          <span className="mb-1 text-lg">{i === 1 ? '🥇' : i === 0 ? '🥈' : '🥉'}</span>
+                          <span
+                            dir="auto"
+                            className="w-full truncate text-center text-xs font-medium text-ink"
+                          >
+                            {s.name}
+                          </span>
+                          <span className="text-[11px] tabular-nums text-ink-faint">
+                            {Math.round(s.skill * 100)}%
+                          </span>
+                          <span
+                            aria-hidden="true"
+                            className={cn(
+                              'mt-1.5 w-full rounded-t-lg',
+                              i === 1 ? 'h-10 bg-accent' : 'h-6 bg-accent/40',
+                            )}
+                          />
+                        </div>
+                      ) : (
+                        <span key={i} className="flex-1" />
+                      ),
+                    )}
+                  </div>
+                ) : null}
+
+                {rest.length > 0 ? (
+                  <ol className="border-t border-line">
+                    {rest.map((s, i) => (
+                      <li
+                        key={s.userId}
+                        className={cn(
+                          'grid min-h-11 grid-cols-[1.5rem_minmax(0,1fr)_4.5rem_2.5rem] items-center gap-2 px-4',
+                          i > 0 && 'border-t border-line',
+                        )}
+                      >
+                        <span className="text-xs tabular-nums text-ink-faint">{i + 4}</span>
+                        <span dir="auto" className="truncate text-sm text-ink">
+                          {s.name}
+                        </span>
+                        {/* ★ แถบกับเปอร์เซ็นต์อยู่คอลัมน์เดียวกัน — ของเดิมแยกสามคอลัมน์
+                               จนเลขชนขอบและคำว่า matches ตกบรรทัด */}
+                        <span className="flex items-center gap-1.5">
+                          <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface">
+                            <span
+                              className="block h-full rounded-full bg-accent transition-all"
+                              style={{ width: `${Math.round(s.skill * 100)}%` }}
+                            />
+                          </span>
+                        </span>
+                        <span className="text-end text-xs tabular-nums text-ink-soft">
+                          {Math.round(s.skill * 100)}%
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                ) : null}
+              </div>
+            )}
+          </aside>
         </div>
       </div>
     )
   }
 
-  /* ── ผังสาย ────────────────────────────────────────────────── */
   return (
     <div className="relative py-2">
       <div className="flex flex-wrap items-center gap-3">
@@ -304,5 +383,75 @@ function MatchCard({
         <p className="px-2 pt-1 text-[11px] text-ink-faint">{ot('fun.cup.pickWinner')}</p>
       ) : null}
     </div>
+  )
+}
+
+
+/** ตัวเลขสรุปหนึ่งช่อง */
+function Metric({ label, value, text }: { label: string; value: string; text?: boolean }) {
+  return (
+    <div className="rounded-2xl border border-line bg-elevated/40 p-4">
+      <p className="text-[11px] uppercase tracking-wide text-ink-faint">{label}</p>
+      <p
+        dir="auto"
+        className={cn(
+          'mt-0.5 font-bold text-ink',
+          /* ★ ชื่อคนยาวกว่าตัวเลขมาก — ใช้ขนาดเล็กลงและตัดท้ายแทนที่จะล้นกล่อง */
+          text ? 'truncate text-lg' : 'text-2xl tabular-nums',
+        )}
+      >
+        {value}
+      </p>
+    </div>
+  )
+}
+
+/** การ์ดทัวร์นาเมนต์หนึ่งใบ */
+function TourCard({ t, onOpen }: { t: ListItem; onOpen: () => void }) {
+  const ot = useOt()
+  const done = t.status === 'DONE'
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={onOpen}
+        className={cn(
+          'group flex min-h-20 w-full items-center gap-3 rounded-2xl border p-4 text-start transition-all',
+          done
+            ? 'border-line bg-elevated/40 hover:bg-surface'
+            : 'border-accent/40 bg-accent/10 hover:border-accent hover:bg-accent/15',
+        )}
+      >
+        <span
+          aria-hidden="true"
+          className={cn(
+            'grid size-11 shrink-0 place-items-center rounded-xl text-lg transition-transform group-hover:scale-110',
+            done ? 'bg-surface' : 'bg-accent text-accent-ink',
+          )}
+        >
+          🏆
+        </span>
+        <span className="min-w-0 flex-1">
+          {/* ★ สองบรรทัดแทนการตัดท้าย — ชื่อทัวร์นาเมนต์ภาษาไทยยาวกว่าช่อง
+                 ที่การ์ดในตารางสองคอลัมน์มีให้ ★★ "ศึกชิงเจ้าโต๊ะปิ…" ไม่บอก
+                 อะไรเลยว่าเป็นทัวร์ของอะไร */}
+          <span dir="auto" className="line-clamp-2 font-medium leading-snug text-ink">
+            {t.name}
+          </span>
+          <span className="text-xs text-ink-faint">
+            {new Date(t.created_at).toLocaleDateString()}
+          </span>
+        </span>
+        {/* ★ สถานะเป็นจุดสี ไม่ใช่ป้ายคำ — การ์ดสีต่างกันบอกไปแล้วครึ่งหนึ่ง */}
+        <span
+          className={cn(
+            'shrink-0 rounded-full px-2.5 py-1 text-[11px]',
+            done ? 'bg-surface text-ink-faint' : 'bg-accent text-accent-ink',
+          )}
+        >
+          {done ? ot('fun.cup.done') : ot('fun.cup.open')}
+        </span>
+      </button>
+    </li>
   )
 }
