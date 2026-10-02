@@ -182,6 +182,7 @@ export const vi: OfficeDict = {
   "admin.office.latlng": "พิกัดออฟฟิศ",
   "admin.office.latlngHint": "ใช้คำนวณระยะทางไปร้านทุกร้าน เปลี่ยนแล้วระบบคิดใหม่ให้ทั้งหมด",
   "admin.office.saved": "บันทึกแล้ว · คำนวณระยะทางใหม่ {n} ร้าน",
+  "admin.office.change": "ตั้งพิกัดใหม่",
   "food.picks.sortNew": "Mới thêm",
   "food.picks.allCuisines": "Mọi loại món",
   "food.picks.allPrices": "Mọi mức giá",

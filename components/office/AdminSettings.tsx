@@ -5,13 +5,19 @@ import { apiFetch } from '@/lib/api/client'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { officeErrorText } from '@/lib/i18n/office-format'
-import { useOt } from '@/lib/i18n/office'
+import { Untranslated, useOt } from '@/lib/i18n/office'
+import dynamic from 'next/dynamic'
+
+/* ★ ssr:false — MapPicker import leaflet.css ที่ระดับโมดูล (ดูเหตุผลใน AddRestaurantForm) */
+const MapPicker = dynamic(() => import('./MapPicker').then((m) => m.MapPicker), { ssr: false })
 
 type Settings = {
   report_threshold?: number
   no_repeat_days?: number
   reminder_days?: number[]
   lottery_next_draw?: string | null
+  /** 0050 — null = ยังไม่ได้ตั้ง ซึ่งแปลว่าระยะทางทุกร้านยังคิดไม่ได้ */
+  office_latlng?: { lat: number; lng: number } | null
 }
 
 /** หน้าตั้งค่าระบบ (FR-X09 · หัวข้อ 8.6) */
@@ -21,6 +27,10 @@ export function AdminSettings() {
   const [saving, setSaving] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState<string | null>(null)
+  const [recomputed, setRecomputed] = useState<number | null>(null)
+  /* ★ แยก state ของแผนที่ออกจากค่าที่บันทึกแล้ว — ลากหมุดยังไม่ใช่การบันทึก */
+  const [draftLatLng, setDraftLatLng] = useState<{ lat: number; lng: number } | null>(null)
+  const [mapOpen, setMapOpen] = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -40,8 +50,14 @@ export function AdminSettings() {
     setError(null)
     setSaved(null)
     try {
-      await apiFetch('/api/office/admin/settings', { method: 'PATCH', body: { key, value } })
+      const res = await apiFetch<{ recomputed?: number }>('/api/office/admin/settings', {
+        method: 'PATCH',
+        body: { key, value },
+      })
       setSaved(key)
+      /* ★ บอกผลที่เกิดขึ้นจริง ไม่ใช่แค่ "บันทึกแล้ว" — การเปลี่ยนพิกัดออฟฟิศ
+           ทำให้ตัวเลขระยะทางของทุกร้านเปลี่ยนตาม ซึ่งควรบอกให้รู้ */
+      if (typeof res.recomputed === 'number') setRecomputed(res.recomputed)
       await load()
     } catch (e) {
       setError(officeErrorText(e, ot))
@@ -90,6 +106,66 @@ export function AdminSettings() {
           saved={saved === 'reminder_days'}
           onSave={(v) => void save('reminder_days', v)}
         />
+
+        {/* ── พิกัดออฟฟิศ (0050) ──────────────────────────────── */}
+        <div className="rounded-2xl border border-line bg-elevated/40 p-4">
+          <p className="text-sm font-medium text-ink">
+            <Untranslated>{ot('admin.office.latlng')}</Untranslated>
+          </p>
+          <p className="mt-0.5 text-xs text-ink-faint">
+            <Untranslated>{ot('admin.office.latlngHint')}</Untranslated>
+          </p>
+
+          {settings.office_latlng ? (
+            <p className="mt-2 font-mono text-xs text-ink-soft">
+              {settings.office_latlng.lat.toFixed(6)}, {settings.office_latlng.lng.toFixed(6)}
+            </p>
+          ) : (
+            <p className="mt-2 text-xs text-warn">
+              <Untranslated>{ot('food.geo.officeNotSet')}</Untranslated>
+            </p>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setMapOpen((v) => !v)}
+            aria-expanded={mapOpen}
+            className="mt-3 h-11 rounded-full bg-surface px-4 text-sm text-ink transition-colors hover:bg-surface-hover"
+          >
+            <Untranslated>{mapOpen ? ot('common.cancel') : ot('admin.office.change')}</Untranslated>
+          </button>
+
+          {mapOpen ? (
+            <div className="mt-3">
+              <MapPicker
+                lat={draftLatLng?.lat ?? settings.office_latlng?.lat ?? null}
+                lng={draftLatLng?.lng ?? settings.office_latlng?.lng ?? null}
+                onChange={(lat, lng) => setDraftLatLng({ lat, lng })}
+              />
+              <div className="mt-3 flex items-center gap-2">
+                <Button
+                  variant="primary"
+                  loading={saving === 'office_latlng'}
+                  disabled={!draftLatLng}
+                  onClick={() => {
+                    if (!draftLatLng) return
+                    void save('office_latlng', draftLatLng).then(() => {
+                      setMapOpen(false)
+                      setDraftLatLng(null)
+                    })
+                  }}
+                >
+                  {ot('common.save')}
+                </Button>
+                {saved === 'office_latlng' && recomputed != null ? (
+                  <span className="text-xs text-ink-soft">
+                    <Untranslated>{ot('admin.office.saved', { n: recomputed })}</Untranslated>
+                  </span>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+        </div>
 
         <DateRow
           label={ot('admin.settings.lotteryDate')}

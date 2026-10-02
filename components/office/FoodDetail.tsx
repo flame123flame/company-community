@@ -10,6 +10,7 @@ import { officeErrorText } from '@/lib/i18n/office-format'
 import { Untranslated, useOt } from '@/lib/i18n/office'
 import { distanceLabel } from '@/lib/office/food'
 import { RestaurantReviews } from './RestaurantReviews'
+import { directionsUrl, searchUrl } from '@/lib/office/geo'
 
 type Restaurant = {
   id: string
@@ -33,6 +34,9 @@ type Restaurant = {
    */
   lat?: number | null
   lng?: number | null
+  travelMeters?: number | null
+  travelMinutes?: number | null
+  travelMode?: 'walking' | 'driving' | null
 }
 
 /**
@@ -61,6 +65,26 @@ export function FoodDetail({ id }: { id: string }) {
   const [gone, setGone] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /*
+   * ★ พิกัดออฟฟิศ — ต้องมีถึงจะสร้างลิงก์เส้นทางได้
+   *   ★★ ดึงแยกจากข้อมูลร้าน และล้มแล้วเป็น null เงียบ ๆ
+   *      ปุ่มจะถอยไปเป็น "เปิดแผนที่" แบบเดิมเอง ไม่ใช่หน้าพัง
+   */
+  const [office, setOffice] = useState<{ lat: number; lng: number } | null>(null)
+
+  useEffect(() => {
+    let alive = true
+    void apiFetch<{ office: { lat: number; lng: number } | null }>(
+      '/api/office/food/office-location',
+    )
+      .then((res) => {
+        if (alive) setOffice(res.office)
+      })
+      .catch(() => undefined)
+    return () => {
+      alive = false
+    }
+  }, [])
 
   const load = useCallback(async () => {
     try {
@@ -211,16 +235,43 @@ export function FoodDetail({ id }: { id: string }) {
             </span>
           </Button>
 
-          {r.mapUrl ? (
+          {/*
+            * ★★★ ปุ่ม "ไปร้าน" ใช้ Google Maps URL ล้วน ไม่ใช่ API
+            *
+            *     ข้อกำหนดห้าม Directions API ★ แต่ลิงก์รูปแบบ /maps/dir/?api=1
+            *     เป็นแค่ URL ไม่ต้องมีกุญแจและไม่มีค่าใช้จ่าย
+            *     ★★ บนมือถือระบบปฏิบัติการเปิดแอป Google Maps ให้เอง
+            *        จึงไม่ต้องเดาจาก user agent ว่าควรส่งลิงก์แบบไหน
+            *
+            * ★ ร้านไม่มีพิกัด → ค้นด้วยชื่อแทน ไม่ใช่ซ่อนปุ่ม
+            *   ★★ คนที่อยากไปร้านยังได้สิ่งที่ต้องการ แค่แม่นน้อยลง
+            */}
+          {r.lat != null && r.lng != null && office ? (
             <a
-              href={r.mapUrl}
+              href={directionsUrl(office.lat, office.lng, r.lat, r.lng, r.travelMode ?? 'walking')}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-11 items-center rounded-full bg-surface px-4 text-sm text-ink hover:bg-surface-hover"
+            >
+              {ot('food.geo.goThere')}
+              {r.travelMinutes != null ? (
+                <span className="ms-1.5 text-ink-faint">
+                  {ot(r.travelMode === 'driving' ? 'food.geo.driveMin' : 'food.geo.walkMin', {
+                    n: r.travelMinutes,
+                  })}
+                </span>
+              ) : null}
+            </a>
+          ) : (
+            <a
+              href={r.mapUrl || searchUrl(r.name)}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex h-11 items-center rounded-full bg-surface px-4 text-sm text-ink hover:bg-surface-hover"
             >
               {ot('food.picks.openMap')}
             </a>
-          ) : null}
+          )}
         </div>
 
         {r.addedByName ? (

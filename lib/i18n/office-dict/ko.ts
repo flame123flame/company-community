@@ -182,6 +182,7 @@ export const ko: OfficeDict = {
   "admin.office.latlng": "พิกัดออฟฟิศ",
   "admin.office.latlngHint": "ใช้คำนวณระยะทางไปร้านทุกร้าน เปลี่ยนแล้วระบบคิดใหม่ให้ทั้งหมด",
   "admin.office.saved": "บันทึกแล้ว · คำนวณระยะทางใหม่ {n} ร้าน",
+  "admin.office.change": "ตั้งพิกัดใหม่",
   "food.picks.sortNew": "최근 추가순",
   "food.picks.allCuisines": "모든 종류",
   "food.picks.allPrices": "모든 가격대",
