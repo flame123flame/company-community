@@ -157,3 +157,78 @@ export function parseLatLngFromMapUrl(url: string): { lat: number; lng: number }
 
   return null
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+ * เวลาเปิด-ปิด
+ * ═══════════════════════════════════════════════════════════════════ */
+
+/** คีย์วันใน open_hours — เรียงตามลำดับของ Date.getDay() (0 = อาทิตย์) */
+export const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const
+export type DayKey = (typeof DAY_KEYS)[number]
+
+/** {"mon":["09:00","18:00"], "sun":null, …} — null = ปิดทั้งวัน */
+export type OpenHours = Partial<Record<DayKey, [string, string] | null>>
+
+/** "09:30" → 570 นาทีจากเที่ยงคืน · รูปแบบผิด → null */
+function toMinutes(hhmm: string): number | null {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm)
+  if (!m) return null
+  const h = Number(m[1])
+  const min = Number(m[2])
+  if (h > 23 || min > 59) return null
+  return h * 60 + min
+}
+
+/**
+ * ตอนนี้ร้านเปิดอยู่ไหม
+ *
+ * ★ คืน null เมื่อ "ตอบไม่ได้" ไม่ใช่ false
+ *   ★★ ร้านที่ไม่ได้กรอกเวลา กับร้านที่กรอกแล้วว่าปิด เป็นคนละเรื่อง
+ *      ข้อกำหนดบอกว่า "ถ้าไม่มีข้อมูลก็ไม่ต้องแสดง" ซึ่งทำได้ก็ต่อเมื่อ
+ *      แยกสองกรณีนี้ออกจากกันได้
+ *
+ * ★★★ รองรับช่วงที่ข้ามเที่ยงคืน เช่น ["18:00","02:00"]
+ *
+ *     ร้านข้าวต้มรอบดึกเปิดแบบนี้เป็นปกติ ★ ถ้าเทียบตรง ๆ ว่า
+ *     `now >= open && now < close` ร้านพวกนี้จะถูกบอกว่า "ปิดแล้ว"
+ *     ตลอด 24 ชั่วโมง เพราะ 02:00 < 18:00 เสมอ
+ *     ★★ และตอนตีหนึ่งต้องดูช่วงของ "เมื่อวาน" ไม่ใช่ของวันนี้
+ */
+export function isOpenNow(hours: OpenHours | null | undefined, at: Date): boolean | null {
+  if (!hours || Object.keys(hours).length === 0) return null
+
+  const nowMin = at.getHours() * 60 + at.getMinutes()
+
+  /* ★ ตรวจทั้งช่วงของวันนี้ และช่วงของเมื่อวานที่ลากข้ามเที่ยงคืนมาถึงตอนนี้ */
+  for (const back of [0, 1]) {
+    const dayIndex = (at.getDay() - back + 7) % 7
+    const key = DAY_KEYS[dayIndex]
+    if (!key) continue
+
+    const span = hours[key]
+    if (span === undefined) continue
+    if (span === null) continue
+
+    const open = toMinutes(span[0])
+    const close = toMinutes(span[1])
+    if (open === null || close === null) continue
+
+    const crossesMidnight = close <= open
+
+    if (back === 0) {
+      if (crossesMidnight ? nowMin >= open : nowMin >= open && nowMin < close) return true
+    } else if (crossesMidnight && nowMin < close) {
+      /* ★ เมื่อวานเปิดถึงตีสอง และตอนนี้ยังไม่ถึงตีสอง = ยังเปิดอยู่ */
+      return true
+    }
+  }
+
+  /*
+   * ★ มาถึงตรงนี้แปลว่าไม่มีช่วงไหนครอบเวลานี้
+   *   ★★ แต่ต้องแน่ใจว่า "มีข้อมูลของวันนี้จริง" ก่อนจะตอบว่าปิด
+   *      ร้านที่กรอกแค่วันจันทร์ ไม่ได้แปลว่าวันอาทิตย์ปิด — แปลว่าไม่รู้
+   */
+  const todayKey = DAY_KEYS[at.getDay()]
+  if (!todayKey || hours[todayKey] === undefined) return null
+  return false
+}

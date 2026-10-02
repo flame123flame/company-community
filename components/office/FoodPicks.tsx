@@ -20,6 +20,7 @@ import {
   type Restaurant,
   type RestaurantList,
 } from '@/lib/office/food'
+import { isOpenNow } from '@/lib/office/geo'
 import { AddRestaurantForm } from './AddRestaurantForm'
 import { FilterSheet, FilterGroup, FilterChip } from './FilterSheet'
 
@@ -359,6 +360,16 @@ function Card({
 }) {
   const ot = useOt()
   const [menuOpen, setMenuOpen] = useState(false)
+  /*
+   * ★★ คำนวณหลัง mount ไม่ใช่ตอน render รอบแรก
+   *    ★ มันขึ้นกับ "เวลาตอนนี้" ซึ่ง server กับเบราว์เซอร์ไม่มีทางตรงกัน
+   *      ★★ คำนวณตอน render = hydration mismatch ที่โผล่เฉพาะตอนที่
+   *         เวลาคาบเกี่ยวพอดี ซึ่งหายากที่สุดเวลาไล่บั๊ก
+   */
+  const [openNow, setOpenNow] = useState<boolean | null>(null)
+  useEffect(() => {
+    setOpenNow(isOpenNow(r.openHours, new Date()))
+  }, [r.openHours])
 
   /* ★ คลิกที่อื่นแล้วเมนูต้องปิด — เมนูที่ค้างอยู่หลังเลื่อนหน้าไปแล้วคือขยะบนจอ */
   useEffect(() => {
@@ -496,6 +507,24 @@ function Card({
         *    ★ ★4.0 จากรีวิวเดียว กับ ★4.0 จาก 40 รีวิว ไม่ใช่ข้อมูลเดียวกัน
         *      การซ่อนจำนวนทำให้ร้านที่มีคนรีวิวคนเดียวดูน่าเชื่อเท่ากัน
         */}
+      {/*
+        * ★ ป้ายเปิด/ปิด โผล่เฉพาะเมื่อตอบได้จริง
+        *   ★★ isOpenNow คืน null เมื่อ "ไม่รู้" ซึ่งต่างจาก "ปิด"
+        *      ร้านที่ไม่ได้กรอกเวลาจึงไม่มีป้าย ตามข้อกำหนด
+        */}
+      {openNow !== null ? (
+        <p className="mt-1.5">
+          <span
+            className={cn(
+              'rounded-full px-2 py-0.5 text-[11px]',
+              openNow ? 'bg-link/15 text-link' : 'bg-surface text-ink-faint',
+            )}
+          >
+            {ot(openNow ? 'food.hours.open' : 'food.hours.closed')}
+          </span>
+        </p>
+      ) : null}
+
       <p className="mt-1.5 text-[13px]">
         {r.ratingCount > 0 ? (
           <>
