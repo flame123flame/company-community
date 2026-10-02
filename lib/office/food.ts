@@ -24,6 +24,8 @@ export type Restaurant = {
   maybeClosed: boolean
   voted: boolean
   canManage: boolean
+  /** ISO — ใช้เรียง "เพิ่มล่าสุด" ซึ่งเป็นการเรียงเริ่มต้นของหน้าร้านเด็ด */
+  createdAt: string
 }
 
 export type RestaurantList = {

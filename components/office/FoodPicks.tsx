@@ -20,13 +20,22 @@ import {
   type RestaurantList,
 } from '@/lib/office/food'
 import { AddRestaurantForm } from './AddRestaurantForm'
+import { FilterSheet, FilterGroup, FilterChip } from './FilterSheet'
+
+export type PicksSort = 'new' | 'votes'
 
 /** หน้าร้านเด็ด (FR-A03–A06) */
 export function FoodPicks() {
   const ot = useOt()
   const [data, setData] = useState<RestaurantList>({ items: [], cuisines: [] })
   const [filters, setFilters] = useState<Filters>(emptyFilters)
-  const [sort, setSort] = useState<'votes' | 'new'>('votes')
+  /*
+   * ★ เริ่มต้นที่ "เพิ่มล่าสุด" ไม่ใช่ "คะแนนสูงสุด"
+   *   ★★ เรียงตามคะแนนทำให้หน้าแรกเป็นร้านชุดเดิมทุกวัน — ร้านที่เพิ่งถูกเพิ่ม
+   *      ต้องสะสมคะแนนก่อนถึงจะมีคนเห็น ซึ่งมันจะไม่มีวันได้คะแนนถ้าไม่มีใครเห็น
+   */
+  const [sort, setSort] = useState<PicksSort>('new')
+  const [filterOpen, setFilterOpen] = useState(false)
   const [adding, setAdding] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -48,16 +57,27 @@ export function FoodPicks() {
   const shown = useMemo(() => {
     const list = filterRestaurants(data.items, filters)
     /*
-     * ★ server เรียงตามคะแนนมาแล้ว ตัวเลือก "เพิ่มล่าสุด" จึงเรียงใหม่ฝั่งนี้
-     *   ★ ไม่ยิงคำขอใหม่เพื่อเปลี่ยนลำดับ — ข้อมูลชุดเดิมทั้งหมดอยู่ในมือแล้ว
-     *     และร้านรอบออฟฟิศมีหลักสิบ ไม่ใช่หลักหมื่น
-     *   ★ ร้านที่อาจปิดอยู่ท้ายเสมอไม่ว่าจะเรียงแบบไหน (FR-A05)
+     * ★ เรียงฝั่งนี้ทั้งหมด ไม่ยิงคำขอใหม่เพื่อเปลี่ยนลำดับ — ข้อมูลชุดเดิม
+     *   อยู่ในมือแล้ว และร้านรอบออฟฟิศมีหลักสิบ ไม่ใช่หลักหมื่น
+     *
+     * ★★ ร้านที่อาจปิดอยู่ท้ายเสมอไม่ว่าจะเรียงแบบไหน (FR-A05)
+     *    จึงเป็นกุญแจแรกของการเปรียบเทียบทุกแบบ ไม่ใช่เขียนซ้ำในแต่ละสาขา
      */
-    if (sort === 'new') {
-      return [...list].sort((a, b) => Number(a.maybeClosed) - Number(b.maybeClosed))
-    }
-    return list
+    return [...list].sort(
+      (a, b) =>
+        Number(a.maybeClosed) - Number(b.maybeClosed) ||
+        (sort === 'new'
+          ? /* ★ เทียบเวลาเป็นตัวเลข ไม่ใช่เทียบข้อความ ISO
+               ★★ ข้อความ ISO เทียบกันได้ก็จริง แต่เฉพาะเมื่อ timezone
+                  เหมือนกันทุกแถว ซึ่งไม่มีอะไรรับประกัน */
+            Date.parse(b.createdAt) - Date.parse(a.createdAt)
+          : b.voteCount - a.voteCount || Date.parse(b.createdAt) - Date.parse(a.createdAt)),
+    )
   }, [data.items, filters, sort])
+
+  /** ตัวกรองที่เลือกอยู่กี่อย่าง — ตัวเลขบนปุ่ม "ตัวกรอง (n)" */
+  const filterCount =
+    (filters.price ? 1 : 0) + (filters.distance ? 1 : 0) + (sort === 'new' ? 0 : 1)
 
   async function vote(id: string) {
     /* ★ สลับหน้าจอทันที แล้วค่อยรอ server — ปุ่มกดแล้วต้องตอบสนองทันที */
@@ -173,7 +193,15 @@ export function FoodPicks() {
           className="max-w-sm"
         />
 
-        <div className="flex flex-wrap gap-1.5">
+        {/*
+          * ★★ แถวประเภทอาหารเลื่อนแนวนอน ไม่ขึ้นบรรทัดใหม่บนมือถือ
+          *
+          *    ของเดิมเป็น flex-wrap ★ ออฟฟิศที่มีประเภทอาหาร 10 กว่าแบบ
+          *    จะได้ตัวกรองสูงสามบรรทัด ซึ่งดันรายการร้านหลุดจอแรกไปทั้งหมด
+          *    ★★ -mx-4 px-4 ทำให้ขอบที่เลื่อนไปชนเป็นขอบจอจริง
+          *       ไม่ใช่ขอบในที่ดูเหมือนรายการถูกตัด
+          */}
+        <div className="scrollbar-none -mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
           <Chip active={!filters.cuisine} onClick={() => setFilters((f) => ({ ...f, cuisine: null }))}>
             {ot('food.picks.allCuisines')}
           </Chip>
@@ -188,33 +216,70 @@ export function FoodPicks() {
           ))}
         </div>
 
-        <div className="flex flex-wrap gap-1.5">
-          {PRICE_OPTIONS.map((p) => (
-            <Chip
-              key={p}
-              active={filters.price === p}
-              onClick={() => setFilters((f) => ({ ...f, price: f.price === p ? null : p }))}
-            >
-              {p}
-            </Chip>
-          ))}
-          <span className="mx-1 w-px self-stretch bg-line" />
-          {DISTANCE_OPTIONS.map((d) => (
-            <Chip
-              key={d}
-              active={filters.distance === d}
-              onClick={() => setFilters((f) => ({ ...f, distance: f.distance === d ? null : d }))}
-            >
-              {distanceLabel(ot, d)}
-            </Chip>
-          ))}
-          <span className="mx-1 w-px self-stretch bg-line" />
-          <Chip active={sort === 'votes'} onClick={() => setSort('votes')}>
-            {ot('food.picks.sortVotes')}
-          </Chip>
-          <Chip active={sort === 'new'} onClick={() => setSort('new')}>
-            {ot('food.picks.sortNew')}
-          </Chip>
+        {/* ── ราคา · การเดินทาง · การเรียง รวมอยู่ในปุ่มเดียว ───────── */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setFilterOpen((v) => !v)}
+            aria-expanded={filterOpen}
+            className={cn(
+              'inline-flex h-11 items-center gap-2 rounded-full border px-4 text-sm transition-colors',
+              filterCount > 0
+                ? 'border-ink bg-ink text-page'
+                : 'border-line bg-surface text-ink hover:bg-surface-hover',
+            )}
+          >
+            <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M3 5h18M6 12h12M10 19h4" />
+            </svg>
+            {filterCount > 0
+              ? ot('food.filter.withCount', { n: filterCount })
+              : ot('food.filter.title')}
+          </button>
+
+          <FilterSheet
+            open={filterOpen}
+            onClose={() => setFilterOpen(false)}
+            title={ot('food.filter.title')}
+            count={filterCount}
+            onClear={() => {
+              setFilters((f) => ({ ...f, price: null, distance: null }))
+              setSort('new')
+            }}
+          >
+            <FilterGroup label={ot('food.filter.price')}>
+              {PRICE_OPTIONS.map((p) => (
+                <FilterChip
+                  key={p}
+                  active={filters.price === p}
+                  onClick={() => setFilters((f) => ({ ...f, price: f.price === p ? null : p }))}
+                >
+                  {p}
+                </FilterChip>
+              ))}
+            </FilterGroup>
+
+            <FilterGroup label={ot('food.filter.distance')}>
+              {DISTANCE_OPTIONS.map((d) => (
+                <FilterChip
+                  key={d}
+                  active={filters.distance === d}
+                  onClick={() => setFilters((f) => ({ ...f, distance: f.distance === d ? null : d }))}
+                >
+                  {distanceLabel(ot, d)}
+                </FilterChip>
+              ))}
+            </FilterGroup>
+
+            <FilterGroup label={ot('food.filter.sort')}>
+              <FilterChip active={sort === 'new'} onClick={() => setSort('new')}>
+                {ot('food.picks.sortNew')}
+              </FilterChip>
+              <FilterChip active={sort === 'votes'} onClick={() => setSort('votes')}>
+                {ot('food.picks.sortVotes')}
+              </FilterChip>
+            </FilterGroup>
+          </FilterSheet>
         </div>
       </div>
 
@@ -268,6 +333,20 @@ function Card({
   onMarkOpen: () => void
 }) {
   const ot = useOt()
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  /* ★ คลิกที่อื่นแล้วเมนูต้องปิด — เมนูที่ค้างอยู่หลังเลื่อนหน้าไปแล้วคือขยะบนจอ */
+  useEffect(() => {
+    if (!menuOpen) return
+    const close = () => setMenuOpen(false)
+    /* ★ ใส่ทีหลังหนึ่งรอบ event loop ไม่งั้นคลิกที่เปิดเมนูจะปิดมันทันที */
+    const id = window.setTimeout(() => document.addEventListener('click', close), 0)
+    return () => {
+      window.clearTimeout(id)
+      document.removeEventListener('click', close)
+    }
+  }, [menuOpen])
+
   return (
     <article
       className={cn(
@@ -279,7 +358,7 @@ function Card({
     >
       <div className="flex items-start justify-between gap-2">
         {/* ★ ชื่อร้านเป็นลิงก์เข้าหน้ารายละเอียด — เป็นที่ที่คนคาดว่าจะกดได้อยู่แล้ว */}
-        <h2 className="font-medium">
+        <h2 className="min-w-0 font-medium">
           <Link
             href={`/office/food/picks/${r.id}`}
             dir="auto"
@@ -288,11 +367,80 @@ function Card({
             {r.name}
           </Link>
         </h2>
-        {r.maybeClosed ? (
-          <span className="shrink-0 rounded-full bg-danger/15 px-2 py-0.5 text-xs text-danger">
-            {ot('food.picks.maybeClosed')}
+
+        <div className="flex shrink-0 items-start gap-1">
+          {r.maybeClosed ? (
+            <span className="mt-1 rounded-full bg-danger/15 px-2 py-0.5 text-xs text-danger">
+              {ot('food.picks.maybeClosed')}
+            </span>
+          ) : null}
+
+          {/*
+            * ★★ "ร้านปิด/ย้ายแล้ว" กับ "ลบ" ย้ายมาอยู่ในเมนู ⋯ มุมขวาบน
+            *
+            *    ของเดิมวางเป็นปุ่มเต็มตัวอยู่แถวล่างข้างปุ่มหัวใจ
+            *    ★ สองอย่างนี้ทำกันปีละไม่กี่ครั้ง ส่วนหัวใจกดกันทุกวัน
+            *      การให้พื้นที่เท่ากันทำให้ของที่กดบ่อยหายไปในแถวปุ่ม
+            *    ★★ และ "ลบ" ที่เป็นปุ่มสีแดงเต็มตัวข้างปุ่มที่กดทุกวัน
+            *       คือการเชิญให้กดพลาด — เหตุผลเดียวกับ "ยกเลิกหนี้" ในหน้ายอดค้าง
+            */}
+          <span className="relative">
+            <button
+              type="button"
+              onClick={() => setMenuOpen((v) => !v)}
+              aria-label={ot('food.picks.more')}
+              aria-expanded={menuOpen}
+              className="grid size-11 place-items-center rounded-full text-ink-soft transition-colors hover:bg-surface hover:text-ink"
+            >
+              <svg viewBox="0 0 24 24" className="size-5" fill="currentColor" aria-hidden="true">
+                <circle cx="5" cy="12" r="1.8" />
+                <circle cx="12" cy="12" r="1.8" />
+                <circle cx="19" cy="12" r="1.8" />
+              </svg>
+            </button>
+
+            {menuOpen ? (
+              <span className="absolute end-0 top-12 z-40 w-52 overflow-hidden rounded-xl border border-line bg-elevated shadow-xl">
+                {r.maybeClosed ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false)
+                      onMarkOpen()
+                    }}
+                    className="flex min-h-11 w-full items-center px-3 text-start text-[13px] text-ink hover:bg-surface"
+                  >
+                    {ot('food.picks.stillOpen')}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false)
+                      onReport()
+                    }}
+                    className="flex min-h-11 w-full items-center px-3 text-start text-[13px] text-ink hover:bg-surface"
+                  >
+                    {ot('food.picks.reportClosed')}
+                  </button>
+                )}
+
+                {r.canManage ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false)
+                      onRemove()
+                    }}
+                    className="flex min-h-11 w-full items-center border-t border-line px-3 text-start text-[13px] text-danger hover:bg-surface"
+                  >
+                    {ot('common.delete')}
+                  </button>
+                ) : null}
+              </span>
+            ) : null}
           </span>
-        ) : null}
+        </div>
       </div>
 
       <p className="mt-0.5 text-sm text-ink-soft">{r.signatureDish}</p>
@@ -317,7 +465,7 @@ function Card({
           onClick={onVote}
           aria-pressed={r.voted}
           className={cn(
-            'h-8 rounded-full px-3 text-[13px] font-medium transition-colors',
+            'h-11 rounded-full px-4 text-sm font-medium transition-colors',
             r.voted
               ? 'bg-accent text-accent-ink hover:bg-accent-hover'
               : 'bg-surface text-ink hover:bg-surface-hover',
@@ -331,28 +479,13 @@ function Card({
             href={r.mapUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="grid h-8 place-items-center rounded-full bg-surface px-3 text-[13px] text-ink hover:bg-surface-hover"
+            className="grid h-11 place-items-center rounded-full bg-surface px-4 text-sm text-ink hover:bg-surface-hover"
           >
             {ot('food.picks.openMap')}
           </a>
         ) : null}
 
-        <div className="ms-auto flex gap-1.5">
-          {r.maybeClosed ? (
-            <Button size="sm" variant="secondary" onClick={onMarkOpen}>
-              {ot('food.picks.stillOpen')}
-            </Button>
-          ) : (
-            <Button size="sm" variant="ghost" onClick={onReport}>
-              {ot('food.picks.reportClosed')}
-            </Button>
-          )}
-          {r.canManage ? (
-            <Button size="sm" variant="danger" onClick={onRemove}>
-              {ot('common.delete')}
-            </Button>
-          ) : null}
-        </div>
+        {/* ★ "ร้านปิด" กับ "ลบ" ย้ายไปเมนู ⋯ ด้านบนแล้ว แถวนี้เหลือแต่ของที่กดบ่อย */}
       </div>
 
       {note ? <p className="mt-2 text-xs text-ink-soft">{note}</p> : null}
@@ -379,7 +512,9 @@ function Chip({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        'h-8 rounded-full px-3 text-[13px] transition-colors',
+        /* ★ shrink-0 สำคัญกับแถวที่เลื่อนแนวนอน — ไม่งั้น flex จะบีบชิปให้แคบลง
+             จนตัวหนังสือขึ้นบรรทัดใหม่ แทนที่จะปล่อยให้ล้นออกไปให้เลื่อน */
+        'h-11 shrink-0 rounded-full px-4 text-sm transition-colors',
         active ? 'bg-ink text-page' : 'bg-surface text-ink-soft hover:bg-surface-hover hover:text-ink',
       )}
     >
