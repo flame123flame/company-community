@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
 import { AppHeader } from '@/components/AppHeader'
+import { HeaderActions } from '@/components/HeaderActions'
+import { getOfficeViewer } from '@/lib/office/session'
 import { CreateRoomButton } from '@/components/home/CreateRoomButton'
 import { JoinRoomForm } from '@/components/home/JoinRoomForm'
 import { SetupNotice } from '@/components/home/SetupNotice'
@@ -52,6 +54,8 @@ export default async function MusicHomePage() {
    *       ทั้งหน้าเว็บและ API จึงพูดตรงกัน ไม่มีประตูหลังเหลือ
    */
   const me = await getRegisteredUser()
+  /* ★ ล้มแล้วเป็น null — หน้าห้องเพลงต้องเปิดได้แม้โมดูลออฟฟิศมีปัญหา */
+  const viewer = await getOfficeViewer().catch(() => null)
   if (!me) return <SignInScreen />
 
   const stats = await getHomeStats()
@@ -61,7 +65,32 @@ export default async function MusicHomePage() {
 
   return (
     <>
-      <AppHeader center={<span />} />
+      {/*
+        * ★★★ แถบบนหน้านี้เคยมีแค่โลโก้ · ภาษา · ธีม
+        *
+        *     ★ หน้าออฟฟิศมีแชท · แจ้งเตือน · เมนูบัญชีครบ แต่หน้าห้องเพลง
+        *       ไม่มีเลย — คนที่เดินจากออฟฟิศมาที่นี่จะรู้สึกว่าของหายไป
+        *       และกดแจ้งเตือนไม่ได้ทั้งที่ยังล็อกอินอยู่คนเดิม
+        *     ★★ AppHeader มี prop `right` ไว้รับชุดนี้อยู่แล้วตั้งแต่แรก
+        *        (คอมเมนต์ในไฟล์นั้นเขียนไว้ตรง ๆ ว่า "มีไว้ให้หน้าที่ล็อกอินแล้ว
+        *        ส่ง HeaderActions เข้ามาเป็นชุดเดียว") — หน้านี้แค่ไม่เคยส่ง
+        *
+        * ★ viewer อาจเป็น null ถ้ายังไม่ได้ผูกรหัสพนักงาน — คนกลุ่มนั้นยังใช้
+        *   ห้องเพลงได้ตามเดิม แค่ไม่มีปุ่มของโมดูลออฟฟิศ
+        */}
+      <AppHeader
+        center={<span />}
+        actions={
+          viewer ? (
+            <HeaderActions
+              userId={viewer.id}
+              displayName={viewer.displayName}
+              avatarUrl={viewer.avatarUrl}
+              isAdmin={viewer.isAdmin}
+            />
+          ) : undefined
+        }
+      />
 
       {/* ── แถบหัว ───────────────────────────────────────────────── */}
       {/**
