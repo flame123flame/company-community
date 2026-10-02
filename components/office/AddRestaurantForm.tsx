@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { apiFetch } from '@/lib/api/client'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -13,6 +14,18 @@ import type { DistanceBand, PriceRange } from '@/types/database'
 type Similar = { id: string; name: string; signatureDish: string; similarity: number }
 
 /** ฟอร์มเพิ่มร้าน (FR-A01 + FR-A02) */
+/*
+ * ★★★ ssr: false จำเป็นจริง ๆ ไม่ใช่กันไว้ก่อน
+ *
+ *     MapPicker โหลด leaflet ด้วย dynamic import ข้างใน effect อยู่แล้ว
+ *     ★ แต่ 'leaflet/dist/leaflet.css' ถูก import ที่ระดับบนสุดของโมดูล
+ *       ซึ่ง Next ต้องประมวลผลตอน build ★★ การกันทั้งโมดูลออกจาก SSR
+ *       ทำให้ไม่ต้องเดาว่าส่วนไหนปลอดภัย
+ */
+const MapPicker = dynamic(() => import('./MapPicker').then((m) => m.MapPicker), {
+  ssr: false,
+})
+
 export function AddRestaurantForm({ onDone }: { onDone: () => void }) {
   const ot = useOt()
   const [name, setName] = useState('')
@@ -22,6 +35,9 @@ export function AddRestaurantForm({ onDone }: { onDone: () => void }) {
   const [distance, setDistance] = useState<DistanceBand | null>(null)
   const [mapUrl, setMapUrl] = useState('')
   const [note, setNote] = useState('')
+  /* ★ พิกัดไม่บังคับ — เพิ่มร้านตอนหิวไม่ควรต้องเปิดแผนที่ก่อน */
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null)
+  const [mapOpen, setMapOpen] = useState(false)
   const [similar, setSimilar] = useState<Similar[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -78,6 +94,8 @@ export function AddRestaurantForm({ onDone }: { onDone: () => void }) {
           distance,
           mapUrl: mapUrl.trim() || null,
           note: note.trim() || null,
+          lat: coords?.lat ?? null,
+          lng: coords?.lng ?? null,
         },
       })
       onDone()
@@ -164,6 +182,33 @@ export function AddRestaurantForm({ onDone }: { onDone: () => void }) {
           )}
         />
       </Field>
+
+      {/*
+        * ── ตำแหน่งร้าน ─────────────────────────────────────────────
+        * ★★ ยุบไว้ default แผนที่โหลด tile จากอินเทอร์เน็ตเมื่อถูกกางเท่านั้น
+        *    ★ กางทิ้งไว้ตลอดแปลว่าทุกคนที่เพิ่มร้านต้องจ่ายค่าโหลดแผนที่
+        *      ทั้งที่ส่วนใหญ่ไม่ได้ปักหมุด
+        */}
+      <div>
+        <button
+          type="button"
+          onClick={() => setMapOpen((v) => !v)}
+          aria-expanded={mapOpen}
+          className="flex h-11 w-full items-center justify-between rounded-xl bg-surface px-4 text-sm text-ink transition-colors hover:bg-surface-hover"
+        >
+          <span>{ot('food.geo.section')}</span>
+          <span className="text-ink-faint">{coords ? '📍' : mapOpen ? '▲' : '▼'}</span>
+        </button>
+        {mapOpen ? (
+          <div className="mt-3">
+            <MapPicker
+              lat={coords?.lat ?? null}
+              lng={coords?.lng ?? null}
+              onChange={(lat, lng) => setCoords({ lat, lng })}
+            />
+          </div>
+        ) : null}
+      </div>
 
       {error ? (
         <p role="alert" className="text-sm text-danger">

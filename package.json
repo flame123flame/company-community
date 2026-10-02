@@ -31,11 +31,19 @@
     "db:reset-data": "node scripts/reset-data.mjs",
     "test:wallet": "tsx scripts/wallet-test.ts",
     "test:split": "tsx scripts/split-test.ts",
-    "test:promptpay": "tsx scripts/promptpay-test.ts"
+    "test:promptpay": "tsx scripts/promptpay-test.ts",
+    "test:geo": "tsx scripts/geo-test.ts",
+    "test:food": "tsx scripts/food-test.ts",
+    "test:checkers": "tsx scripts/checkers-test.ts",
+    "test:checkers-ui": "tsx scripts/checkers-ui-test.mts",
+    "test:typing": "tsx scripts/typing-test.ts",
+    "test:typing-ui": "tsx scripts/typing-ui-test.mts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.1",
+    "@types/leaflet": "^1.9.22",
+    "leaflet": "^1.9.4",
     "next": "16.3.6",
     "react": "19.2.8",
     "react-dom": "19.2.8",

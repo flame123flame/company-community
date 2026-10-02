@@ -56,13 +56,28 @@ export const GET = withErrorHandling(
 
     const admin = getSupabaseAdminClient()
 
-    const { data: r, error } = await admin
+    /*
+     * ★★ คอลัมน์พิกัดมาจาก 0050 — ลองชุดเต็มก่อน ถ้าล้มถอยไปชุดเดิม
+     *    ★ เหตุผลเดียวกับหน้ารายการ: หน้ารายละเอียดต้องเปิดได้เสมอ
+     *      ต่อให้ migration ยังไม่ถูกรัน
+     */
+    const BASE =
+      'id, name, signature_dish, image_path, cuisine, price_range, distance, map_url, note, added_by, vote_count, maybe_closed, created_at'
+
+    const full = await admin
       .from('restaurants')
-      .select(
-        'id, name, signature_dish, image_path, cuisine, price_range, distance, map_url, note, added_by, vote_count, maybe_closed, created_at',
-      )
+      .select(`${BASE}, lat, lng, travel_meters, travel_minutes, travel_mode, open_hours`)
       .eq('id', id)
       .maybeSingle()
+
+    let r = full.data as unknown as (Record<string, unknown> & { added_by: string | null }) | null
+    let error = full.error
+
+    if (error) {
+      const fallback = await admin.from('restaurants').select(BASE).eq('id', id).maybeSingle()
+      r = fallback.data as unknown as (Record<string, unknown> & { added_by: string | null }) | null
+      error = fallback.error
+    }
 
     if (error) throw fromPostgresError(error)
     if (!r) throw new AppError('ROOM_NOT_FOUND')
@@ -104,6 +119,13 @@ export const GET = withErrorHandling(
         maybeClosed: r.maybe_closed,
         voted: (votes ?? []).length > 0,
         canManage: r.added_by === actor.id || actor.isAdmin,
+        /* ★ ?? null ทุกช่อง — เส้นทางถอยไม่มีคอลัมน์พวกนี้ */
+        lat: (r.lat as number | null) ?? null,
+        lng: (r.lng as number | null) ?? null,
+        travelMeters: (r.travel_meters as number | null) ?? null,
+        travelMinutes: (r.travel_minutes as number | null) ?? null,
+        travelMode: (r.travel_mode as 'walking' | 'driving' | null) ?? null,
+        openHours: (r.open_hours as Record<string, [string, string] | null> | null) ?? null,
       },
       /** จำนวนบิลของร้านนี้ในเดือนนี้ — ทั้งออฟฟิศ */
       visitsThisMonth: (bills ?? []).length,
