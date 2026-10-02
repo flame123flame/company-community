@@ -439,7 +439,7 @@ export function SpinWheel({
             setMutedState(next)
           }}
           aria-label={muted ? ot('wheel.soundOn') : ot('wheel.soundOff')}
-          className="grid size-10 place-items-center rounded-full text-ink-soft transition-colors hover:bg-surface hover:text-ink"
+          className="grid size-11 place-items-center rounded-full text-ink-soft transition-colors hover:bg-surface hover:text-ink"
         >
           <svg
             viewBox="0 0 24 24"

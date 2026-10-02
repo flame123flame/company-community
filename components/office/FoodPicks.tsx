@@ -194,7 +194,7 @@ export function FoodPicks() {
             {ot('food.picks.count', { n: data.items.length })}
           </p>
         </div>
-        <Button variant="primary" onClick={() => setAdding(true)}>
+        <Button variant="primary" className="min-h-11" onClick={() => setAdding(true)}>
           {ot('food.picks.add')}
         </Button>
       </div>
@@ -416,10 +416,16 @@ function Card({
       <div className="flex items-start justify-between gap-2">
         {/* ★ ชื่อร้านเป็นลิงก์เข้าหน้ารายละเอียด — เป็นที่ที่คนคาดว่าจะกดได้อยู่แล้ว */}
         <h2 className="min-w-0 font-medium">
+          {/*
+            * ★★ ชื่อร้านเป็นทางเข้าหลักของหน้ารายละเอียด จึงต้องกดโดนแน่ ๆ
+            *    ★ ตัวหนังสือสูง 19px เอง — ใช้ min-h-11 + inline-flex
+            *      เพื่อขยาย "พื้นที่แตะ" โดยไม่เปลี่ยนขนาดตัวอักษร
+            *      ★★ ต่างจากการเพิ่ม font-size ซึ่งจะทำให้ดีไซน์การ์ดเพี้ยนทั้งหน้า
+            */}
           <Link
             href={`/office/food/picks/${r.id}`}
             dir="auto"
-            className="text-ink transition-colors hover:text-link"
+            className="inline-flex min-h-11 items-center text-ink transition-colors hover:text-link"
           >
             {r.name}
           </Link>

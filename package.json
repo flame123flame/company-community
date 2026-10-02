@@ -32,7 +32,8 @@
     "test:wallet": "tsx scripts/wallet-test.ts",
     "test:split": "tsx scripts/split-test.ts",
     "test:promptpay": "tsx scripts/promptpay-test.ts",
-    "test:geo": "tsx scripts/geo-test.ts"
+    "test:geo": "tsx scripts/geo-test.ts",
+    "test:food": "tsx scripts/food-test.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
