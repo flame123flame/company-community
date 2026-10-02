@@ -288,6 +288,8 @@ export const pt: OfficeDict = {
   "game.checkers.passPlayDetail": "นั่งข้างกัน ส่งเครื่องผลัดกันเดินบนจอเดียว",
   "game.checkers.optionsHint": "บอทระดับ {level} · บังคับกิน",
   "game.checkers.noGames": "ยังไม่มีเกมที่ค้างอยู่ — ท้าใครสักคนเริ่มได้เลย",
+  "nav.fun.g.draw": "ของสุ่ม",
+  "nav.fun.g.play": "เกมและแข่งขัน",
   "food.picks.sortNew": "Adicionados há pouco",
   "food.picks.allCuisines": "Todas as cozinhas",
   "food.picks.allPrices": "Todas as faixas de preço",

@@ -23,6 +23,19 @@ export type NavChild = {
    *   ("สร้างรายการเงิน" กับ "สรุปค่าข้าว") ★ ตากวาดเจอรูปก่อนเสมอ
    */
   icon: string
+  /**
+   * กลุ่มย่อยในหมวด — ไม่ใส่ = ไม่แบ่งกลุ่ม
+   *
+   * ★★★ มีขึ้นเพราะหมวดเกมโตจนแถบแท็บมี 7 อันและยังจะเพิ่มอีก
+   *     ★ แถวชิปที่ยาวเกินจอทำให้ของท้ายแถวไม่มีใครเห็น — มันอยู่หลังเส้น
+   *       ที่ตาไม่ได้มองและมือต้องเลื่อนไปหา
+   *     ★★ แบ่งกลุ่มแล้วแถวที่สองสั้นลงจนเห็นครบในจอเดียว
+   *
+   * ★ เป็น optional โดยตั้งใจ — หมวดที่มีไม่กี่หน้า (ค่าข้าว 2 · กระเป๋าเงิน 4)
+   *   ไม่ได้ประโยชน์จากการแบ่ง ★★ การบังคับให้ทุกหมวดมีกลุ่มคือการเพิ่ม
+   *   ชั้นให้คนต้องกดเพิ่มโดยไม่ได้อะไรกลับมา
+   */
+  group?: OfficeKey
 }
 
 export type NavSection = {
@@ -90,16 +103,16 @@ export const OFFICE_NAV: NavSection[] = [
     labelKey: 'nav.fun',
     icon: ICONS.fun,
     children: [
-      { href: '/office/fun/name', labelKey: 'nav.fun.name' , icon: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm0 5v4l3 2M12 3v3' },
-      { href: '/office/fun/team', labelKey: 'nav.fun.team' , icon: 'M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm8 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM2 20a7 7 0 0 1 14 0M16 20a6 6 0 0 1 6-6' },
-      { href: '/office/fun/lottery', labelKey: 'nav.fun.lottery' , icon: 'M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2 2 2 0 0 0 0 4 2 2 0 0 1-2 2H6a2 2 0 0 1-2-2 2 2 0 0 0 0-4zM9 8v8' },
-      { href: '/office/fun/cup', labelKey: 'fun.cup.title' , icon: 'M8 4h8v5a4 4 0 0 1-8 0zM8 6H5v2a3 3 0 0 0 3 3M16 6h3v2a3 3 0 0 1-3 3M10 17h4l1 3H9z' },
+      { href: '/office/fun/name', labelKey: 'nav.fun.name' , group: 'nav.fun.g.draw', icon: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm0 5v4l3 2M12 3v3' },
+      { href: '/office/fun/team', labelKey: 'nav.fun.team' , group: 'nav.fun.g.draw', icon: 'M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm8 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM2 20a7 7 0 0 1 14 0M16 20a6 6 0 0 1 6-6' },
+      { href: '/office/fun/lottery', labelKey: 'nav.fun.lottery' , group: 'nav.fun.g.draw', icon: 'M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2 2 2 0 0 0 0 4 2 2 0 0 1-2 2H6a2 2 0 0 1-2-2 2 2 0 0 0 0-4zM9 8v8' },
+      { href: '/office/fun/cup', labelKey: 'fun.cup.title' , group: 'nav.fun.g.play', icon: 'M8 4h8v5a4 4 0 0 1-8 0zM8 6H5v2a3 3 0 0 0 3 3M16 6h3v2a3 3 0 0 1-3 3M10 17h4l1 3H9z' },
       /* ★ หมากฮอสอยู่ก่อนห้องสุ่ม — เป็นเกมที่เล่นคนเดียวได้ทันที
            ★★ ของที่ต้องรอคนอื่นควรอยู่ท้าย เพราะคนที่เปิดมาคนเดียว
               จะได้ไม่ต้องเลื่อนผ่านของที่กดแล้วรออย่างเดียว */
-      { href: '/office/fun/checkers', labelKey: 'game.checkers.title' , icon: 'M4 4h16v16H4zM4 10h16M4 16h16M10 4v16M16 4v16' },
-      { href: '/office/fun/typing', labelKey: 'game.typing.title' , icon: 'M3 7h18v10H3zM7 11h.01M10 11h.01M13 11h.01M16 11h.01M8 14h8' },
-      { href: '/office/fun/room', labelKey: 'room.title' , icon: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM8 9h.01M16 9h.01M8 15c1.5 1.3 6.5 1.3 8 0' },
+      { href: '/office/fun/checkers', labelKey: 'game.checkers.title' , group: 'nav.fun.g.play', icon: 'M4 4h16v16H4zM4 10h16M4 16h16M10 4v16M16 4v16' },
+      { href: '/office/fun/typing', labelKey: 'game.typing.title' , group: 'nav.fun.g.play', icon: 'M3 7h18v10H3zM7 11h.01M10 11h.01M13 11h.01M16 11h.01M8 14h8' },
+      { href: '/office/fun/room', labelKey: 'room.title' , group: 'nav.fun.g.draw', icon: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM8 9h.01M16 9h.01M8 15c1.5 1.3 6.5 1.3 8 0' },
     ],
   },
   {
@@ -255,3 +268,20 @@ export function siblingsOf(pathname: string, isAdmin: boolean): NavChild[] {
   return section?.children ?? []
 }
 
+
+
+/**
+ * กลุ่มย่อยของหมวดนี้ตามลำดับที่ประกาศ — ไม่มีกลุ่มเลยคืนรายการว่าง
+ *
+ * ★ คืนตามลำดับที่เจอครั้งแรก ไม่เรียงใหม่
+ *   ★★ ลำดับในไฟล์คือการตัดสินใจว่าอะไรควรอยู่ก่อน การเรียงตามตัวอักษร
+ *      จะลบการตัดสินใจนั้นทิ้งโดยไม่มีใครสั่ง
+ */
+export function groupsOf(children: NavChild[]): OfficeKey[] {
+  const out: OfficeKey[] = []
+  for (const c of children) {
+    if (c.group && !out.includes(c.group)) out.push(c.group)
+  }
+  /* ★ มีกลุ่มเดียวเท่ากับไม่มีกลุ่ม — ไม่ต้องขึ้นแถวที่สองให้เปลืองที่ */
+  return out.length > 1 ? out : []
+}

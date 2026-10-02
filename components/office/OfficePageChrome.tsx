@@ -1,10 +1,13 @@
 'use client'
 
+import { useState } from 'react'
+
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/cn'
 import { useOt } from '@/lib/i18n/office'
-import { pageMetaOf, siblingsOf, activeHref, isWidePage } from '@/lib/office/nav'
+import type { OfficeKey } from '@/lib/i18n/office-format'
+import { pageMetaOf, siblingsOf, activeHref, isWidePage, groupsOf } from '@/lib/office/nav'
 
 /**
  * หัวหน้าของทุกหน้าในระบบออฟฟิศ
@@ -26,6 +29,26 @@ import { pageMetaOf, siblingsOf, activeHref, isWidePage } from '@/lib/office/nav
 export function OfficePageChrome({ isAdmin }: { isAdmin: boolean }) {
   const ot = useOt()
   const pathname = usePathname()
+
+  /*
+   * ★★★ state ต้องอยู่ก่อน early return ข้างล่าง
+   *     ★ React ห้ามเรียก hook แบบมีเงื่อนไข — วางหลัง return null เมื่อไหร่
+   *       หน้าที่ไม่มี meta จะเรียก hook น้อยกว่าหน้าที่มี แล้วทั้งแอปพัง
+   *       ตอนเปลี่ยนหน้า ★★ ไม่ใช่ตอนที่เขียน ซึ่งทำให้หาสาเหตุยาก
+   */
+  const [pickedGroup, setPickedGroup] = useState<OfficeKey | null>(null)
+  const [lastPath, setLastPath] = useState(pathname)
+
+  /*
+   * ★ เปลี่ยนหน้า → ลืมกลุ่มที่เลือกค้างไว้ กลับไปใช้กลุ่มของหน้าปัจจุบัน
+   *   ★★ ปรับตอน render ไม่ใช่ใน useEffect — ถ้าใช้ effect จะมีหนึ่งเฟรม
+   *      ที่แถวล่างยังโชว์กลุ่มเก่าทั้งที่หน้าเปลี่ยนไปแล้ว
+   */
+  if (lastPath !== pathname) {
+    setLastPath(pathname)
+    setPickedGroup(null)
+  }
+
   const meta = pageMetaOf(pathname)
 
   /* ★ หน้าแรกของโมดูลมีหัวของตัวเอง (พอร์ทัล) — ไม่ต้องซ้อนอีกชั้น */
@@ -36,6 +59,13 @@ export function OfficePageChrome({ isAdmin }: { isAdmin: boolean }) {
     pathname,
     siblings.map((s) => s.href),
   )
+
+  const groups = groupsOf(siblings)
+  /* ★ กลุ่มของหน้าที่เปิดอยู่ — ใช้เป็นค่าเริ่มต้นเมื่อผู้ใช้ยังไม่ได้เลือกเอง */
+  const activeGroup = siblings.find((c) => c.href === active)?.group ?? groups[0] ?? null
+  const shownGroup = pickedGroup ?? activeGroup
+  const shownSiblings =
+    groups.length > 0 ? siblings.filter((c) => c.group === shownGroup) : siblings
 
   return (
     <div className="relative left-1/2 isolate w-screen -translate-x-1/2">
@@ -74,7 +104,46 @@ export function OfficePageChrome({ isAdmin }: { isAdmin: boolean }) {
           {ot(meta.descKey)}
         </p>
 
-        {siblings.length > 1 ? (
+        {/*
+          * ── กลุ่มย่อยของหมวด ─────────────────────────────────────
+          *
+          * ★★★ มีเฉพาะหมวดที่ประกาศกลุ่มไว้ (ตอนนี้คือหมวดเกม)
+          *     ★ หมวดเกมโตจนแถบแท็บมี 7 อัน — ของท้ายแถวอยู่หลังเส้นที่ตา
+          *       ไม่ได้มองและมือต้องเลื่อนไปหา
+          *       ★★ แบ่งกลุ่มแล้วแถวที่สองสั้นลงจนเห็นครบในจอเดียว
+          *
+          * ★★ เลือกกลุ่มแล้ว "ไม่เปลี่ยนหน้า" — แค่เปลี่ยนว่าแถวล่างโชว์อะไร
+          *    ★ การกดกลุ่มแล้วเด้งไปหน้าแรกของกลุ่มทันที จะทำให้คนที่แค่
+          *      อยากสำรวจว่ามีอะไรบ้าง หลุดจากหน้าที่กำลังทำงานอยู่
+          */}
+        {groups.length > 0 ? (
+          <nav
+            aria-label={ot(meta.titleKey)}
+            className="hero-in scrollbar-none -mx-4 mt-6 flex gap-1.5 overflow-x-auto px-4"
+          >
+            {groups.map((g) => {
+              const on = g === shownGroup
+              return (
+                <button
+                  key={g}
+                  type="button"
+                  onClick={() => setPickedGroup(g)}
+                  aria-pressed={on}
+                  className={cn(
+                    'h-11 shrink-0 rounded-full px-4 text-sm transition-colors',
+                    on
+                      ? 'bg-ink font-medium text-page'
+                      : 'text-ink-soft hover:bg-surface hover:text-ink',
+                  )}
+                >
+                  {ot(g)}
+                </button>
+              )
+            })}
+          </nav>
+        ) : null}
+
+        {shownSiblings.length > 1 ? (
           /*
            * ★★ แท็บเลื่อนแนวนอนได้บนจอแคบ ไม่ตัดบรรทัด
            *
@@ -86,9 +155,12 @@ export function OfficePageChrome({ isAdmin }: { isAdmin: boolean }) {
            */
           <nav
             aria-label={ot(meta.titleKey)}
-            className="hero-in -mx-4 mt-6 flex gap-2 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className={cn(
+              'hero-in scrollbar-none -mx-4 flex gap-2 overflow-x-auto px-4 pb-2',
+              groups.length > 0 ? 'mt-3' : 'mt-6',
+            )}
           >
-            {siblings.map((child) => {
+            {shownSiblings.map((child) => {
               const on = active === child.href
               return (
                 <Link
