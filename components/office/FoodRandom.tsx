@@ -12,7 +12,8 @@ import {
   distanceLabel,
   emptyFilters,
   filterRestaurants,
-  weightByRecency,
+  pickWeighted,
+  slotsForWheel,
   type Filters,
   type Restaurant,
   type RestaurantList,
@@ -62,16 +63,36 @@ export function FoodRandom() {
   )
 
   /*
+   * ═══════════════════════════════════════════════════════════════
+   * สุ่มผู้ชนะก่อน แล้วค่อยเลือกช่องที่จะแสดง
+   * ═══════════════════════════════════════════════════════════════
+   *
+   * ★★★ ข้อกำหนด: "1 ร้าน = 1 ช่อง ขนาดเท่ากันทุกช่อง ห้ามใส่ชื่อร้านซ้ำ"
+   *     และ "สุ่มผลลัพธ์แบบ weighted random ก่อน แล้วหมุนวงล้อไปหยุด
+   *     ที่ช่องของร้านนั้น"
+   *
    * ★ ถ่วงน้ำหนักหลังกรอง ไม่ใช่ก่อน — ตัวกรองตัดสินว่า "ร้านไหนเข้าข่าย"
    *   ส่วนการถ่วงตัดสินว่า "ร้านที่เข้าข่ายแล้วมีโอกาสเท่าไหร่"
-   *   สลับลำดับแล้วร้านที่ถูกกรองออกจะกลับเข้ามาผ่านการทำซ้ำ
+   *
+   * ★★ ผูกกับ spinToken ไม่ใช่กับ pool เฉย ๆ
+   *    ★ ถ้าคำนวณผู้ชนะใหม่ทุกครั้งที่ pool เปลี่ยนตัวตน (ซึ่งเกิดทุก render
+   *      ที่ data เปลี่ยน) ผู้ชนะจะเปลี่ยนกลางคันระหว่างวงล้อกำลังหมุน
+   *      ★★ แล้ววงล้อจะหยุดที่ช่องหนึ่งแต่ประกาศผลอีกช่องหนึ่ง
    */
-  const wheelItems: WheelSlot[] = useMemo(() => {
-    const weighted = avoidRecent ? weightByRecency(pool, recent.ids) : pool
-    /* ★ id ต้องไม่ซ้ำใน RandomWheel — ต่อ index ท้ายช่องที่ซ้ำ
-       ตอนคืนผลจึงต้องตัดส่วนนั้นออกก่อนหาร้านจริง */
-    return weighted.map((r, i) => ({ id: `${r.id}#${i}`, label: r.name }))
-  }, [pool, avoidRecent, recent.ids])
+  const [spinToken, setSpinToken] = useState(0)
+
+  const plan = useMemo(() => {
+    const champion = pickWeighted(pool, avoidRecent ? recent.ids : new Set<string>())
+    if (!champion) return { champion: null, slots: [] as Restaurant[] }
+    return { champion, slots: slotsForWheel(pool, champion) }
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [pool, avoidRecent, recent.ids, spinToken])
+
+  /** ★ หนึ่งร้านหนึ่งช่อง — ไม่มี suffix ให้ตัดออกตอนอ่านผลอีกต่อไป */
+  const wheelItems: WheelSlot[] = useMemo(
+    () => plan.slots.map((r) => ({ id: r.id, label: r.name, imageUrl: r.coverUrl })),
+    [plan.slots],
+  )
 
   async function logVisit(id: string) {
     setVisitLogged(true)
@@ -167,10 +188,20 @@ export function FoodRandom() {
           <SpinWheel
             slots={wheelItems}
             spinLabel={ot('food.random.spin')}
+            forcedWinnerId={plan.champion?.id ?? null}
             onResult={(item) => {
-              const realId = item.id.split('#')[0]
-              setWinner(pool.find((r) => r.id === realId) ?? null)
+              /* ★ id ของช่อง = id ร้านตรง ๆ แล้ว ไม่มี suffix ให้ตัดอีก */
+              setWinner(pool.find((r) => r.id === item.id) ?? null)
               setVisitLogged(false)
+              /*
+               * ★★ จับฉลากใบใหม่ไว้ "หลัง" รอบนี้จบ ไม่ใช่ตอนเริ่มรอบถัดไป
+               *
+               *    ★ วงล้ออ่าน forcedWinnerId ณ วินาทีที่กดหมุน
+               *      ★★ ถ้าไปสุ่มใหม่ตอนกดหมุน ค่าที่วงล้ออ่านได้จะเป็นของ
+               *         รอบก่อน เพราะ state ของ React ยังไม่ทันอัปเดต
+               *    ★ สุ่มไว้ล่วงหน้าแบบนี้ ผู้ชนะพร้อมอยู่แล้วเสมอตอนกด
+               */
+              setSpinToken((t) => t + 1)
             }}
           />
         )}
@@ -241,6 +272,8 @@ export function FoodRandom() {
               onClick={() => {
                 toggleExcluded(winner.id)
                 setWinner(null)
+                /* ★ ตัดร้านออกแล้วต้องจับฉลากใหม่ — ใบเดิมอาจเป็นร้านที่เพิ่งตัดทิ้ง */
+                setSpinToken((t) => t + 1)
               }}
             >
               {ot('food.random.exclude')}

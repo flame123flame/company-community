@@ -95,11 +95,24 @@ export function SpinWheel({
   slots,
   spinLabel,
   onResult,
+  forcedWinnerId,
   preview = false,
 }: {
   slots: WheelSlot[]
   spinLabel: string
   onResult?: (slot: WheelSlot) => void
+  /**
+   * ผู้ชนะที่ถูกตัดสินไว้ก่อนแล้ว — วงล้อแค่พาไปหยุดที่ช่องนั้น
+   *
+   * ★★★ มีไว้เพราะหน้าสุ่มอาหารต้องถ่วงน้ำหนักตามโหวตและร้านที่เพิ่งไป
+   *     ซึ่งทำบนวงล้อไม่ได้ถ้าทุกช่องขนาดเท่ากัน (ข้อกำหนดบังคับให้เท่ากัน)
+   *     ★ จึงสุ่มด้วยน้ำหนักในโค้ดก่อน แล้วบอกวงล้อว่าให้หยุดที่ไหน
+   *       ★★ ผลที่ประกาศกับช่องที่เข็มชี้จึงเป็นอันเดียวกันเสมอ
+   *          ไม่ใช่สุ่มสองครั้งแล้วหวังว่าจะตรงกัน
+   *
+   * ★ ไม่พบ id นี้ในช่อง = ถอยไปสุ่มเองตามปกติ ไม่ใช่ไม่หมุน
+   */
+  forcedWinnerId?: string | null
   /**
    * โหมดตัวอย่าง — วาดวงล้อจาง ๆ กดไม่ได้
    *
@@ -147,6 +160,12 @@ export function SpinWheel({
      *     ★ ไม่ใช่ปล่อยให้หมุนแล้วดูว่าหยุดตรงไหน ซึ่งเปลี่ยนผลได้ตามเฟรมที่หลุด
      */
     const plan: DrawPlan = planDraw(slots.length)
+
+    /* ★ ผู้เรียกกำหนดผู้ชนะมาแล้ว → ใช้ดัชนีของช่องนั้นแทนที่สุ่มได้ */
+    if (forcedWinnerId) {
+      const forced = slots.findIndex((x) => x.id === forcedWinnerId)
+      if (forced >= 0) plan.winner = forced
+    }
     const seg = 360 / slots.length
 
     /* มุมที่ทำให้ช่องผู้ชนะมาอยู่ใต้เข็ม (เข็มอยู่บนสุด = -90°) */
@@ -219,7 +238,7 @@ export function SpinWheel({
     }
 
     frameRef.current = requestAnimationFrame(tick)
-  }, [angle, onResult, phase, preview, slots])
+  }, [angle, onResult, phase, preview, slots, forcedWinnerId])
 
   if (slots.length < 2) return null
 

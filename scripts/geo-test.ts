@@ -16,6 +16,7 @@ import {
   searchUrl,
   type OpenHours,
 } from '../lib/office/geo'
+import { pickWeighted, slotsForWheel, type Restaurant } from '../lib/office/food'
 
 let pass = 0
 let fail = 0
@@ -133,6 +134,82 @@ check(isOpenNow(late, mon(10)) === false, 'สิบโมงวันจัน�
 
 /* ★ เวลารูปแบบผิดต้องไม่ทำให้พัง */
 check(isOpenNow({ mon: ['ไม่ใช่เวลา', '18:00'] }, mon(12)) === false, 'เวลารูปแบบผิด → ไม่พัง')
+
+
+/* ═══════════════════════════════════════════════════════════════════
+ * วงล้อสุ่มอาหาร
+ * ═══════════════════════════════════════════════════════════════════ */
+head('สุ่มร้านแบบถ่วงน้ำหนัก')
+
+const shop = (id: string): Restaurant =>
+  ({
+    id,
+    name: id,
+    signatureDish: '',
+    imagePath: null,
+    cuisine: null,
+    priceRange: null,
+    distance: null,
+    mapUrl: null,
+    note: null,
+    addedBy: null,
+    addedByName: null,
+    voteCount: 0,
+    maybeClosed: false,
+    voted: false,
+    canManage: false,
+    createdAt: '2026-01-01T00:00:00Z',
+    rating: null,
+    ratingCount: 0,
+    coverUrl: null,
+    lat: null,
+    lng: null,
+    travelMeters: null,
+    travelMinutes: null,
+    travelMode: null,
+    openHours: null,
+  }) as Restaurant
+
+check(pickWeighted([], new Set()) === null, 'ไม่มีร้าน → null')
+
+/* น้ำหนัก: a=3 (ไม่เพิ่งไป) · b=1 (เพิ่งไป) · รวม 4 */
+const two = [shop('a'), shop('b')]
+const recentB = new Set(['b'])
+check(pickWeighted(two, recentB, () => 0)?.id === 'a', 'rnd=0 → ตัวแรก')
+check(pickWeighted(two, recentB, () => 0.74)?.id === 'a', 'rnd=0.74 (<3/4) → a')
+check(pickWeighted(two, recentB, () => 0.76)?.id === 'b', 'rnd=0.76 (>3/4) → b')
+check(pickWeighted(two, recentB, () => 0.999)?.id === 'b', 'rnd เกือบ 1 → ตัวสุดท้าย')
+
+/* ★★ ไม่มีร้านไหนเพิ่งไป = น้ำหนักเท่ากันหมด */
+check(pickWeighted(two, new Set(), () => 0.49)?.id === 'a', 'น้ำหนักเท่ากัน ครึ่งแรก → a')
+check(pickWeighted(two, new Set(), () => 0.51)?.id === 'b', 'น้ำหนักเท่ากัน ครึ่งหลัง → b')
+
+/* ★ "ลดโอกาส" ไม่ใช่ "ตัดออก" — ร้านที่เพิ่งไปต้องยังถูกเลือกได้ */
+const all = [shop('x')]
+check(pickWeighted(all, new Set(['x']), () => 0.5)?.id === 'x', 'ร้านที่เพิ่งไปยังถูกเลือกได้')
+
+head('เลือกช่องบนวงล้อ')
+
+const many = Array.from({ length: 20 }, (_, i) => shop(`s${i}`))
+
+check(slotsForWheel(many.slice(0, 8), many[3]!).length === 8, 'ร้านน้อยกว่า 12 → แสดงหมด')
+
+const slots = slotsForWheel(many, many[17]!)
+check(slots.length === 12, 'ร้าน 20 แห่ง → เหลือ 12 ช่อง', `${slots.length}`)
+
+/*
+ * ★★★ ข้อที่สำคัญที่สุด: ผู้ชนะต้องอยู่บนวงล้อเสมอ
+ *     ★ ถ้าไม่อยู่ วงล้อจะไม่มีช่องให้ไปหยุด แล้วต้องหยุดที่ช่องอื่น
+ *       แต่ประกาศผลอีกอย่าง — โกหกที่ผู้ใช้จับได้ทันที
+ */
+check(slots.some((r) => r.id === 's17'), 'ผู้ชนะอยู่บนวงล้อเสมอ')
+check(new Set(slots.map((r) => r.id)).size === slots.length, 'ไม่มีร้านซ้ำช่อง')
+
+/* ★ ผู้ชนะต้องไม่ถูกดันไปช่องแรกทุกครั้ง — คนจับได้ในสามรอบ */
+const firstPositions = new Set(
+  [2, 5, 9, 14, 19].map((i) => slotsForWheel(many, many[i]!).findIndex((r) => r.id === `s${i}`)),
+)
+check(firstPositions.size > 1, 'ตำแหน่งผู้ชนะไม่คงที่', `ตำแหน่งที่พบ: ${[...firstPositions].join(',')}`)
 
 console.log(`\n\x1b[1mผ่าน ${pass} · ล้ม ${fail}\x1b[0m`)
 process.exit(fail ? 1 : 0)
