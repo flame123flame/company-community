@@ -130,9 +130,9 @@ export function OfficePageChrome({ isAdmin }: { isAdmin: boolean }) {
                   onClick={() => setPickedGroup(g)}
                   aria-pressed={on}
                   className={cn(
-                    'h-11 shrink-0 rounded-full px-4 text-sm transition-colors',
+                    'relative h-11 shrink-0 rounded-full px-4 text-sm transition-colors',
                     on
-                      ? 'bg-ink font-medium text-page'
+                      ? 'group-chip-on bg-ink font-medium text-page'
                       : 'text-ink-soft hover:bg-surface hover:text-ink',
                   )}
                 >
@@ -160,19 +160,23 @@ export function OfficePageChrome({ isAdmin }: { isAdmin: boolean }) {
               groups.length > 0 ? 'mt-3' : 'mt-6',
             )}
           >
-            {shownSiblings.map((child) => {
+            {shownSiblings.map((child, i) => {
               const on = active === child.href
               return (
                 <Link
                   key={child.href}
                   href={child.href}
                   aria-current={on ? 'page' : undefined}
+                  /* ★ --i คือลำดับในแถว ใช้หน่วงแอนิเมชันให้คลี่ทีละอัน */
+                  style={{ '--i': i } as React.CSSProperties}
                   className={cn(
+                    'tab-chip overflow-hidden',
+                    on && 'tab-chip-on',
                     'group relative inline-flex h-11 shrink-0 items-center gap-2 rounded-full ps-3 pe-4',
                     'text-sm transition-all duration-300',
                     on
-                      ? /* ★ แท็บที่เปิดอยู่: พื้นสีเน้น + เงาเรือง — เด่นแบบที่ไม่ต้องหา */
-                        'bg-accent font-medium text-accent-ink shadow-[0_10px_28px_-12px] shadow-accent/70'
+                      ? /* ★ แท็บที่เปิดอยู่: พื้นสีเน้น + เงาเรืองที่หายใจช้า ๆ */
+                        'bg-accent font-medium text-accent-ink [--tab-glow:color-mix(in_oklab,var(--color-accent)_70%,transparent)]'
                       : /* ★ แท็บอื่น: กระจกจาง ๆ ยกขึ้นเล็กน้อยตอนชี้ */
                         'border border-line bg-page/50 text-ink-soft backdrop-blur-md hover:-translate-y-0.5 hover:border-line-strong hover:bg-surface hover:text-ink',
                   )}
@@ -186,12 +190,12 @@ export function OfficePageChrome({ isAdmin }: { isAdmin: boolean }) {
                   >
                     <svg
                       viewBox="0 0 24 24"
+                      className="tab-icon size-4"
                       fill="none"
                       stroke="currentColor"
                       strokeWidth="1.9"
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      className="size-4"
                     >
                       <path d={child.icon} />
                     </svg>

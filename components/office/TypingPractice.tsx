@@ -202,8 +202,12 @@ export function TypingPractice() {
     }
   }
 
+  const total = chars.length || 1
+  const pct = Math.min(100, (progress.correct / total) * 100)
+
   return (
-    <div className="mx-auto max-w-2xl py-2">
+    <div className="grid gap-6 py-2 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div>
       {/* ── ตัวเลือก ─────────────────────────────────────────────── */}
       <div className="flex flex-wrap gap-1.5">
         {(['th', 'en'] as TextLang[]).map((l) => (
@@ -219,15 +223,20 @@ export function TypingPractice() {
         ))}
       </div>
 
-      {/* ── ตัวเลขสด ─────────────────────────────────────────────── */}
-      <div className="mt-4 flex gap-4">
-        <Stat label={ot('game.typing.wpm')} value={String(stats.wpm)} />
-        <Stat label={ot('game.typing.accuracy')} value={`${stats.accuracy}%`} />
-        <Stat
-          label={ot('game.typing.time')}
-          value={`${(elapsed / 1000).toFixed(1)}s`}
-        />
-        {best !== null ? <Stat label={ot('game.typing.best')} value={String(best)} muted /> : null}
+      {/*
+        * ── ตัวเลขสด ─────────────────────────────────────────────
+        * ★★★ วงแหวนความคืบหน้าอยู่คู่กับ WPM ไม่ใช่แถบยาวข้างบน
+        *     ★ ตอนพิมพ์ ตาจับอยู่ที่ข้อความ — ของที่อยู่ไกลออกไปไม่มีใครเห็น
+        *       ★★ วางไว้ติดตัวเลขที่คนชำเลืองดูอยู่แล้ว จึงได้ถูกเห็นจริง
+        */}
+      <div className="mt-4 flex items-center gap-5 rounded-2xl border border-line bg-elevated/40 p-4">
+        <ProgressRing pct={pct} />
+        <div className="flex flex-1 flex-wrap gap-x-7 gap-y-2">
+          <Stat label={ot('game.typing.wpm')} value={String(stats.wpm)} big />
+          <Stat label={ot('game.typing.accuracy')} value={`${stats.accuracy}%`} />
+          <Stat label={ot('game.typing.time')} value={`${(elapsed / 1000).toFixed(1)}s`} />
+          {best !== null ? <Stat label={ot('game.typing.best')} value={String(best)} muted /> : null}
+        </div>
       </div>
 
       {/* ── ข้อความที่ต้องพิมพ์ ─────────────────────────────────── */}
@@ -255,11 +264,14 @@ export function TypingPractice() {
                 key={i}
                 ref={state === 'cursor' || state === 'bad' ? scrollIntoViewRef : undefined}
                 className={cn(
-                  state === 'ok' && 'text-ink',
+                  'inline-block',
+                  state === 'ok' && 'type-ok text-ink',
                   /* ★ ตัวที่ผิดไฮไลต์พื้นแดง ไม่ใช่แค่เปลี่ยนสีตัวอักษร
                        ★★ ตัวอักษรไทยบางตัวบางมาก สีอย่างเดียวมองไม่ทัน */
-                  state === 'bad' && 'rounded bg-danger/30 text-danger',
-                  state === 'cursor' && 'rounded bg-accent/25 text-ink',
+                  state === 'bad' && 'type-bad rounded bg-danger/30 text-danger',
+                  /* ★ เคอร์เซอร์เป็นเส้นซ้ายของตัวถัดไป ไม่ใช่กล่องคลุมทั้งตัว
+                       ★★ กล่องคลุมทำให้ตัวอักษรอ่านยากตรงจุดที่ต้องอ่านที่สุด */
+                  state === 'cursor' && 'type-caret text-ink',
                   state === 'rest' && 'text-ink-faint',
                 )}
               >
@@ -360,12 +372,9 @@ export function TypingPractice() {
         </p>
       ) : null}
 
-      <MyTypingStats lang={prefs.lang} refreshKey={finishedAt ?? 0} />
-
-      <TypingBoard lang={prefs.lang} />
 
       {done ? (
-        <div className="mt-4 rounded-2xl border border-line bg-elevated/60 p-5 text-center">
+        <div className="result-pop mt-4 rounded-2xl border border-line bg-elevated/60 p-5 text-center">
           {isNewBest ? (
             <p className="text-sm font-medium text-accent">
               <Untranslated>{ot('game.typing.newRecord')}</Untranslated>
@@ -377,7 +386,73 @@ export function TypingPractice() {
           </p>
         </div>
       ) : null}
+      </div>
+
+      {/* ══ ขวา · สถิติและอันดับ ══════════════════════════════════ */}
+      <aside className="flex flex-col gap-4 lg:sticky lg:top-4 lg:self-start">
+        <MyTypingStats lang={prefs.lang} refreshKey={finishedAt ?? 0} />
+        <TypingBoard lang={prefs.lang} />
+        {/*
+          * ★★ การ์ดอธิบายวิธีคิดคะแนน — อยู่ท้ายสุดและมีเสมอ
+          *    ★ คอลัมน์ขวาว่างเปล่าเมื่อยังไม่มีสถิติและยังไม่มีใครขึ้นกระดาน
+          *      ★★ ที่ว่างกว้าง 320px ที่ไม่มีอะไรเลย ทำให้หน้าดูเหมือนโหลดไม่เสร็จ
+          *    ★ และมันตอบคำถามที่คนถามจริงตอนเห็นเลขครั้งแรก:
+          *      "ความแม่นยำนับยังไง ทำไมลบแล้วไม่กลับเป็น 100"
+          */}
+        <ScoringNote />
+      </aside>
     </div>
+  )
+}
+
+/** วิธีคิดคะแนน — ตอบคำถามที่คนถามจริงตอนเห็นตัวเลขครั้งแรก */
+function ScoringNote() {
+  const ot = useOt()
+  return (
+    <div className="rounded-2xl border border-line bg-elevated/30 p-4">
+      <p className="text-sm font-semibold text-ink">
+        <Untranslated>{ot('game.typing.howTitle')}</Untranslated>
+      </p>
+      <ul className="mt-2 flex flex-col gap-1.5 text-xs leading-relaxed text-ink-soft">
+        <li>
+          <Untranslated>{ot('game.typing.howWpm')}</Untranslated>
+        </li>
+        <li>
+          <Untranslated>{ot('game.typing.howAcc')}</Untranslated>
+        </li>
+        <li>
+          <Untranslated>{ot('game.typing.howFix')}</Untranslated>
+        </li>
+      </ul>
+    </div>
+  )
+}
+
+/**
+ * วงแหวนความคืบหน้า
+ *
+ * ★ วาดด้วย SVG วงเดียว ใช้ stroke-dasharray — ไม่ต้องมี element ต่อเปอร์เซ็นต์
+ *   ★★ และเปลี่ยนค่าแล้วมันไหลเองด้วย transition ไม่ต้องคำนวณเฟรม
+ */
+function ProgressRing({ pct }: { pct: number }) {
+  const r = 26
+  const c = 2 * Math.PI * r
+  return (
+    <svg viewBox="0 0 64 64" className="size-16 shrink-0 -rotate-90" aria-hidden="true">
+      <circle cx="32" cy="32" r={r} fill="none" stroke="currentColor" strokeWidth="5" className="text-surface" />
+      <circle
+        cx="32"
+        cy="32"
+        r={r}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="5"
+        strokeLinecap="round"
+        strokeDasharray={c}
+        strokeDashoffset={c * (1 - pct / 100)}
+        className="ring-track text-accent"
+      />
+    </svg>
   )
 }
 
@@ -391,13 +466,42 @@ function scrollIntoViewRef(el: HTMLSpanElement | null) {
   el?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
 }
 
-function Stat({ label, value, muted }: { label: string; value: string; muted?: boolean }) {
+function Stat({
+  label,
+  value,
+  muted,
+  big,
+}: {
+  label: string
+  value: string
+  muted?: boolean
+  big?: boolean
+}) {
   return (
     <div>
       <p className="text-[11px] uppercase tracking-wide text-ink-faint">
         <Untranslated>{label}</Untranslated>
       </p>
-      <p className={cn('text-xl font-bold tabular-nums', muted ? 'text-ink-soft' : 'text-ink')}>{value}</p>
+      {/*
+        * ★★★ ตัวเลขสดต้อง "ไม่" มีแอนิเมชันเข้าทุกครั้งที่ค่าเปลี่ยน
+        *
+        *     ★ รอบแรกผมใส่ key={value} + แอนิเมชันที่เริ่มจาก opacity 0
+        *       เพื่อให้มันเด้งทุกครั้งที่เลขขยับ
+        *       ★★ แต่ "เวลา" ขยับทุก 200ms ส่วนแอนิเมชันยาว 260ms
+        *          → มันถูกรีสตาร์ตก่อนจะจบทุกครั้ง แล้วตัวเลขค้างอยู่ที่
+        *          opacity ต่ำตลอดกาล ★★★ บนจอจริงคือ "เลขหายไปเฉย ๆ"
+        *     ★ tabular-nums พอแล้วสำหรับเลขที่ขยับถี่ — มันกันไม่ให้
+        *       ความกว้างกระตุกเวลาเลขเปลี่ยนหลัก ซึ่งเป็นสิ่งเดียวที่รบกวนจริง
+        */}
+      <p
+        className={cn(
+          'font-bold tabular-nums transition-colors',
+          big ? 'text-3xl' : 'text-xl',
+          muted ? 'text-ink-soft' : 'text-ink',
+        )}
+      >
+        {value}
+      </p>
     </div>
   )
 }

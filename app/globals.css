@@ -3879,3 +3879,212 @@ html[data-theme='light'] .auth-card {
   border-radius: 9999px;
   background: #22c55e;
 }
+
+/* ══ แท็บหมวด: แอนิเมชันเต็มที่ ═══════════════════════════════════════════
+ *
+ * ★★★ แท็บคือของที่ถูกมองทุกครั้งที่เปลี่ยนหน้า — มันคุ้มที่จะลงแรง
+ *     ★ แต่ "ล้น" ต้องไม่แปลว่า "รบกวน" ★★ ทุกอันข้างล่างเล่นแล้วจบ
+ *       หรือวนช้ามากจนไม่ดึงสายตาไปจากเนื้อหา
+ */
+
+/* ── เข้าทีละอันตอนเปลี่ยนหน้า ──────────────────────────────────────────
+ * ★ หน่วงไล่กันทีละ 45ms ทำให้แถบ "คลี่ออก" แทนที่จะโผล่พร้อมกันทั้งแถว
+ *   ★★ ตาจึงกวาดตามลำดับซ้ายไปขวาเองโดยไม่ต้องมีใครบอก
+ */
+@keyframes tab-pop {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+html:not([data-reveal='off']) .tab-chip {
+  animation: tab-pop 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+
+/* ── แท็บที่เปิดอยู่: เรืองช้า ๆ ────────────────────────────────────────
+ * ★★ 4 วินาทีต่อรอบ และเปลี่ยนแค่ความเข้มของเงา
+ *    ★ ช้าพอที่จะรู้สึกว่า "มีชีวิต" แต่ไม่เร็วจนกลายเป็นไฟกะพริบ
+ */
+@keyframes tab-glow {
+  0%,
+  100% {
+    box-shadow: 0 10px 28px -12px var(--tab-glow, rgb(0 0 0 / 0.5));
+  }
+  50% {
+    box-shadow: 0 14px 34px -10px var(--tab-glow, rgb(0 0 0 / 0.5));
+  }
+}
+
+html:not([data-reveal='off']) .tab-chip-on {
+  animation:
+    tab-pop 520ms cubic-bezier(0.16, 1, 0.3, 1) both,
+    tab-glow 4s ease-in-out 900ms infinite;
+  animation-delay: calc(var(--i, 0) * 45ms), 900ms;
+}
+
+/*
+ * ── แสงกวาดผ่านตอนชี้ ────────────────────────────────────────────────
+ * ★★★ ใช้ ::after ที่ไถผ่าน ไม่ใช่เปลี่ยนสีพื้น
+ *     ★ เปลี่ยนสีพื้นทำให้ชิปกระพริบเป็นก้อน ส่วนแสงกวาดบอกทิศทาง
+ *       ซึ่งทำให้ของทั้งแถวดูเป็นวัสดุเดียวกัน
+ */
+.tab-chip::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 30%,
+    color-mix(in oklab, var(--color-ink) 14%, transparent) 48%,
+    transparent 66%
+  );
+  background-size: 220% 100%;
+  background-position: 120% 0;
+  transition: opacity 180ms ease;
+}
+
+@media (hover: hover) {
+  .tab-chip:hover::after {
+    opacity: 1;
+    animation: tab-sheen 700ms ease-out;
+  }
+}
+
+@keyframes tab-sheen {
+  from {
+    background-position: 120% 0;
+  }
+  to {
+    background-position: -20% 0;
+  }
+}
+
+/* ── ไอคอนขยับตอนชี้ ────────────────────────────────────────────────── */
+@media (hover: hover) {
+  .tab-chip:hover .tab-icon {
+    transform: rotate(-8deg) scale(1.12);
+  }
+}
+
+.tab-icon {
+  transition: transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ── ชิปกลุ่ม: พื้นเลื่อนตามตัวที่เลือก ────────────────────────────────
+ * ★ ใช้ scale จาก 0 แทนการเลื่อนตำแหน่ง — ไม่ต้องวัดพิกัดของชิปแต่ละอัน
+ *   ★★ การวัดพิกัดด้วย JS จะคลาดตอนฟอนต์ไทยโหลดเสร็จแล้วความกว้างเปลี่ยน
+ */
+@keyframes group-fill {
+  from {
+    transform: scaleX(0.2);
+    opacity: 0;
+  }
+  to {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+html:not([data-reveal='off']) .group-chip-on {
+  animation: group-fill 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ══ แข่งพิมพ์ดีด ═════════════════════════════════════════════════════════ */
+
+/* ── เคอร์เซอร์กะพริบตรงตัวที่กำลังจะพิมพ์ ───────────────────────────────
+ * ★★ ใช้เส้นซ้ายของ span ไม่ใช่ element แยก
+ *    ★ element แยกต้องวัดตำแหน่งด้วย JS ทุกตัวอักษร ซึ่งกับข้อความไทย
+ *      ที่สระลอยอยู่เหนือพยัญชนะ จะวัดพลาดเป็นประจำ
+ */
+@keyframes caret-blink {
+  0%,
+  45% {
+    border-color: var(--color-accent);
+  }
+  55%,
+  100% {
+    border-color: transparent;
+  }
+}
+
+.type-caret {
+  border-inline-start: 2px solid var(--color-accent);
+  margin-inline-start: -2px;
+  animation: caret-blink 1.05s steps(1) infinite;
+}
+
+/* ── ตัวที่พิมพ์ถูกเด้งเบา ๆ ทีละตัว ──────────────────────────────────── */
+@keyframes type-hit {
+  from {
+    transform: translateY(-2px);
+    opacity: 0.55;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+html:not([data-reveal='off']) .type-ok {
+  animation: type-hit 160ms ease-out both;
+}
+
+/* ── ตัวที่ผิดสั่นหนึ่งครั้ง ───────────────────────────────────────────
+ * ★ สั่นครั้งเดียวจบ ไม่วน — การสั่นที่ไม่หยุดทำให้คนอ่านตัวอักษรไม่ออก
+ *   ซึ่งขัดกับงานที่เขากำลังทำอยู่พอดี
+ */
+@keyframes type-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}
+
+html:not([data-reveal='off']) .type-bad {
+  animation: type-shake 180ms ease-in-out;
+}
+
+/* ── ตัวเลขสถิติเปลี่ยนแบบนับขึ้น ─────────────────────────────────────── */
+@keyframes stat-tick {
+  from {
+    transform: translateY(0.35em);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+html:not([data-reveal='off']) .stat-tick {
+  animation: stat-tick 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ── วงแหวนความคืบหน้า ────────────────────────────────────────────────── */
+.ring-track {
+  transition: stroke-dashoffset 420ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ── จบแล้วการ์ดผลเด้งขึ้น ────────────────────────────────────────────── */
+@keyframes result-pop {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+html:not([data-reveal='off']) .result-pop {
+  animation: result-pop 480ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
