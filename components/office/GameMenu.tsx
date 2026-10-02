@@ -1,9 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
 import { apiFetch } from '@/lib/api/client'
-import { cn } from '@/lib/cn'
+import { CardGrid, LinkCard } from '@/components/ui/Card'
 import { Untranslated, useOt } from '@/lib/i18n/office'
 import type { OfficeKey } from '@/lib/i18n/office-format'
 
@@ -59,32 +58,26 @@ export function GameMenu() {
   ]
 
   return (
-    <div className="grid gap-3 py-2 sm:grid-cols-2 xl:grid-cols-3">
+    /*
+      * ★★ ใช้ CardGrid/LinkCard จากของกลาง ไม่เขียนคลาสการ์ดเอง
+      *    ★ หน้านี้เคยเขียน rounded-2xl border border-line bg-elevated/50 เอง
+      *      ซึ่งเป็นต้นเหตุที่การ์ดของแต่ละหน้าค่อย ๆ ต่างกัน
+      */
+    <CardGrid cols={3} className="py-2">
       {cards.map((c) => {
         const isCheckers = c.href === '/office/fun/checkers'
         return (
-          <Link
+          <LinkCard
             key={c.href}
             href={c.href}
-            className={cn(
-              'group relative flex min-h-24 items-start gap-3 rounded-2xl border border-line',
-              'bg-elevated/50 p-4 transition-colors hover:border-line-strong hover:bg-surface',
-            )}
-          >
-            <span
-              aria-hidden="true"
-              className="grid size-11 shrink-0 place-items-center rounded-xl bg-surface text-ink-soft"
-            >
-              <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d={c.icon} />
-              </svg>
-            </span>
-
-            <span className="min-w-0 flex-1">
-              <span className="flex flex-wrap items-center gap-1.5">
-                <span className="font-medium text-ink">
-                  <Untranslated>{ot(c.titleKey)}</Untranslated>
-                </span>
+            icon={c.icon}
+            title={<Untranslated>{ot(c.titleKey)}</Untranslated>}
+            detail={<Untranslated>{ot(c.descKey)}</Untranslated>}
+            /* ★ การ์ดที่มีเรื่องรออยู่ใช้โทนเน้น — ไม่ใช่แค่ติดป้าย
+                 ★★ ป้ายเล็ก ๆ บนการ์ดที่หน้าตาเหมือนใบอื่นหมด ตากวาดผ่านได้ */
+            tone={isCheckers && challenges > 0 ? 'accent' : 'plain'}
+            badge={
+              <>
                 {/*
                   * ★★ ป้ายคำท้าอยู่ติดชื่อเกม ไม่ใช่มุมการ์ด
                   *    ★ มันตอบคำถาม "เกมไหนมีเรื่องรอฉันอยู่" ซึ่งเป็นเหตุผล
@@ -100,14 +93,11 @@ export function GameMenu() {
                     <Untranslated>{ot('game.menu.ongoing', { n: ongoing })}</Untranslated>
                   </span>
                 ) : null}
-              </span>
-              <span className="mt-0.5 block text-xs leading-relaxed text-ink-soft">
-                <Untranslated>{ot(c.descKey)}</Untranslated>
-              </span>
-            </span>
-          </Link>
+              </>
+            }
+          />
         )
       })}
-    </div>
+    </CardGrid>
   )
 }
