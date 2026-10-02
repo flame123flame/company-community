@@ -6,6 +6,7 @@ import { assertSameOrigin, parseJsonBody } from '@/lib/http/guard'
 import { ok, withErrorHandling } from '@/lib/http/respond'
 import { enforceRateLimit } from '@/lib/ratelimit'
 import { requireOfficeUser } from '@/lib/office/guard'
+import { directionsUrl, distanceTag, isOpenNow } from '@/lib/office/geo'
 
 export const dynamic = 'force-dynamic'
 
@@ -48,8 +49,19 @@ type Row = {
   open_hours?: unknown
 }
 
-export const GET = withErrorHandling(async () => {
+export const GET = withErrorHandling(async (request: NextRequest) => {
   const actor = await requireOfficeUser()
+
+  /*
+   * ★★★ พารามิเตอร์ทั้งหมดเป็นของ "เพิ่ม" — ไม่ส่งมาเลยได้ผลเหมือนเดิมเป๊ะ
+   *     ★ หน้าเว็บที่มีอยู่เรียก endpoint นี้โดยไม่มี query มาตลอด
+   *       ★★ การเปลี่ยนค่าเริ่มต้นของการเรียงจะทำให้หน้าที่ทำงานอยู่
+   *          เปลี่ยนพฤติกรรมโดยไม่มีใครสั่ง ซึ่งคือการทำของเดิมพังแบบเงียบ
+   */
+  const q = new URL(request.url).searchParams
+  const sort = q.get('sort')
+  const maxWalk = Number(q.get('max_walk_min'))
+  const openNow = q.get('open_now') === 'true'
 
   const admin = getSupabaseAdminClient()
 
@@ -108,6 +120,18 @@ export const GET = withErrorHandling(async () => {
    *     ★ ล้ม = ไม่มีดาว ไม่มีปก ซึ่งเป็นหน้าตาเดียวกับ "ยังไม่มีใครรีวิว"
    *       ที่ผู้ใช้เข้าใจได้อยู่แล้ว
    */
+  /* ★ พิกัดออฟฟิศ — ใช้สร้างลิงก์เส้นทาง อ่านครั้งเดียวต่อคำขอ ไม่ใช่ต่อร้าน */
+  const { data: officeRow } = await admin
+    .from('app_settings')
+    .select('value')
+    .eq('key', 'office_latlng')
+    .maybeSingle()
+  const ov = officeRow?.value as { lat?: number; lng?: number } | null
+  const office =
+    ov && typeof ov.lat === 'number' && typeof ov.lng === 'number'
+      ? { lat: ov.lat, lng: ov.lng }
+      : null
+
   const ratings = new Map<string, { sum: number; count: number }>()
   const covers = new Map<string, string>()
 
@@ -157,8 +181,7 @@ export const GET = withErrorHandling(async () => {
     for (const p of profiles ?? []) names.set(p.id, p.nickname || p.display_name)
   }
 
-  return ok({
-    items: (rows ?? []).map((r) => ({
+  const items = (rows ?? []).map((r) => ({
       id: r.id,
       name: r.name,
       signatureDish: r.signature_dish,
@@ -200,9 +223,68 @@ export const GET = withErrorHandling(async () => {
       travelMinutes: r.travel_minutes ?? null,
       travelMode: (r.travel_mode ?? null) as 'walking' | 'driving' | null,
       openHours: (r.open_hours ?? null) as Record<string, [string, string] | null> | null,
+      /* ── Phase 1: ชื่อแบบ snake_case ตามสเปก ─────────────────
+         ★★ ใส่เพิ่ม ไม่ได้แทนของเดิม — travelMeters/travelMinutes ยังอยู่ครบ
+            ★ หน้าเว็บที่ใช้ชื่อเดิมอยู่จึงไม่ต้องแก้อะไรเลย */
+      distance_m: r.travel_meters ?? null,
+      walk_min: r.travel_minutes ?? null,
+      distance_tag: distanceTag(r.travel_meters ?? null),
+      directions_url:
+        office && r.lat != null && r.lng != null
+          ? directionsUrl(
+              office.lat,
+              office.lng,
+              r.lat,
+              r.lng,
+              (r.travel_mode as 'walking' | 'driving' | null) ?? 'walking',
+            )
+          : null,
       /** ★ แก้/ลบได้ไหม — คำนวณฝั่ง server ที่เดียว หน้าเว็บไม่ต้องรู้กติกา */
       canManage: r.added_by === actor.id || actor.isAdmin,
-    })),
+  }))
+
+  /*
+   * ── กรองและเรียงตาม query (Phase 1) ──────────────────────────────
+   *
+   * ★★ ทำหลังประกอบ items เพราะเกณฑ์สองในสาม (open_now · ranking) ขึ้นกับ
+   *    ค่าที่ไม่ได้อยู่ในคอลัมน์เดียว ★ ร้านรอบออฟฟิศมีหลักสิบ การกรอง
+   *    ในหน่วยความจำจึงไม่ใช่ปัญหา และไม่ต้องไปแตะ query หลักที่ของเดิมใช้อยู่
+   */
+  let shown = items
+
+  if (Number.isFinite(maxWalk) && maxWalk > 0) {
+    /* ★ ร้านที่ยังไม่มีพิกัดถูกตัดออกเมื่อกรองด้วยเวลาเดิน — ไม่ใช่เก็บไว้
+         ★★ เก็บไว้แปลว่าคำตอบของตัวกรองไม่ตรงกับคำถามที่ถาม */
+    shown = shown.filter((r) => r.walk_min != null && r.walk_min <= maxWalk)
+  }
+
+  if (openNow) {
+    const now = new Date()
+    shown = shown.filter((r) => isOpenNow(r.openHours, now) === true)
+  }
+
+  if (sort) {
+    const byNew = (a: typeof items[number], b: typeof items[number]) =>
+      Date.parse(b.createdAt) - Date.parse(a.createdAt)
+    shown = [...shown].sort((a, b) => {
+      /* ★ ร้านที่อาจปิดอยู่ท้ายเสมอ ไม่ว่าเรียงแบบไหน (FR-A05) */
+      const closed = Number(a.maybeClosed) - Number(b.maybeClosed)
+      if (closed !== 0) return closed
+      if (sort === 'nearest') {
+        /* ★ ไม่มีระยะ = ไปท้าย — Infinity ทำให้ไม่ต้องเขียนเงื่อนไขแยก */
+        return (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity) || byNew(a, b)
+      }
+      if (sort === 'rating') {
+        /* ★ Phase 1 ใช้ค่าเฉลี่ยไปก่อน — Bayesian มาใน Phase 2 ตามสเปก */
+        return (b.rating ?? -1) - (a.rating ?? -1) || b.ratingCount - a.ratingCount || byNew(a, b)
+      }
+      if (sort === 'popular') return b.voteCount - a.voteCount || byNew(a, b)
+      return byNew(a, b)
+    })
+  }
+
+  return ok({
+    items: shown,
     /** รายชื่อประเภทอาหารที่มีจริง — ใช้สร้างตัวกรองโดยไม่ต้อง hardcode */
     cuisines: [...new Set((rows ?? []).map((r) => r.cuisine).filter(Boolean))].sort(),
   })

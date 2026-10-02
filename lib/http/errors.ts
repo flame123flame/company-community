@@ -18,6 +18,12 @@ export const APP_ERRORS = {
   MEMBER_NOT_FOUND: { status: 404 },
   VIDEO_UNAVAILABLE: { status: 404 },
   VIDEO_NOT_EMBEDDABLE: { status: 422 },
+  /*
+   * ★ 422 ไม่ใช่ 400 — คำขอถูกรูปแบบทุกอย่าง แค่เนื้อหาข้างในใช้ไม่ได้
+   *   ★★ ลิงก์ Google Maps ที่แกะพิกัดไม่ได้เข้าข่ายนี้พอดี: มันเป็น URL
+   *      ที่ถูกต้องและโดเมนถูกต้อง แค่ไม่มีพิกัดอยู่ในนั้น
+   */
+  UNPROCESSABLE: { status: 422 },
   QUEUE_LOCKED: { status: 409 },
   QUEUE_FULL: { status: 409 },
   DUPLICATE_IN_QUEUE: { status: 409 },

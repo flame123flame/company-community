@@ -13,6 +13,9 @@ next-env.d.ts
 # env — ★ ห้ามหลุดขึ้น git เด็ดขาด (มี service role / secret key)
 .env
 .env.*
+# ★ ไฟล์ตัวอย่างต้องถูก commit — มันคือเอกสารว่าต้องตั้งค่าอะไรบ้าง
+#   ★★ ข้างในเป็นค่าหลอกทั้งหมด ไม่มีความลับจริง
+!.env.example
 !.env.example
 
 # vercel
@@ -38,3 +41,4 @@ yarn-error.log*
 !.vscode/extensions.json
 .env*
 .seed-demo-ids.json
+!.env.example

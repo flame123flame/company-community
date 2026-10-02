@@ -232,3 +232,60 @@ export function isOpenNow(hours: OpenHours | null | undefined, at: Date): boolea
   if (!todayKey || hours[todayKey] === undefined) return null
   return false
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+ * ป้ายการเดินทาง 3 ขั้น (Phase 1)
+ * ═══════════════════════════════════════════════════════════════════ */
+
+/** ไกลกว่านี้ถือว่าเดลิเวอรี (เมตร) — ตามข้อกำหนด */
+export const DELIVERY_LIMIT_M = 15_000
+
+export type DistanceTag = 'WALK' | 'DRIVE' | 'DELIVERY'
+
+/**
+ * ป้ายการเดินทางจากระยะตามถนน
+ *
+ * ★★ สามขั้น ไม่ใช่สองขั้นแบบ travel_mode ที่เก็บในฐานข้อมูล
+ *    ★ travel_mode ตอบคำถาม "ลิงก์เส้นทางควรเป็น walking หรือ driving"
+ *      ซึ่ง Google Maps รับแค่สองค่านี้
+ *    ★★ ส่วนป้ายนี้ตอบคำถามของคน: "ไปยังไงดี" — ซึ่งมีคำตอบที่สามคือ
+ *       "ไกลเกินกว่าจะไปเอง สั่งมากินดีกว่า"
+ *    ★ สองอย่างนี้จึงไม่ใช่ของเดียวกัน และไม่ควรยุบรวม
+ */
+export function distanceTag(meters: number | null | undefined): DistanceTag | null {
+  if (meters == null) return null
+  if (meters <= WALK_LIMIT_M) return 'WALK'
+  if (meters <= DELIVERY_LIMIT_M) return 'DRIVE'
+  return 'DELIVERY'
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * โดเมนที่ยอมให้ตามลิงก์ไปได้
+ * ═══════════════════════════════════════════════════════════════════ */
+
+/**
+ * ★★★ allowlist ไม่ใช่ blocklist
+ *
+ *     endpoint นี้ให้ server ยิงคำขอไปยัง URL ที่ผู้ใช้พิมพ์มาเอง
+ *     ซึ่งคือรูปแบบของ SSRF ★ การ "ห้ามบางโดเมน" ปิดไม่ได้ เพราะคนโจมตี
+ *     เลือกโดเมนได้อิสระ ★★ ต้องกลับด้าน: อนุญาตเฉพาะที่รู้จักเท่านั้น
+ *
+ * ★★ ตรวจทุก hop ของ redirect ไม่ใช่แค่ URL แรก
+ *    ★ ลิงก์ของ Google ที่ redirect ไปโดเมนอื่นได้ คือทางอ้อมเข้าเครือข่ายใน
+ */
+const MAP_HOSTS = new Set([
+  'google.com',
+  'www.google.com',
+  'maps.google.com',
+  'goo.gl',
+  'maps.app.goo.gl',
+  'g.co',
+])
+
+/** โฮสต์นี้อยู่ใน allowlist ไหม (รวมโดเมนประเทศ เช่น google.co.th) */
+export function isAllowedMapHost(host: string): boolean {
+  const h = host.toLowerCase()
+  if (MAP_HOSTS.has(h)) return true
+  /* ★ google.co.th · google.de — ยอมเฉพาะรูปแบบ (www.|maps.)google.<tld> */
+  return /^(www\.|maps\.)?google\.[a-z]{2,3}(\.[a-z]{2})?$/.test(h)
+}

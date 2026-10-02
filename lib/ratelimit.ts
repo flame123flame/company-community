@@ -90,6 +90,13 @@ export const LIMITS = {
    */
   gameMove: { limit: 300, windowSeconds: 300 },
 
+  /**
+   * แกะพิกัดจากลิงก์ Google Maps
+   * ★★ จำกัดแน่นกว่าปกติ เพราะ endpoint นี้ทำให้ server ยิงคำขอออกนอก
+   *    ★ ไม่จำกัด = ใครก็ใช้เซิร์ฟเวอร์เราเป็นตัวกลางยิงคำขอรัว ๆ ได้
+   */
+  foodMapResolve: { limit: 30, windowSeconds: 600 },
+
   /** เขียน/แก้/ลบรีวิว — คนหนึ่งไปกินได้วันละไม่กี่ร้าน */
   foodReview: { limit: 30, windowSeconds: 3600 },
   /**

@@ -15,6 +15,9 @@ import {
   directionsUrl,
   searchUrl,
   type OpenHours,
+  distanceTag,
+  isAllowedMapHost,
+  DELIVERY_LIMIT_M,
 } from '../lib/office/geo'
 import { pickWeighted, slotsForWheel, type Restaurant } from '../lib/office/food'
 
@@ -210,6 +213,80 @@ const firstPositions = new Set(
   [2, 5, 9, 14, 19].map((i) => slotsForWheel(many, many[i]!).findIndex((r) => r.id === `s${i}`)),
 )
 check(firstPositions.size > 1, 'ตำแหน่งผู้ชนะไม่คงที่', `ตำแหน่งที่พบ: ${[...firstPositions].join(',')}`)
+
+/* ═══════════════════════════════════════════════════════════════════
+ * Phase 1 · ป้ายการเดินทาง 3 ขั้น + allowlist โดเมน
+ * ═══════════════════════════════════════════════════════════════════ */
+head('ป้ายการเดินทาง 3 ขั้น')
+
+check(distanceTag(null) === null, 'ไม่มีระยะ → null (ไม่ใช่ WALK)')
+check(distanceTag(0) === 'WALK', '0 เมตร → เดินได้')
+check(distanceTag(800) === 'WALK', '800 เมตรพอดี → เดินได้ (รวมขอบ)')
+check(distanceTag(801) === 'DRIVE', '801 เมตร → ขับรถ')
+check(distanceTag(15_000) === 'DRIVE', '15 กม.พอดี → ขับรถ (รวมขอบ)')
+check(distanceTag(15_001) === 'DELIVERY', 'เกิน 15 กม. → เดลิเวอรี')
+check(DELIVERY_LIMIT_M === 15_000, 'เพดานเดลิเวอรีตรงกับข้อกำหนด')
+
+head('allowlist โดเมนแผนที่')
+
+for (const h of [
+  'google.com',
+  'www.google.com',
+  'maps.google.com',
+  'goo.gl',
+  'maps.app.goo.gl',
+  'google.co.th',
+  'www.google.co.th',
+]) {
+  check(isAllowedMapHost(h), `อนุญาต ${h}`)
+}
+
+/*
+ * ★★★ ข้อที่สำคัญที่สุด — โดเมนที่ "ดูเหมือน" Google ต้องไม่ผ่าน
+ *     ★ ถ้าเทียบด้วย includes('google.com') ทั้งสี่อันข้างล่างจะผ่านหมด
+ *       ★★ ซึ่งเปิดให้ server ยิงคำขอไปที่ไหนก็ได้ที่คนโจมตีคุมโดเมนอยู่
+ */
+for (const h of [
+  'google.com.evil.net',
+  'notgoogle.com',
+  'google.com.attacker.io',
+  'evil.com/google.com',
+  'localhost',
+  '127.0.0.1',
+  '169.254.169.254',
+  'metadata.google.internal',
+]) {
+  check(!isAllowedMapHost(h), `ปฏิเสธ ${h}`)
+}
+
+head('แกะพิกัด: รูปแบบที่เจอจริงอีกชุด')
+
+/* 1 · ลิงก์แชร์แบบเต็มจากเดสก์ท็อป */
+check(
+  parseLatLngFromMapUrl(
+    'https://www.google.com/maps/place/%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99/@13.7563,100.5018,19z',
+  )?.lat === 13.7563,
+  'ชื่อร้านภาษาไทยที่ถูก encode ไม่รบกวนการแกะ',
+)
+/* 2 · ?ll= */
+check(parseLatLngFromMapUrl('https://maps.google.com/?ll=13.75,100.5')?.lng === 100.5, 'รูปแบบ ?ll=')
+/* 3 · ?center= */
+check(
+  parseLatLngFromMapUrl('https://www.google.com/maps?center=13.75,100.5&zoom=17')?.lat === 13.75,
+  'รูปแบบ ?center=',
+)
+/* 4 · ค่าติดลบ (ซีกโลกใต้/ตะวันตก) */
+check(
+  parseLatLngFromMapUrl('https://www.google.com/maps/@-33.8688,151.2093,15z')?.lat === -33.8688,
+  'พิกัดติดลบแกะได้',
+)
+/* 5 · มีทั้ง @ และ !3d/!4d → ต้องเอาหมุด */
+check(
+  parseLatLngFromMapUrl('https://www.google.com/maps/@1.1,2.2,17z/data=!3d13.7!4d100.5')?.lat === 13.7,
+  'หมุดชนะกล้องเสมอ',
+)
+/* 6 · ลองจิจูดเกินช่วง */
+check(parseLatLngFromMapUrl('https://x/?q=13.75,900.5') === null, 'ลองจิจูดเกิน 180 → null')
 
 console.log(`\n\x1b[1mผ่าน ${pass} · ล้ม ${fail}\x1b[0m`)
 process.exit(fail ? 1 : 0)
