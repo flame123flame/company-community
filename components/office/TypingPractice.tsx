@@ -4,6 +4,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { cn } from '@/lib/cn'
 import { Button } from '@/components/ui/Button'
 import { Untranslated, useOt } from '@/lib/i18n/office'
+import { apiFetch } from '@/lib/api/client'
+import { officeErrorText } from '@/lib/i18n/office-format'
+import { TypingRace, TypingBoard } from './TypingRace'
 import {
   TypingCounter,
   compare,
@@ -41,6 +44,18 @@ function loadPrefs(): Prefs {
  */
 export function TypingPractice() {
   const ot = useOt()
+  /*
+   * ★ ค่าเริ่มต้นคือ "ฝึกคนเดียว" ไม่ใช่หน้าเลือกโหมด
+   *   ★★ ข้อกำหนดบอกว่าฝึกคนเดียวต้อง "แตะเดียวเริ่มได้เลย"
+   *      ★ หน้าเลือกโหมดคั่นกลางทำให้กลายเป็นสองแตะทันที
+   *        ส่วนการแข่งเป็นของที่ตั้งใจไปทำ จึงยอมให้อยู่หลังหนึ่งแตะได้
+   */
+  const [raceRoom, setRaceRoom] = useState<string | null>(null)
+  const [joining, setJoining] = useState(false)
+  const [codeInput, setCodeInput] = useState('')
+  const [showJoin, setShowJoin] = useState(false)
+  /* ★ error ของการเข้าห้อง — แยกจากสถานะการพิมพ์ ซึ่งไม่มี error ของตัวเอง */
+  const [error, setError] = useState<string | null>(null)
   const [prefs, setPrefs] = useState<Prefs>({ lang: 'th', length: 'medium' })
   const [text, setText] = useState('')
   const [typed, setTyped] = useState('')
@@ -128,7 +143,24 @@ export function TypingPractice() {
 
   useEffect(() => {
     if (finishedAt === null) return
-    const w = counterRef.current.stats(finishedAt - (startedAt ?? finishedAt)).wpm
+    const s = counterRef.current.stats(finishedAt - (startedAt ?? finishedAt))
+    const w = s.wpm
+    /*
+     * ★★ ส่งผลขึ้นกระดานอันดับ — server เป็นคนตัดสินว่าน่าเชื่อถือไหม
+     *    ★ ไม่ส่งธง "ผ่าน/ไม่ผ่าน" ไปด้วย เพราะนั่นเท่ากับให้คนโกง
+     *      ตัดสินว่าตัวเองโกงไหม
+     */
+    void apiFetch('/api/office/games/typing', {
+      method: 'POST',
+      body: {
+        action: 'solo',
+        lang: prefs.lang,
+        correctChars: s.correct,
+        wpm: s.wpm,
+        accuracy: s.accuracy,
+        elapsedMs: finishedAt - (startedAt ?? finishedAt),
+      },
+    }).catch(() => undefined)
     if (best === null || w > best) {
       setBest(w)
       try {
@@ -143,6 +175,25 @@ export function TypingPractice() {
   const chars = toChars(text)
   const done = finishedAt !== null
   const isNewBest = done && best !== null && stats.wpm >= best
+
+  if (raceRoom) {
+    return <TypingRace roomId={raceRoom} onExit={() => setRaceRoom(null)} />
+  }
+
+  async function joinRace(code: string | null) {
+    setJoining(true)
+    try {
+      const res = await apiFetch<{ roomId: string }>('/api/office/games/typing', {
+        method: 'POST',
+        body: { action: 'join', code, lang: prefs.lang, length: prefs.length },
+      })
+      setRaceRoom(res.roomId)
+    } catch (e) {
+      setError(officeErrorText(e, ot))
+    } finally {
+      setJoining(false)
+    }
+  }
 
   return (
     <div className="mx-auto max-w-2xl py-2">
@@ -264,6 +315,45 @@ export function TypingPractice() {
           </Button>
         ) : null}
       </div>
+
+      {/* ── แข่งกับเพื่อน ───────────────────────────────────────── */}
+      <div className="mt-5 flex flex-wrap gap-2 border-t border-line pt-4">
+        <Button variant="secondary" className="min-h-11" loading={joining} onClick={() => void joinRace(null)}>
+          <Untranslated>{ot('game.typing.quickRace')}</Untranslated>
+        </Button>
+        <Button variant="ghost" className="min-h-11" onClick={() => setShowJoin((v) => !v)}>
+          <Untranslated>{ot('game.typing.joinByCode')}</Untranslated>
+        </Button>
+      </div>
+
+      {showJoin ? (
+        <div className="mt-2 flex gap-2">
+          <input
+            value={codeInput}
+            onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
+            maxLength={8}
+            placeholder={ot('game.typing.roomCode')}
+            className="h-11 min-w-0 flex-1 rounded-full border border-line bg-page px-4 font-mono text-sm uppercase tracking-widest text-ink placeholder:font-sans placeholder:tracking-normal placeholder:text-ink-faint focus:border-line-strong focus:outline-none"
+          />
+          <Button
+            variant="primary"
+            className="min-h-11"
+            loading={joining}
+            disabled={codeInput.trim().length < 4}
+            onClick={() => void joinRace(codeInput.trim())}
+          >
+            <Untranslated>{ot('game.typing.join')}</Untranslated>
+          </Button>
+        </div>
+      ) : null}
+
+      {error ? (
+        <p role="alert" className="mt-2 text-sm text-danger">
+          {error}
+        </p>
+      ) : null}
+
+      <TypingBoard lang={prefs.lang} />
 
       {done ? (
         <div className="mt-4 rounded-2xl border border-line bg-elevated/60 p-5 text-center">
