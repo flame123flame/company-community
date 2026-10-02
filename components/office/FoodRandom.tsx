@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { apiFetch } from '@/lib/api/client'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/cn'
@@ -18,6 +19,8 @@ import {
   type Restaurant,
   type RestaurantList,
 } from '@/lib/office/food'
+import { directionsUrl, searchUrl } from '@/lib/office/geo'
+import { FilterSheet, FilterGroup, FilterChip, FilterToggle } from './FilterSheet'
 import { SpinWheel, type WheelSlot } from './SpinWheel'
 
 /**
@@ -41,6 +44,32 @@ export function FoodRandom() {
     ids: new Set(),
   })
   const [avoidRecent, setAvoidRecent] = useState(true)
+  const [filterOpen, setFilterOpen] = useState(false)
+  /* ★ พิกัดออฟฟิศ — ล้มแล้วเป็น null เงียบ ๆ ปุ่มถอยไปค้นด้วยชื่อร้านเอง */
+  const [office, setOffice] = useState<{ lat: number; lng: number } | null>(null)
+  useEffect(() => {
+    let alive = true
+    void apiFetch<{ office: { lat: number; lng: number } | null }>('/api/office/food/office-location')
+      .then((res) => {
+        if (alive) setOffice(res.office)
+      })
+      .catch(() => undefined)
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  /*
+   * ตัวกรองที่เลือกอยู่กี่อย่าง — ตัวเลขบนปุ่ม "ตัวกรอง (n)"
+   * ★ avoidRecent ไม่ถูกนับ เพราะค่าเริ่มต้นของมันคือ "เปิด"
+   *   ★★ นับค่าเริ่มต้นเข้าไปด้วย = ปุ่มขึ้น (1) ตั้งแต่เปิดหน้ามา
+   *      ซึ่งทำให้ตัวเลขนั้นไม่มีความหมาย
+   */
+  const filterCount =
+    (filters.cuisine ? 1 : 0) +
+    (filters.price ? 1 : 0) +
+    (filters.distance ? 1 : 0) +
+    (filters.onlyPicks ? 1 : 0)
 
   const load = useCallback(async () => {
     try {
@@ -117,57 +146,124 @@ export function FoodRandom() {
 
   return (
     <div className="py-2">
-      <p className="mt-1 text-sm text-ink-soft">
-        {ot('food.random.inWheel', { n: pool.length })}
-      </p>
-
-      {/* ── ตัวกรองก่อนสุ่ม (FR-A07) ─────────────────────────────── */}
-      <div className="mt-4 flex flex-wrap gap-1.5">
-        <Chip
-          active={filters.onlyPicks}
-          onClick={() => setFilters((f) => ({ ...f, onlyPicks: !f.onlyPicks }))}
-          title={ot('food.random.onlyPicksHint')}
+      {/*
+        * ── ตัวกรอง ──────────────────────────────────────────────
+        * ★★ รูปแบบเดียวกับหน้าร้านเด็ดตามข้อกำหนด — ปุ่ม "ตัวกรอง (n)"
+        *    เปิดแผ่นล่างจอบนมือถือ / กล่องลอยบนเดสก์ท็อป
+        *    ★ ของเดิมกาง chip ทั้งหมดไว้ ซึ่งกินสามบรรทัดและดันวงล้อ
+        *      หลุดจอแรก — ข้อกำหนดบอกว่าวงล้อต้องอยู่ในจอแรกโดยไม่ต้องเลื่อน
+        */}
+      <div className="relative mt-3">
+        <button
+          type="button"
+          onClick={() => setFilterOpen((v) => !v)}
+          aria-expanded={filterOpen}
+          className={cn(
+            'inline-flex h-11 items-center gap-2 rounded-full border px-4 text-sm transition-colors',
+            filterCount > 0
+              ? 'border-ink bg-ink text-page'
+              : 'border-line bg-surface text-ink hover:bg-surface-hover',
+          )}
         >
-          ★ {ot('food.random.onlyPicks')}
-        </Chip>
-        {recent.ids.size > 0 ? (
-          <Chip
-            active={avoidRecent}
-            onClick={() => setAvoidRecent((v) => !v)}
-            title={ot('food.random.avoidHint', { days: recent.days })}
-          >
-            {ot('food.random.avoidRecent')}
-          </Chip>
-        ) : null}
-        <span className="mx-1 w-px self-stretch bg-line" />
-        {data.cuisines.map((c) => (
-          <Chip
-            key={c}
-            active={filters.cuisine === c}
-            onClick={() => setFilters((f) => ({ ...f, cuisine: f.cuisine === c ? null : c }))}
-          >
-            {c}
-          </Chip>
-        ))}
-        <span className="mx-1 w-px self-stretch bg-line" />
-        {PRICE_OPTIONS.map((p) => (
-          <Chip
-            key={p}
-            active={filters.price === p}
-            onClick={() => setFilters((f) => ({ ...f, price: f.price === p ? null : p }))}
-          >
-            {p}
-          </Chip>
-        ))}
-        {DISTANCE_OPTIONS.map((d) => (
-          <Chip
-            key={d}
-            active={filters.distance === d}
-            onClick={() => setFilters((f) => ({ ...f, distance: f.distance === d ? null : d }))}
-          >
-            {distanceLabel(ot, d)}
-          </Chip>
-        ))}
+          <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M3 5h18M6 12h12M10 19h4" />
+          </svg>
+          {filterCount > 0 ? ot('food.filter.withCount', { n: filterCount }) : ot('food.filter.title')}
+        </button>
+
+        <FilterSheet
+          open={filterOpen}
+          onClose={() => setFilterOpen(false)}
+          title={ot('food.filter.title')}
+          count={filterCount}
+          onClear={() => {
+            setFilters((f) => ({ ...f, cuisine: null, price: null, distance: null, onlyPicks: false }))
+            setAvoidRecent(true)
+          }}
+        >
+          {data.cuisines.length > 0 ? (
+            <FilterGroup label={ot('food.filter.cuisine')}>
+              {data.cuisines.map((c) => (
+                <FilterChip
+                  key={c}
+                  active={filters.cuisine === c}
+                  onClick={() => setFilters((f) => ({ ...f, cuisine: f.cuisine === c ? null : c }))}
+                >
+                  {c}
+                </FilterChip>
+              ))}
+            </FilterGroup>
+          ) : null}
+
+          <FilterGroup label={ot('food.filter.price')}>
+            {PRICE_OPTIONS.map((pr) => (
+              <FilterChip
+                key={pr}
+                active={filters.price === pr}
+                onClick={() => setFilters((f) => ({ ...f, price: f.price === pr ? null : pr }))}
+              >
+                {pr}
+              </FilterChip>
+            ))}
+          </FilterGroup>
+
+          <FilterGroup label={ot('food.filter.distance')}>
+            {DISTANCE_OPTIONS.map((d) => (
+              <FilterChip
+                key={d}
+                active={filters.distance === d}
+                onClick={() => setFilters((f) => ({ ...f, distance: f.distance === d ? null : d }))}
+              >
+                {distanceLabel(ot, d)}
+              </FilterChip>
+            ))}
+          </FilterGroup>
+
+          {/*
+            * ── ตั้งค่า ────────────────────────────────────────────
+            * ★★ แยกจากตัวกรองประเภทอาหารตามข้อกำหนด
+            *    ★ สองอย่างนี้ทำคนละหน้าที่: ตัวกรองตัดร้านออกจากวงล้อ
+            *      ส่วนตั้งค่าเปลี่ยน "โอกาส" ของร้านที่ยังอยู่
+            *      ★★ วางปนกันเป็น chip เหมือนกันหมด ทำให้คนเข้าใจว่า
+            *         "ลดโอกาสร้านที่เพิ่งไป" คือการตัดร้านนั้นทิ้ง
+            */}
+          <div>
+            <p className="mb-1 text-xs font-medium uppercase tracking-wide text-ink-faint">
+              <Untranslated>{ot('food.filter.settings')}</Untranslated>
+            </p>
+            <FilterToggle
+              checked={filters.onlyPicks}
+              onChange={(v) => setFilters((f) => ({ ...f, onlyPicks: v }))}
+              label={ot('food.random.onlyPicks')}
+              hint={ot('food.random.onlyPicksHint')}
+            />
+            {recent.ids.size > 0 ? (
+              <FilterToggle
+                checked={avoidRecent}
+                onChange={setAvoidRecent}
+                label={ot('food.random.avoidRecent')}
+                hint={ot('food.random.avoidHint', { days: recent.days })}
+              />
+            ) : null}
+          </div>
+        </FilterSheet>
+
+        {/*
+          * ★ สรุปสั้นใต้ปุ่มตามข้อกำหนด เช่น "อีสาน · เดินได้ · 6 ร้านในวงล้อ"
+          *   ★★ บอกผลของตัวกรอง ไม่ใช่บอกว่ากดอะไรไปบ้าง — จำนวนร้านที่เหลือ
+          *      คือสิ่งเดียวที่ตัดสินว่าควรกดหมุนหรือควรผ่อนตัวกรอง
+          */}
+        <p className="mt-2 text-xs text-ink-faint">
+          {[
+            filters.cuisine,
+            filters.price,
+            filters.distance ? distanceLabel(ot, filters.distance) : null,
+            filters.onlyPicks ? ot('food.random.onlyPicks') : null,
+            ot('food.random.inWheel', { n: pool.length }),
+          ]
+            .filter(Boolean)
+            .join(' · ')}
+        </p>
       </div>
 
       {/* ── วงล้อ ────────────────────────────────────────────────── */}
@@ -209,14 +305,41 @@ export function FoodRandom() {
 
       {/* ── ผลการสุ่ม ────────────────────────────────────────────── */}
       {winner ? (
-        <div className="mx-auto mt-6 max-w-md rounded-2xl border border-line bg-elevated/60 backdrop-blur-md p-5">
+        <div className="mx-auto mt-6 max-w-md overflow-hidden rounded-2xl border border-line bg-elevated/60 backdrop-blur-md">
+          {/* ★ รูปปกจากรีวิวล่าสุด — ไม่มีก็ไม่ต้องเว้นที่ว่างไว้
+                ★★ ต่างจากการ์ดในหน้ารายการที่ต้องสูงเท่ากันทั้งตาราง
+                   การ์ดนี้มีใบเดียว จึงไม่มีอะไรให้เรียงให้ตรงกัน */}
+          {winner.coverUrl ? (
+            <div className="relative aspect-video">
+              <Image src={winner.coverUrl} alt="" fill sizes="448px" className="object-cover" unoptimized />
+            </div>
+          ) : null}
+
+          <div className="p-5">
           <h2 className="text-lg font-bold text-ink">{winner.name}</h2>
           <p className="mt-0.5 text-sm text-ink-soft">{winner.signatureDish}</p>
+
+          {winner.ratingCount > 0 ? (
+            <p className="mt-1 text-[13px]">
+              <span className="text-warn">★</span>{' '}
+              <span className="font-medium text-ink">{winner.rating?.toFixed(1)}</span>{' '}
+              <span className="text-ink-faint">({winner.ratingCount})</span>
+            </p>
+          ) : null}
 
           <div className="mt-2 flex flex-wrap gap-1.5 text-xs text-ink-faint">
             {winner.cuisine ? <Tag>{winner.cuisine}</Tag> : null}
             {winner.priceRange ? <Tag>{winner.priceRange}</Tag> : null}
-            {winner.distance ? <Tag>{distanceLabel(ot, winner.distance)}</Tag> : null}
+            {/* ★ ระยะจริงมาก่อนแท็กที่กรอกเอง (เหตุผลเดียวกับการ์ดหน้ารายการ) */}
+            {winner.travelMinutes != null && winner.travelMode ? (
+              <Tag>
+                {ot(winner.travelMode === 'walking' ? 'food.geo.walkMin' : 'food.geo.driveMin', {
+                  n: winner.travelMinutes,
+                })}
+              </Tag>
+            ) : winner.distance ? (
+              <Tag>{distanceLabel(ot, winner.distance)}</Tag>
+            ) : null}
           </div>
 
           {winner.note ? (
@@ -254,16 +377,23 @@ export function FoodRandom() {
               <Untranslated>{ot('food.detail')}</Untranslated>
             </Link>
 
-            {winner.mapUrl ? (
-              <a
-                href={winner.mapUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex h-11 items-center rounded-full bg-surface px-4 text-sm font-medium text-ink hover:bg-surface-hover"
-              >
-                {ot('food.picks.openMap')}
-              </a>
-            ) : null}
+            {/*
+              * ★★ ปุ่ม "ไปเลย" — ใช้ลิงก์เส้นทางถ้ารู้พิกัดทั้งสองฝั่ง
+              *    ★ ร้านไม่มีพิกัด → ค้นด้วยชื่อร้านตามข้อกำหนด
+              *      ไม่ใช่ซ่อนปุ่ม คนที่อยากไปยังได้สิ่งที่ต้องการ
+              */}
+            <a
+              href={
+                winner.lat != null && winner.lng != null && office
+                  ? directionsUrl(office.lat, office.lng, winner.lat, winner.lng, winner.travelMode ?? 'walking')
+                  : winner.mapUrl || searchUrl(winner.name)
+              }
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-11 items-center rounded-full bg-surface px-4 text-sm font-medium text-ink hover:bg-surface-hover"
+            >
+              {ot('food.random.goNow')}
+            </a>
 
             {/* ★ ตัดร้านนี้ออกชั่วคราวแล้วหมุนใหม่ — เอกสารระบุไว้ในหัวข้อ 8.2.1
                 ("ตัดร้านที่ไม่เอาออกชั่วคราว") */}
@@ -278,6 +408,7 @@ export function FoodRandom() {
             >
               {ot('food.random.exclude')}
             </Button>
+          </div>
           </div>
         </div>
       ) : null}
@@ -312,29 +443,3 @@ function Tag({ children }: { children: React.ReactNode }) {
   return <span className="rounded-full bg-surface px-2 py-0.5">{children}</span>
 }
 
-function Chip({
-  active,
-  onClick,
-  title,
-  children,
-}: {
-  active: boolean
-  onClick: () => void
-  title?: string
-  children: React.ReactNode
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={title}
-      aria-pressed={active}
-      className={cn(
-        'h-8 rounded-full px-3 text-[13px] transition-colors',
-        active ? 'bg-ink text-page' : 'bg-surface text-ink-soft hover:bg-surface-hover hover:text-ink',
-      )}
-    >
-      {children}
-    </button>
-  )
-}
