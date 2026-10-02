@@ -23,7 +23,7 @@ import {
 import { AddRestaurantForm } from './AddRestaurantForm'
 import { FilterSheet, FilterGroup, FilterChip } from './FilterSheet'
 
-export type PicksSort = 'new' | 'votes' | 'rating'
+export type PicksSort = 'new' | 'votes' | 'rating' | 'near'
 
 /** หน้าร้านเด็ด (FR-A03–A06) */
 export function FoodPicks() {
@@ -81,7 +81,11 @@ export function FoodPicks() {
               (b.rating ?? -1) - (a.rating ?? -1) ||
               b.ratingCount - a.ratingCount ||
               Date.parse(b.createdAt) - Date.parse(a.createdAt)
-            : b.voteCount - a.voteCount || Date.parse(b.createdAt) - Date.parse(a.createdAt)),
+            : sort === 'near'
+              ? /* ★ ร้านที่ไม่มีระยะทางไปท้ายเสมอ — Infinity ทำให้ไม่ต้องเขียนเงื่อนไขแยก */
+                (a.travelMeters ?? Infinity) - (b.travelMeters ?? Infinity) ||
+                Date.parse(b.createdAt) - Date.parse(a.createdAt)
+              : b.voteCount - a.voteCount || Date.parse(b.createdAt) - Date.parse(a.createdAt)),
     )
   }, [data.items, filters, sort])
 
@@ -291,6 +295,14 @@ export function FoodPicks() {
               <FilterChip active={sort === 'rating'} onClick={() => setSort('rating')}>
                 {ot('food.picks.sortRating')}
               </FilterChip>
+              {/* ★ ตัวเลือกนี้โผล่เฉพาะเมื่อมีร้านที่คิดระยะทางได้จริงอย่างน้อยหนึ่งร้าน
+                     ★★ ตัวเลือกที่กดแล้วลำดับไม่ขยับ คือตัวเลือกที่ทำให้คนไม่เชื่อ
+                        ตัวกรองทั้งกล่อง */}
+              {data.items.some((x) => x.travelMeters != null) ? (
+                <FilterChip active={sort === 'near'} onClick={() => setSort('near')}>
+                  {ot('food.picks.sortNear')}
+                </FilterChip>
+              ) : null}
             </FilterGroup>
           </FilterSheet>
         </div>
@@ -499,7 +511,20 @@ function Card({
       <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-ink-faint">
         {r.cuisine ? <Tag>{r.cuisine}</Tag> : null}
         {r.priceRange ? <Tag>{r.priceRange}</Tag> : null}
-        {r.distance ? <Tag>{distanceLabel(ot, r.distance)}</Tag> : null}
+        {/*
+          * ★★ มีระยะจริงแล้วแสดงระยะจริง ไม่ใช่แสดงทั้งคู่
+          *    ★ "เดินได้ · 🚶 เดิน ~6 นาที" คือการพูดเรื่องเดียวกันสองครั้ง
+          *      ด้วยคำที่ต่างกัน ซึ่งทำให้คนสงสัยว่ามันต่างกันตรงไหน
+          */}
+        {r.travelMinutes != null && r.travelMode ? (
+          <Tag>
+            {ot(r.travelMode === 'walking' ? 'food.geo.walkMin' : 'food.geo.driveMin', {
+              n: r.travelMinutes,
+            })}
+          </Tag>
+        ) : r.distance ? (
+          <Tag>{distanceLabel(ot, r.distance)}</Tag>
+        ) : null}
       </div>
 
       {r.note ? <p className="mt-2 text-xs leading-relaxed text-ink-soft">{r.note}</p> : null}

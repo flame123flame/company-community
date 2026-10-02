@@ -554,6 +554,15 @@ export type Database = {
           /** ★ ผลรวมดาวกับจำนวนรีวิว (0049) — หารเมื่อแสดงเท่านั้น */
           rating_sum: number
           rating_count: number
+          /* ── พิกัดและระยะทาง (0050) ─────────────────────────────── */
+          lat: number | null
+          lng: number | null
+          /** ★ ระยะตามถนน = Haversine × 1.3 คำนวณตอนบันทึกพิกัด ไม่ใช่ตอนอ่าน */
+          travel_meters: number | null
+          travel_minutes: number | null
+          travel_mode: 'walking' | 'driving' | null
+          /** {"mon":["09:00","18:00"], "sun":null, …} */
+          open_hours: Record<string, [string, string] | null> | null
           maybe_closed: boolean
           created_at: string
           updated_at: string
@@ -1391,6 +1400,20 @@ export type Database = {
         Args: { p_actor: string; p_review: string }
         /** false = ไม่มีแถวที่ลบได้ (ไม่มีอยู่จริง หรือไม่ใช่ของฉัน) */
         Returns: boolean
+      }
+      /* ── พิกัดและระยะทาง (0050) ─────────────────────────────────── */
+      set_restaurant_latlng: {
+        Args: { p_actor: string; p_id: string; p_lat: number | null; p_lng: number | null }
+        Returns: Database['public']['Tables']['restaurants']['Row']
+      }
+      set_office_latlng: {
+        Args: { p_actor: string; p_lat: number | null; p_lng: number | null }
+        /** จำนวนร้านที่ถูกคำนวณระยะทางใหม่ */
+        Returns: number
+      }
+      recompute_restaurant_travel: {
+        Args: Record<never, never>
+        Returns: number
       }
       report_restaurant_closed: {
         Args: { p_actor: string; p_id: string }

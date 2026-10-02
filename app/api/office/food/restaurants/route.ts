@@ -18,17 +18,54 @@ export const dynamic = 'force-dynamic'
  *    หน้าจะต้องยิงอีกคำขอ แล้วปุ่มจะกระพริบจาก "ยังไม่กด" เป็น "กดแล้ว"
  *    หลังโหลดเสร็จ ซึ่งทำให้คนกดซ้ำโดยไม่ตั้งใจ
  */
+/** คอลัมน์ที่มีมาตั้งแต่ 0025 — มีอยู่แน่นอนไม่ว่า migration ใหม่จะรันหรือยัง */
+const BASE_COLUMNS =
+  'id, name, signature_dish, image_path, cuisine, price_range, distance, map_url, note, added_by, vote_count, maybe_closed, created_at'
+
+/** คอลัมน์พิกัด/เวลาทำการจาก 0050 */
+const GEO_COLUMNS = 'lat, lng, travel_meters, travel_minutes, travel_mode, open_hours'
+
+/** แถวร้านที่หน้าเว็บใช้ — ช่องจาก 0050 เป็น optional เพราะอาจยังไม่มีคอลัมน์ */
+type Row = {
+  id: string
+  name: string
+  signature_dish: string
+  image_path: string | null
+  cuisine: string | null
+  price_range: string | null
+  distance: string | null
+  map_url: string | null
+  note: string | null
+  added_by: string | null
+  vote_count: number
+  maybe_closed: boolean
+  created_at: string
+  lat?: number | null
+  lng?: number | null
+  travel_meters?: number | null
+  travel_minutes?: number | null
+  travel_mode?: string | null
+  open_hours?: unknown
+}
+
 export const GET = withErrorHandling(async () => {
   const actor = await requireOfficeUser()
 
   const admin = getSupabaseAdminClient()
 
-  const [{ data: rows, error }, { data: votes, error: voteError }] = await Promise.all([
+  /*
+   * ★★★ คอลัมน์พิกัด/เวลาทำการมาจาก 0050 ซึ่งอาจยังไม่ถูกรัน
+   *
+   *     ★ ต่างจาก rating ตรงที่พวกนี้อยู่ตารางเดียวกับของเดิม จึงแยก
+   *       เป็นคำขอต่างหากไม่ได้โดยไม่ยิงซ้ำทั้งตาราง
+   *     ★★ ทางออก: ลองชุดเต็มก่อน ถ้าล้มค่อยถอยไปชุดเดิม
+   *        ร้านทุกร้านยังแสดงได้ปกติ แค่ไม่มีระยะทาง ซึ่งเป็นสถานะเดียวกับ
+   *        "ร้านที่ยังไม่มีพิกัด" ที่ข้อกำหนดบอกให้ซ่อนส่วนนั้นอยู่แล้ว
+   */
+  const listQuery = (columns: string) =>
     admin
       .from('restaurants')
-      .select(
-        'id, name, signature_dish, image_path, cuisine, price_range, distance, map_url, note, added_by, vote_count, maybe_closed, created_at',
-      )
+      .select(columns)
       /*
        * ★ เรียงตามที่ FR-A05 กำหนด: ร้านที่อาจปิดไปอยู่ท้ายสุดเสมอ
        *   แล้วค่อยเรียงตามคะแนน (FR-A04) — สองข้อนี้ต้องอยู่ในลำดับนี้
@@ -36,9 +73,21 @@ export const GET = withErrorHandling(async () => {
        */
       .order('maybe_closed', { ascending: true })
       .order('vote_count', { ascending: false })
-      .order('created_at', { ascending: false }),
+      .order('created_at', { ascending: false })
+
+  const [full, { data: votes, error: voteError }] = await Promise.all([
+    listQuery(`${BASE_COLUMNS}, ${GEO_COLUMNS}`),
     admin.from('restaurant_votes').select('restaurant_id').eq('user_id', actor.id),
   ])
+
+  let rows = full.data as unknown as Row[] | null
+  let error = full.error
+
+  if (error) {
+    const fallback = await listQuery(BASE_COLUMNS)
+    rows = fallback.data as unknown as Row[] | null
+    error = fallback.error
+  }
 
   if (error) throw fromPostgresError(error)
   if (voteError) throw fromPostgresError(voteError)
@@ -143,6 +192,14 @@ export const GET = withErrorHandling(async () => {
           ? (ratings.get(r.id)!.sum / ratings.get(r.id)!.count)
           : null,
       coverUrl: covers.get(r.id) ?? null,
+      /* ★ ?? null ทุกช่อง — เส้นทางถอยไม่มีคอลัมน์พวกนี้เลย
+           หน้าเว็บจึงได้ null เหมือนร้านที่ยังไม่ได้ปักพิกัด ซึ่งมันรับมือได้อยู่แล้ว */
+      lat: r.lat ?? null,
+      lng: r.lng ?? null,
+      travelMeters: r.travel_meters ?? null,
+      travelMinutes: r.travel_minutes ?? null,
+      travelMode: (r.travel_mode ?? null) as 'walking' | 'driving' | null,
+      openHours: (r.open_hours ?? null) as Record<string, [string, string] | null> | null,
       /** ★ แก้/ลบได้ไหม — คำนวณฝั่ง server ที่เดียว หน้าเว็บไม่ต้องรู้กติกา */
       canManage: r.added_by === actor.id || actor.isAdmin,
     })),
@@ -159,6 +216,9 @@ const createSchema = z.object({
   distance: z.enum(['WALK', 'DRIVE', 'DELIVERY']).optional().nullable(),
   mapUrl: z.url().startsWith('https://').max(500).optional().nullable().or(z.literal('')),
   note: z.string().trim().max(300).optional().nullable(),
+  /* ★ พิกัดไม่บังคับ — ร้านที่ไม่มีก็ใช้งานได้ทุกอย่างยกเว้นระยะทาง */
+  lat: z.number().min(-90).max(90).optional().nullable(),
+  lng: z.number().min(-180).max(180).optional().nullable(),
 })
 
 /** POST /api/office/food/restaurants — เพิ่มร้าน (FR-A01) */
@@ -182,5 +242,22 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
   })
 
   if (error) throw fromPostgresError(error)
+
+  /*
+   * ★★ ตั้งพิกัดเป็นขั้นที่สอง ไม่ยัดเพิ่มเข้า add_restaurant
+   *    ★ การเปลี่ยนลายเซ็น RPC ที่ของเดิมเรียกอยู่ แปลว่าต้องแก้ทุกจุด
+   *      ที่เรียกมันพร้อมกันเป๊ะ ๆ — ความเสี่ยงที่ไม่จำเป็นกับฟีเจอร์ใหม่
+   *    ★★ ถ้าขั้นนี้ล้ม ร้านยังถูกสร้างสำเร็จ แค่ไม่มีพิกัด ซึ่งเป็น
+   *       สถานะที่ถูกต้องอยู่แล้วสำหรับร้านเก่าทุกแห่ง
+   */
+  if (data?.id && body.lat != null && body.lng != null) {
+    await admin.rpc('set_restaurant_latlng', {
+      p_actor: actor.id,
+      p_id: data.id,
+      p_lat: body.lat,
+      p_lng: body.lng,
+    })
+  }
+
   return ok({ id: data?.id, name: data?.name })
 })

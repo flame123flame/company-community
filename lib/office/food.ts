@@ -31,6 +31,15 @@ export type Restaurant = {
   ratingCount: number
   /** รูปปกการ์ด = รูปล่าสุดจากรีวิว */
   coverUrl: string | null
+  /* ── พิกัดและระยะทาง (0050) — null ได้เสมอ ร้านเก่ายังไม่มีพิกัด ── */
+  lat: number | null
+  lng: number | null
+  /** ระยะตามถนนจากออฟฟิศ (เมตร) — null = ไม่มีพิกัดร้านหรือยังไม่ตั้งพิกัดออฟฟิศ */
+  travelMeters: number | null
+  travelMinutes: number | null
+  travelMode: 'walking' | 'driving' | null
+  /** {"mon":["09:00","18:00"], "sun":null, …} — null = ไม่ได้กรอก */
+  openHours: Record<string, [string, string] | null> | null
 }
 
 export type RestaurantList = {
@@ -139,7 +148,25 @@ export function filterRestaurants(
     if (filters.onlyPicks && r.voteCount < PICK_THRESHOLD) return false
     if (filters.cuisine && r.cuisine !== filters.cuisine) return false
     if (filters.price && r.priceRange !== filters.price) return false
-    if (filters.distance && r.distance !== filters.distance) return false
+    /*
+     * ★★★ ฟิลเตอร์การเดินทางคิดจากระยะจริงก่อน แล้วค่อยถอยไปใช้แท็ก
+     *
+     *     ข้อกำหนด: "ให้คำนวณจากระยะจริงแทนแท็กที่กรอกเอง
+     *     (ถ้าร้านยังไม่มีพิกัด ใช้แท็กเดิมไปก่อน)"
+     *     ★ แท็กที่คนกรอกเองไม่มีใครมาแก้เมื่อย้ายออฟฟิศ ส่วนระยะจริง
+     *       ถูกคิดใหม่ทั้งตารางทันทีที่พิกัดออฟฟิศเปลี่ยน
+     *     ★★ DELIVERY ไม่ใช่ระยะทาง มันคือ "วิธีได้อาหาร" จึงยังใช้แท็กเสมอ
+     */
+    if (filters.distance) {
+      if (filters.distance === 'DELIVERY') {
+        if (r.distance !== 'DELIVERY') return false
+      } else if (r.travelMode) {
+        const want = filters.distance === 'WALK' ? 'walking' : 'driving'
+        if (r.travelMode !== want) return false
+      } else if (r.distance !== filters.distance) {
+        return false
+      }
+    }
     if (q && !r.name.toLowerCase().includes(q) && !r.signatureDish.toLowerCase().includes(q)) {
       return false
     }
