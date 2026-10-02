@@ -204,7 +204,7 @@ export function PaySheet({
             type="button"
             onClick={onClose}
             aria-label={ot('common.close')}
-            className="msg-act shrink-0 opacity-100"
+            className="grid size-11 shrink-0 place-items-center rounded-full text-ink-soft transition-colors hover:bg-surface hover:text-ink"
           >
             <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
               <path d="M6 6l12 12M18 6 6 18" />

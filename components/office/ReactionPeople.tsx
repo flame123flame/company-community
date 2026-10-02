@@ -104,7 +104,7 @@ export function ReactionPeople({
             type="button"
             onClick={onClose}
             aria-label={ot('common.close')}
-            className="msg-act opacity-100"
+            className="grid size-11 shrink-0 place-items-center rounded-full text-ink-soft transition-colors hover:bg-surface hover:text-ink"
           >
             <svg
               viewBox="0 0 24 24"

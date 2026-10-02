@@ -435,7 +435,12 @@ export function WalletOwed() {
                       onClick={() => setMenuFor(menuFor === g.otherId ? null : g.otherId)}
                       aria-label={ot('wallet.owed.more')}
                       aria-expanded={menuFor === g.otherId}
-                      className="msg-act opacity-100"
+                      /*
+                       * ★★ ไม่ใช้ .msg-act เฉย ๆ — คลาสนั้นสูง 28px ซึ่งพอดีกับ
+                       *    ปุ่มที่ลอยข้างฟองแชท แต่เล็กเกินไปสำหรับเมนูในแถวรายการ
+                       *    ★ ข้อกำหนดบอกว่าจุดแตะทุกจุดต้อง ≥44px
+                       */
+                      className="grid size-11 shrink-0 place-items-center rounded-full text-ink-soft transition-colors hover:bg-surface hover:text-ink"
                     >
                       <svg viewBox="0 0 24 24" className="size-5" fill="currentColor" aria-hidden="true">
                         <circle cx="5" cy="12" r="1.8" />

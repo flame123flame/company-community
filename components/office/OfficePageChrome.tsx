@@ -54,7 +54,9 @@ export function OfficePageChrome({ isAdmin }: { isAdmin: boolean }) {
         <Link
           href="/"
           className={cn(
-            'hero-in inline-flex h-8 items-center gap-1.5 rounded-full border border-line',
+            /* ★ สูง 44px ตามข้อกำหนด "จุดแตะทุกจุด" — เดิม 32px กดพลาดบ่อยบนมือถือ
+                 ★★ เป็นทางออกทางเดียวของทุกหน้าในโมดูล จึงต้องกดโดนแน่ ๆ */
+            'hero-in inline-flex h-11 items-center gap-1.5 rounded-full border border-line',
             'bg-page/60 px-3 text-xs text-ink-soft backdrop-blur-md transition-colors',
             'hover:border-line-strong hover:text-ink',
           )}
