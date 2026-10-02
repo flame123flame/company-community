@@ -319,6 +319,7 @@ export function CheckersLobby({ onEnter }: { onEnter: (gameId: string) => void }
   const ot = useOt()
   const [lobby, setLobby] = useState<Lobby>({ games: [], challenges: [] })
   const [people, setPeople] = useState<{ id: string; name: string }[]>([])
+  const [frequent, setFrequent] = useState<{ id: string; name: string; games: number }[]>([])
   const [query, setQuery] = useState('')
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<string | null>(null)
@@ -351,6 +352,12 @@ export function CheckersLobby({ onEnter }: { onEnter: (gameId: string) => void }
     void apiFetch<{ items: { id: string; name: string }[] }>('/api/office/people')
       .then((res) => setPeople(res.items))
       .catch(() => undefined)
+
+    void apiFetch<{ opponents: { id: string; name: string; games: number }[] }>(
+      '/api/office/games/checkers?opponents=1',
+    )
+      .then((r) => setFrequent(r.opponents ?? []))
+      .catch(() => setFrequent([]))
   }, [])
 
   async function act(body: Record<string, unknown>) {
@@ -458,6 +465,40 @@ export function CheckersLobby({ onEnter }: { onEnter: (gameId: string) => void }
         <h2 className="mb-2 text-sm font-semibold text-ink">
           <Untranslated>{ot('game.checkers.challengeFriend')}</Untranslated>
         </h2>
+        {/*
+          * ── คนที่เล่นด้วยบ่อย (ข้อกำหนด 2.2) ───────────────────────
+          * ★★ อยู่เหนือช่องค้นหา เพราะคนส่วนใหญ่ท้าคนเดิมซ้ำ ๆ
+          *    ★ การให้พิมพ์ชื่อก่อนทุกครั้งคือการให้ทำงานที่ระบบรู้คำตอบอยู่แล้ว
+          * ★ ยังไม่เคยเล่นกับใคร = ไม่มีแถวนี้ ไม่ใช่แถวว่าง
+          */}
+        {frequent.length > 0 ? (
+          <div className="scrollbar-none -mx-4 mb-3 flex gap-2 overflow-x-auto px-4 pb-1">
+            {frequent.map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                disabled={busy}
+                onClick={async () => {
+                  const res = await act({ action: 'challenge', to: f.id })
+                  if (res) setNote(ot('game.checkers.sent', { name: f.name }))
+                  void load()
+                }}
+                className="flex w-16 shrink-0 flex-col items-center gap-1 disabled:opacity-60"
+              >
+                <span
+                  aria-hidden="true"
+                  className="grid size-12 place-items-center rounded-full bg-surface text-base text-ink-soft transition-colors hover:bg-surface-hover"
+                >
+                  {f.name.slice(0, 1)}
+                </span>
+                <span dir="auto" className="w-full truncate text-center text-[11px] text-ink-soft">
+                  {f.name}
+                </span>
+              </button>
+            ))}
+          </div>
+        ) : null}
+
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}

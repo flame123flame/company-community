@@ -57,6 +57,42 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
     return ok({ board: rows })
   }
 
+  if (url.searchParams.get('stats') === '1') {
+    /*
+     * ★★ "WPM เฉลี่ย 10 ครั้งล่าสุด" ตามข้อกำหนด — ไม่ใช่เฉลี่ยตลอดกาล
+     *    ★ เฉลี่ยตลอดกาลขยับช้าลงเรื่อย ๆ จนคนที่ฝึกจนเก่งขึ้นจริง
+     *      มองไม่เห็นว่าตัวเองดีขึ้น ★★ ซึ่งเป็นเหตุผลเดียวที่คนดูตัวเลขนี้
+     */
+    const out: Record<string, { best: number; avg10: number; count: number }> = {}
+    for (const lang of ['th', 'en'] as const) {
+      const { data } = await admin
+        .from('typing_results')
+        .select('wpm')
+        .eq('user_id', actor.id)
+        .eq('lang', lang)
+        .order('created_at', { ascending: false })
+        .limit(10)
+
+      const rows = data ?? []
+      const last10 = rows.map((r) => r.wpm)
+      /* ★ "สูงสุด" ต้องมาจากทั้งหมด ไม่ใช่จาก 10 ครั้งล่าสุด */
+      const { data: bestRow } = await admin
+        .from('typing_results')
+        .select('wpm')
+        .eq('user_id', actor.id)
+        .eq('lang', lang)
+        .order('wpm', { ascending: false })
+        .limit(1)
+
+      out[lang] = {
+        best: bestRow?.[0]?.wpm ?? 0,
+        avg10: last10.length ? Math.round(last10.reduce((a, b) => a + b, 0) / last10.length) : 0,
+        count: last10.length,
+      }
+    }
+    return ok({ stats: out })
+  }
+
   if (!roomId) throw new AppError('VALIDATION_FAILED')
 
   const { data: room, error } = await admin

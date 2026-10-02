@@ -360,6 +360,8 @@ export function TypingPractice() {
         </p>
       ) : null}
 
+      <MyTypingStats lang={prefs.lang} refreshKey={finishedAt ?? 0} />
+
       <TypingBoard lang={prefs.lang} />
 
       {done ? (
@@ -421,5 +423,44 @@ function Chip({
     >
       {children}
     </button>
+  )
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════
+ * สถิติของฉัน (ข้อกำหนด 3.5)
+ * ═══════════════════════════════════════════════════════════════════ */
+
+function MyTypingStats({ lang, refreshKey }: { lang: TextLang; refreshKey: number }) {
+  const ot = useOt()
+  const [stats, setStats] = useState<Record<string, { best: number; avg10: number; count: number }> | null>(null)
+
+  useEffect(() => {
+    void apiFetch<{ stats: Record<string, { best: number; avg10: number; count: number }> }>(
+      '/api/office/games/typing?stats=1',
+    )
+      .then((r) => setStats(r.stats ?? null))
+      .catch(() => setStats(null))
+    /* ★ โหลดใหม่ทุกครั้งที่พิมพ์จบ — ไม่งั้นตัวเลขค้างจนกว่าจะรีโหลดหน้า */
+  }, [refreshKey])
+
+  const mine = stats?.[lang]
+  if (!mine || mine.count === 0) return null
+
+  return (
+    <div className="mt-5 flex gap-6 rounded-2xl border border-line bg-elevated/40 p-4">
+      <div>
+        <p className="text-[11px] uppercase tracking-wide text-ink-faint">
+          <Untranslated>{ot('game.typing.myBest')}</Untranslated>
+        </p>
+        <p className="text-xl font-bold tabular-nums text-ink">{mine.best}</p>
+      </div>
+      <div>
+        <p className="text-[11px] uppercase tracking-wide text-ink-faint">
+          <Untranslated>{ot('game.typing.avg10', { n: mine.count })}</Untranslated>
+        </p>
+        <p className="text-xl font-bold tabular-nums text-ink-soft">{mine.avg10}</p>
+      </div>
+    </div>
   )
 }

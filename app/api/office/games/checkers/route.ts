@@ -54,6 +54,33 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
     })
   }
 
+  if (params.get('opponents') === '1') {
+    /*
+     * ★★ "คนที่เล่นด้วยบ่อย" นับจากเกมจริงที่เคยเล่นกัน ไม่ใช่รายชื่อทั้งออฟฟิศ
+     *    ★ ข้อกำหนด 2.2 ขอ "แถว avatar คนที่เล่นด้วยบ่อย" ซึ่งมีประโยชน์
+     *      ก็ต่อเมื่อมันสะท้อนพฤติกรรมจริง ★★ ไม่งั้นมันคือรายชื่อเรียงมั่ว
+     *      ที่กินพื้นที่บนจอโดยไม่ช่วยอะไร
+     */
+    const { data } = await admin
+      .from('checkers_games')
+      .select('bottom_id, top_id, updated_at')
+      .or(`bottom_id.eq.${actor.id},top_id.eq.${actor.id}`)
+      .order('updated_at', { ascending: false })
+      .limit(200)
+
+    const tally = new Map<string, number>()
+    for (const g of data ?? []) {
+      const other = g.bottom_id === actor.id ? g.top_id : g.bottom_id
+      tally.set(other, (tally.get(other) ?? 0) + 1)
+    }
+    const top = [...tally.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8)
+    const names = await loadNames(admin, top.map(([uid]) => uid))
+
+    return ok({
+      opponents: top.map(([uid, n]) => ({ id: uid, name: names.get(uid) ?? '', games: n })),
+    })
+  }
+
   if (id) {
     const { data, error } = await admin
       .from('checkers_games')
