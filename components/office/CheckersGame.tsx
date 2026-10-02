@@ -6,6 +6,7 @@ import { cn } from '@/lib/cn'
 import { Button } from '@/components/ui/Button'
 import { Untranslated, useOt } from '@/lib/i18n/office'
 import { botMove, type BotLevel, type Move } from '@/lib/games/checkers'
+import { CheckersLobby, CheckersOnline } from './CheckersOnline'
 import {
   CheckersBoard,
   localOutcome,
@@ -15,7 +16,7 @@ import {
   type LocalGame,
 } from './CheckersBoard'
 
-type Mode = 'BOT' | 'PASS'
+type Mode = 'BOT' | 'PASS' | 'ONLINE'
 
 /**
  * หมากฮอส — โหมดเล่นในเครื่อง (กับบอท และส่งเครื่องกันเล่น)
@@ -34,6 +35,8 @@ export function CheckersGame() {
   const [forceCapture, setForceCapture] = useState(true)
   const [showOptions, setShowOptions] = useState(false)
   const [game, setGame] = useState<LocalGame>(newLocalGame)
+  /* ★ เกมออนไลน์ที่กำลังเล่นอยู่ — null = ยังอยู่หน้าเลือกคู่ */
+  const [onlineId, setOnlineId] = useState<string | null>(null)
 
   const result = localOutcome(game, forceCapture)
   const over = result.kind !== 'PLAYING'
@@ -77,8 +80,23 @@ export function CheckersGame() {
             <Untranslated>{ot('game.checkers.vsBot')}</Untranslated>
           </Button>
 
+          {/* ★★ "ท้าเพื่อน" อยู่เหนือ "2 คนบนเครื่องนี้"
+                 ★ การเล่นกับคนจริงคนละเครื่องคือสิ่งที่คนอยากได้มากกว่า
+                   ส่วนส่งเครื่องกันเล่นใช้เฉพาะตอนนั่งข้างกัน */}
           <Button
             variant="secondary"
+            className="min-h-14 text-base"
+            block
+            onClick={() => {
+              setOnlineId(null)
+              setMode('ONLINE')
+            }}
+          >
+            <Untranslated>{ot('game.checkers.challengeFriend')}</Untranslated>
+          </Button>
+
+          <Button
+            variant="ghost"
             className="min-h-14 text-base"
             block
             onClick={() => {
@@ -150,6 +168,22 @@ export function CheckersGame() {
             </button>
           </div>
         ) : null}
+      </div>
+    )
+  }
+
+  /* ── ออนไลน์ ───────────────────────────────────────────────── */
+  if (mode === 'ONLINE') {
+    return onlineId ? (
+      <CheckersOnline gameId={onlineId} onExit={() => setOnlineId(null)} />
+    ) : (
+      <div>
+        <CheckersLobby onEnter={setOnlineId} />
+        <div className="mt-4 text-center">
+          <Button variant="ghost" className="min-h-11" onClick={() => setMode(null)}>
+            <Untranslated>{ot('game.checkers.backToMenu')}</Untranslated>
+          </Button>
+        </div>
       </div>
     )
   }
