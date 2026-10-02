@@ -34,7 +34,8 @@
     "test:promptpay": "tsx scripts/promptpay-test.ts",
     "test:geo": "tsx scripts/geo-test.ts",
     "test:food": "tsx scripts/food-test.ts",
-    "test:checkers": "tsx scripts/checkers-test.ts"
+    "test:checkers": "tsx scripts/checkers-test.ts",
+    "test:checkers-ui": "tsx scripts/checkers-ui-test.mts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

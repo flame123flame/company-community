@@ -94,6 +94,10 @@ export const OFFICE_NAV: NavSection[] = [
       { href: '/office/fun/team', labelKey: 'nav.fun.team' , icon: 'M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm8 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM2 20a7 7 0 0 1 14 0M16 20a6 6 0 0 1 6-6' },
       { href: '/office/fun/lottery', labelKey: 'nav.fun.lottery' , icon: 'M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2 2 2 0 0 0 0 4 2 2 0 0 1-2 2H6a2 2 0 0 1-2-2 2 2 0 0 0 0-4zM9 8v8' },
       { href: '/office/fun/cup', labelKey: 'fun.cup.title' , icon: 'M8 4h8v5a4 4 0 0 1-8 0zM8 6H5v2a3 3 0 0 0 3 3M16 6h3v2a3 3 0 0 1-3 3M10 17h4l1 3H9z' },
+      /* ★ หมากฮอสอยู่ก่อนห้องสุ่ม — เป็นเกมที่เล่นคนเดียวได้ทันที
+           ★★ ของที่ต้องรอคนอื่นควรอยู่ท้าย เพราะคนที่เปิดมาคนเดียว
+              จะได้ไม่ต้องเลื่อนผ่านของที่กดแล้วรออย่างเดียว */
+      { href: '/office/fun/checkers', labelKey: 'game.checkers.title' , icon: 'M4 4h16v16H4zM4 10h16M4 16h16M10 4v16M16 4v16' },
       { href: '/office/fun/room', labelKey: 'room.title' , icon: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM8 9h.01M16 9h.01M8 15c1.5 1.3 6.5 1.3 8 0' },
     ],
   },
@@ -180,6 +184,7 @@ const PAGE_META: Record<string, PageMeta> = {
   '/office/wallet/qr': { titleKey: 'wallet.qr.title', descKey: 'pdesc.walletQr', section: '/office/wallet' },
   '/office/wallet/pay': { titleKey: 'wallet.action.pay', descKey: 'pdesc.walletPay', section: '/office/wallet' },
 
+  '/office/fun/checkers': { titleKey: 'game.checkers.title', descKey: 'game.checkers.desc', section: '/office/fun' },
   '/office/fun/name': { titleKey: 'fun.name.title', descKey: 'pdesc.funName', section: '/office/fun' },
   '/office/fun/team': { titleKey: 'fun.team.title', descKey: 'pdesc.funTeam', section: '/office/fun' },
   '/office/fun/lottery': { titleKey: 'fun.lottery.title', descKey: 'pdesc.funLottery', section: '/office/fun' },
