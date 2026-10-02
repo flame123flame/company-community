@@ -520,7 +520,15 @@ export function CheckersBoardTable() {
 
   useEffect(() => {
     void apiFetch<{ board: BoardRow[] }>('/api/office/games/checkers?board=month')
-      .then((r) => setRows(r.board))
+      /*
+       * ★★★ ?? [] ไม่ใช่การกันไว้ก่อนแบบไร้เหตุผล
+       *     ★ รอบแรก endpoint นี้ไม่มีอยู่จริง (การแก้โค้ดของผมไม่ติด)
+       *       API จึงตอบ {games, challenges} กลับมาแทน
+       *       ★★ r.board เป็น undefined → rows.length พัง → error boundary
+       *          กลืนทั้งหน้าเลือกคู่ไป ไม่ใช่แค่กระดานอันดับหายไป
+       *     ★ กระดานอันดับเป็นของประดับ มันไม่ควรมีสิทธิ์ทำให้หน้าทั้งหน้าพัง
+       */
+      .then((r) => setRows(r.board ?? []))
       .catch(() => setRows([]))
   }, [])
 

@@ -27,7 +27,32 @@ export const dynamic = 'force-dynamic'
 export const GET = withErrorHandling(async (request: NextRequest) => {
   const actor = await requireOfficeUser()
   const admin = getSupabaseAdminClient()
-  const id = new URL(request.url).searchParams.get('id')
+  const params = new URL(request.url).searchParams
+  const id = params.get('id')
+
+  if (params.get('board') === 'month') {
+    /*
+     * ★★ กระดานอันดับรายเดือน = 30 วันย้อนหลัง ไม่ใช่เดือนปฏิทิน
+     *    ★ เหตุผลเดียวกับกระดานพิมพ์ดีด: เดือนปฏิทินทำให้กระดานว่างเปล่า
+     *      ทุกวันที่ 1 ซึ่งไม่มีใครอยากเปิดดู
+     */
+    const since = new Date(Date.now() - 30 * 86_400_000).toISOString()
+    const { data, error } = await admin.rpc('checkers_leaderboard', { p_since: since })
+    if (error) throw fromPostgresError(error)
+
+    const rows = (data ?? []) as { user_id: string; wins: number; losses: number; draws: number }[]
+    const names = await loadNames(admin, rows.map((r) => r.user_id))
+    return ok({
+      board: rows.slice(0, 20).map((r) => ({
+        id: r.user_id,
+        name: names.get(r.user_id) ?? '',
+        wins: Number(r.wins),
+        losses: Number(r.losses),
+        draws: Number(r.draws),
+        me: r.user_id === actor.id,
+      })),
+    })
+  }
 
   if (id) {
     const { data, error } = await admin
