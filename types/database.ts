@@ -545,8 +545,15 @@ export type Database = {
           map_url: string | null
           note: string | null
           added_by: string | null
-          /** ★ ตัวนับที่ RPC เขียนเท่านั้น — อย่าเขียนจากที่อื่น */
+          /*
+           * ★ ตัวนับที่ "trigger" ดูแล ไม่ใช่ RPC อีกต่อไป (0048)
+           *   ★★ ของเดิมให้ RPC บวกเอง แล้ว seed ที่เขียนตารางโหวตตรง ๆ
+           *      ทำให้ตัวนับกับความจริงหลุดจากกัน — หัวใจแดงแต่เลขเป็น 0
+           */
           vote_count: number
+          /** ★ ผลรวมดาวกับจำนวนรีวิว (0049) — หารเมื่อแสดงเท่านั้น */
+          rating_sum: number
+          rating_count: number
           maybe_closed: boolean
           created_at: string
           updated_at: string
@@ -587,6 +594,39 @@ export type Database = {
         Row: { id: string; restaurant_id: string; user_id: string; visited_at: string }
         Insert: { restaurant_id: string; user_id: string }
         Update: Record<never, never>
+        Relationships: []
+      }
+
+      /* ── รีวิวร้าน (0049) ────────────────────────────────────────── */
+
+      restaurant_reviews: {
+        Row: {
+          id: string
+          restaurant_id: string
+          author_id: string
+          /** 1–5 บังคับ */
+          rating: number
+          body: string | null
+          /** ★ ผลที่คำนวณแล้วว่า "อยู่ใกล้ร้านตอนรีวิวไหม" ไม่ใช่พิกัดดิบ */
+          at_shop: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          restaurant_id: string
+          author_id: string
+          rating: number
+          body?: string | null
+          at_shop?: boolean
+        }
+        Update: { rating?: number; body?: string | null; at_shop?: boolean }
+        Relationships: []
+      }
+
+      restaurant_review_photos: {
+        Row: { id: string; review_id: string; path: string; sort: number; created_at: string }
+        Insert: { review_id: string; path: string; sort?: number }
+        Update: { sort?: number }
         Relationships: []
       }
 
@@ -1331,6 +1371,26 @@ export type Database = {
       toggle_restaurant_vote: {
         Args: { p_actor: string; p_id: string }
         Returns: Database['public']['Tables']['restaurants']['Row']
+      }
+      /* ── รีวิวร้าน (0049) ────────────────────────────────────────── */
+      upsert_restaurant_review: {
+        Args: {
+          p_actor: string
+          p_shop: string
+          /** null = เขียนใหม่ · มีค่า = แก้ของเดิม (ต้องเป็นของตัวเอง) */
+          p_review: string | null
+          p_rating: number
+          p_body: string | null
+          p_at_shop: boolean
+          /** path ใน bucket 'reviews' — ลำดับใน array คือลำดับที่จะแสดง */
+          p_photos: string[]
+        }
+        Returns: string
+      }
+      delete_restaurant_review: {
+        Args: { p_actor: string; p_review: string }
+        /** false = ไม่มีแถวที่ลบได้ (ไม่มีอยู่จริง หรือไม่ใช่ของฉัน) */
+        Returns: boolean
       }
       report_restaurant_closed: {
         Args: { p_actor: string; p_id: string }

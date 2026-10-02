@@ -26,6 +26,11 @@ export type Restaurant = {
   canManage: boolean
   /** ISO — ใช้เรียง "เพิ่มล่าสุด" ซึ่งเป็นการเรียงเริ่มต้นของหน้าร้านเด็ด */
   createdAt: string
+  /** ดาวเฉลี่ย — null = ยังไม่มีใครรีวิว (ไม่ใช่ 0 ซึ่งแปลว่า "แย่") */
+  rating: number | null
+  ratingCount: number
+  /** รูปปกการ์ด = รูปล่าสุดจากรีวิว */
+  coverUrl: string | null
 }
 
 export type RestaurantList = {

@@ -9,6 +9,7 @@ import { cn } from '@/lib/cn'
 import { officeErrorText } from '@/lib/i18n/office-format'
 import { Untranslated, useOt } from '@/lib/i18n/office'
 import { distanceLabel } from '@/lib/office/food'
+import { RestaurantReviews } from './RestaurantReviews'
 
 type Restaurant = {
   id: string
@@ -25,6 +26,13 @@ type Restaurant = {
   maybeClosed: boolean
   voted: boolean
   canManage: boolean
+  /*
+   * ★ พิกัดร้าน — ใช้ตัดสินป้าย "รีวิวที่ร้าน" และระยะทางจากออฟฟิศ
+   *   ★★ optional เพราะร้านเก่าทั้งหมดยังไม่มีพิกัด และต้องแสดงผลได้ปกติ
+   *      (ข้อกำหนด: ร้านที่ยังไม่มีพิกัดให้ซ่อนส่วนนี้ ห้ามแสดง error)
+   */
+  lat?: number | null
+  lng?: number | null
 }
 
 /**
@@ -221,6 +229,13 @@ export function FoodDetail({ id }: { id: string }) {
           </p>
         ) : null}
       </div>
+
+      {/*
+        * ★ รีวิวอยู่นอกการ์ดข้อมูลร้าน ไม่ใช่ข้างใน
+        *   ★★ มันเป็นลิสต์ที่ยาวได้ไม่จำกัด การยัดไว้ในการ์ดทำให้การ์ด
+        *      ที่ควรเป็น "สรุปร้านหนึ่งหน้าจอ" กลายเป็นหน้าเลื่อนยาว
+        */}
+      <RestaurantReviews shopId={id} shopLat={r.lat ?? null} shopLng={r.lng ?? null} />
 
       <Toast toast={toast} />
     </div>

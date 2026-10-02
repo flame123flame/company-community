@@ -45,6 +45,58 @@ export const GET = withErrorHandling(async () => {
 
   const mine = new Set((votes ?? []).map((v) => v.restaurant_id))
 
+  /*
+   * ── ดาวเฉลี่ย + รูปปกจากรีวิว ────────────────────────────────────
+   *
+   * ★★★ แยกเป็นคำขอต่างหาก และยอมให้มันล้มได้เงียบ ๆ
+   *
+   *     คอลัมน์ rating_sum/rating_count มาจาก migration 0049
+   *     ★ ถ้าใส่ไว้ใน select ก้อนหลักแล้ว migration ยังไม่ถูกรัน
+   *       ทั้งคำขอจะ error → หน้าร้านเด็ดว่างเปล่าทั้งหน้า
+   *       ★★ ฟีเจอร์ใหม่ที่ยังไม่พร้อม ไม่ควรทำให้ของเดิมที่ทำงานอยู่พัง
+   *          โปรเจกต์นี้เคยเจอมาแล้วกับคอลัมน์ใหม่ที่อ่านตรง ๆ
+   *
+   *     ★ ล้ม = ไม่มีดาว ไม่มีปก ซึ่งเป็นหน้าตาเดียวกับ "ยังไม่มีใครรีวิว"
+   *       ที่ผู้ใช้เข้าใจได้อยู่แล้ว
+   */
+  const ratings = new Map<string, { sum: number; count: number }>()
+  const covers = new Map<string, string>()
+
+  const { data: ratingRows, error: ratingError } = await admin
+    .from('restaurants')
+    .select('id, rating_sum, rating_count')
+
+  if (!ratingError) {
+    for (const r of ratingRows ?? []) {
+      ratings.set(r.id, { sum: r.rating_sum ?? 0, count: r.rating_count ?? 0 })
+    }
+
+    /*
+     * ★ รูปปก = รูปล่าสุดจากรีวิวของร้านนั้น
+     *   ★★ ดึงรีวิวใหม่สุดมาจำนวนจำกัดแล้วหยิบใบแรกต่อร้านในหน่วยความจำ
+     *      ไม่ใช่ยิงต่อร้านหนึ่งคำขอ — ร้านห้าสิบแห่ง = ห้าสิบคำขอ
+     */
+    const { data: photoRows } = await admin
+      .from('restaurant_review_photos')
+      .select('path, created_at, restaurant_reviews!inner(restaurant_id, created_at)')
+      .order('created_at', { ascending: false })
+      .limit(500)
+
+    for (const row of (photoRows ?? []) as unknown as {
+      path: string
+      restaurant_reviews: { restaurant_id: string } | { restaurant_id: string }[]
+    }[]) {
+      const rel = Array.isArray(row.restaurant_reviews)
+        ? row.restaurant_reviews[0]
+        : row.restaurant_reviews
+      if (!rel) continue
+      /* ★ ใบแรกที่เจอคือใบล่าสุด เพราะเรียงมาแล้ว — ใบถัดไปไม่ต้องทับ */
+      if (!covers.has(rel.restaurant_id)) {
+        covers.set(rel.restaurant_id, admin.storage.from('reviews').getPublicUrl(row.path).data.publicUrl)
+      }
+    }
+  }
+
   /* ชื่อผู้แนะนำ (FR-A03) — ดึงชุดเดียวแล้วต่อในหน่วยความจำ */
   const addedBy = [...new Set((rows ?? []).map((r) => r.added_by).filter(Boolean))] as string[]
   const names = new Map<string, string>()
@@ -80,6 +132,17 @@ export const GET = withErrorHandling(async () => {
        *        เพราะหน้าจอก็ "เรียงใหม่" จริง ๆ แค่เรียงด้วยกุญแจที่ไม่มีความหมาย
        */
       createdAt: r.created_at,
+      /*
+       * ★ ส่งทั้ง "ดาวเฉลี่ย" และ "จำนวนรีวิว" ไม่ใช่ส่งแค่เฉลี่ย
+       *   ★★ ★4.0 จากรีวิวเดียว กับ ★4.0 จาก 40 รีวิว ไม่ใช่ข้อมูลเดียวกัน
+       *      การซ่อนจำนวนไว้ทำให้ร้านที่เพิ่งมีคนรีวิวคนเดียวดูน่าเชื่อเท่ากัน
+       */
+      ratingCount: ratings.get(r.id)?.count ?? 0,
+      rating:
+        (ratings.get(r.id)?.count ?? 0) > 0
+          ? (ratings.get(r.id)!.sum / ratings.get(r.id)!.count)
+          : null,
+      coverUrl: covers.get(r.id) ?? null,
       /** ★ แก้/ลบได้ไหม — คำนวณฝั่ง server ที่เดียว หน้าเว็บไม่ต้องรู้กติกา */
       canManage: r.added_by === actor.id || actor.isAdmin,
     })),

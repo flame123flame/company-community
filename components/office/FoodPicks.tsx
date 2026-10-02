@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { apiFetch } from '@/lib/api/client'
@@ -22,7 +23,7 @@ import {
 import { AddRestaurantForm } from './AddRestaurantForm'
 import { FilterSheet, FilterGroup, FilterChip } from './FilterSheet'
 
-export type PicksSort = 'new' | 'votes'
+export type PicksSort = 'new' | 'votes' | 'rating'
 
 /** หน้าร้านเด็ด (FR-A03–A06) */
 export function FoodPicks() {
@@ -71,7 +72,16 @@ export function FoodPicks() {
                ★★ ข้อความ ISO เทียบกันได้ก็จริง แต่เฉพาะเมื่อ timezone
                   เหมือนกันทุกแถว ซึ่งไม่มีอะไรรับประกัน */
             Date.parse(b.createdAt) - Date.parse(a.createdAt)
-          : b.voteCount - a.voteCount || Date.parse(b.createdAt) - Date.parse(a.createdAt)),
+          : sort === 'rating'
+            ? /*
+               * ★★ ร้านที่ยังไม่มีรีวิวไปท้ายเสมอ ไม่ใช่ถือว่าได้ 0 ดาว
+               *    ★ "ยังไม่มีใครรีวิว" กับ "รีวิวแล้วได้คะแนนแย่"
+               *      เป็นคนละเรื่อง การนับเป็น 0 ลงโทษร้านใหม่ด้วยความเงียบ
+               */
+              (b.rating ?? -1) - (a.rating ?? -1) ||
+              b.ratingCount - a.ratingCount ||
+              Date.parse(b.createdAt) - Date.parse(a.createdAt)
+            : b.voteCount - a.voteCount || Date.parse(b.createdAt) - Date.parse(a.createdAt)),
     )
   }, [data.items, filters, sort])
 
@@ -278,6 +288,9 @@ export function FoodPicks() {
               <FilterChip active={sort === 'votes'} onClick={() => setSort('votes')}>
                 {ot('food.picks.sortVotes')}
               </FilterChip>
+              <FilterChip active={sort === 'rating'} onClick={() => setSort('rating')}>
+                {ot('food.picks.sortRating')}
+              </FilterChip>
             </FilterGroup>
           </FilterSheet>
         </div>
@@ -356,6 +369,27 @@ function Card({
         r.maybeClosed && 'opacity-60',
       )}
     >
+      {/*
+        * ── รูปปก ──────────────────────────────────────────────────
+        * ★ มาจากรูปล่าสุดในรีวิว ไม่ใช่ช่องอัปโหลดแยก
+        *   ★★ ช่องอัปโหลดแยกแปลว่ามีคนต้องรับหน้าที่หารูปมาใส่ ซึ่งไม่มีใครทำ
+        *      ส่วนรูปจากรีวิวเกิดขึ้นเองทุกครั้งที่มีคนไปกินแล้วถ่ายรูป
+        */}
+      <div className="-mx-4 -mt-4 mb-3 overflow-hidden rounded-t-2xl">
+        {r.coverUrl ? (
+          <div className="relative aspect-video">
+            <Image src={r.coverUrl} alt="" fill sizes="(max-width:640px) 100vw, 360px" className="object-cover" unoptimized />
+          </div>
+        ) : (
+          /* ★ ไม่มีรูป = แผ่นสีพร้อมไอคอนตามประเภท ไม่ใช่กล่องว่าง
+               ★★ กล่องว่างทำให้การ์ดสูงไม่เท่ากันในตาราง ซึ่งอ่านยากกว่า
+                  การมีที่ว่างที่ตั้งใจ */
+          <div className="grid aspect-video place-items-center bg-surface text-3xl" aria-hidden="true">
+            {cuisineEmoji(r.cuisine)}
+          </div>
+        )}
+      </div>
+
       <div className="flex items-start justify-between gap-2">
         {/* ★ ชื่อร้านเป็นลิงก์เข้าหน้ารายละเอียด — เป็นที่ที่คนคาดว่าจะกดได้อยู่แล้ว */}
         <h2 className="min-w-0 font-medium">
@@ -445,6 +479,23 @@ function Card({
 
       <p className="mt-0.5 text-sm text-ink-soft">{r.signatureDish}</p>
 
+      {/*
+        * ★★ ดาวเฉลี่ยมาคู่กับจำนวนรีวิวเสมอ ไม่เคยแสดงเดี่ยว
+        *    ★ ★4.0 จากรีวิวเดียว กับ ★4.0 จาก 40 รีวิว ไม่ใช่ข้อมูลเดียวกัน
+        *      การซ่อนจำนวนทำให้ร้านที่มีคนรีวิวคนเดียวดูน่าเชื่อเท่ากัน
+        */}
+      <p className="mt-1.5 text-[13px]">
+        {r.ratingCount > 0 ? (
+          <>
+            <span className="text-warn">★</span>{' '}
+            <span className="font-medium text-ink">{r.rating?.toFixed(1)}</span>{' '}
+            <span className="text-ink-faint">({r.ratingCount})</span>
+          </>
+        ) : (
+          <span className="text-ink-faint">{ot('food.picks.noReviews')}</span>
+        )}
+      </p>
+
       <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-ink-faint">
         {r.cuisine ? <Tag>{r.cuisine}</Tag> : null}
         {r.priceRange ? <Tag>{r.priceRange}</Tag> : null}
@@ -495,6 +546,34 @@ function Card({
 
 function Tag({ children }: { children: React.ReactNode }) {
   return <span className="rounded-full bg-surface px-2 py-0.5">{children}</span>
+}
+
+/**
+ * ไอคอนแทนรูปปกเมื่อร้านยังไม่มีรีวิวที่มีรูป
+ *
+ * ★ จับคู่จากคำที่อยู่ในชื่อประเภท ไม่ใช่รายการปิดที่ต้องตรงเป๊ะ
+ *   ★★ ประเภทอาหารในระบบนี้เป็นข้อความอิสระที่พนักงานพิมพ์เอง
+ *      รายการปิดจะพลาดทุกครั้งที่มีคนพิมพ์ "อาหารญี่ปุ่น" แทน "ญี่ปุ่น"
+ */
+function cuisineEmoji(cuisine: string | null): string {
+  const c = (cuisine ?? '').toLowerCase()
+  const table: [string[], string][] = [
+    [['กาแฟ', 'coffee', 'cafe', 'คาเฟ่'], '☕'],
+    [['ญี่ปุ่น', 'japan', 'sushi', 'ซูชิ', 'ราเมน'], '🍜'],
+    [['จีน', 'china', 'chinese', 'ติ่มซำ'], '🥟'],
+    [['อีสาน', 'ส้มตำ', 'isaan'], '🌶️'],
+    [['เกาหลี', 'korea'], '🍲'],
+    [['อิตาเลียน', 'italian', 'pizza', 'พิซซ่า', 'pasta'], '🍕'],
+    [['เวียดนาม', 'viet', 'pho'], '🍲'],
+    [['ก๋วยเตี๋ยว', 'noodle'], '🍜'],
+    [['ตามสั่ง', 'ข้าว', 'rice'], '🍛'],
+    [['ของหวาน', 'เบเกอรี่', 'dessert', 'bakery'], '🍰'],
+    [['เครื่องดื่ม', 'ชา', 'tea', 'drink'], '🧋'],
+  ]
+  for (const [words, emoji] of table) {
+    if (words.some((w) => c.includes(w))) return emoji
+  }
+  return '🍽️'
 }
 
 function Chip({
