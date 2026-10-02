@@ -1,0 +1,328 @@
+'use client'
+
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { cn } from '@/lib/cn'
+import { Button } from '@/components/ui/Button'
+import { Untranslated, useOt } from '@/lib/i18n/office'
+import {
+  TypingCounter,
+  compare,
+  pickText,
+  toChars,
+  type TextLang,
+  type TextLength,
+} from '@/lib/games/typing'
+
+const PREF_KEY = 'frameroom:typing-prefs'
+
+type Prefs = { lang: TextLang; length: TextLength }
+
+function loadPrefs(): Prefs {
+  if (typeof window === 'undefined') return { lang: 'th', length: 'medium' }
+  try {
+    const raw = window.localStorage.getItem(PREF_KEY)
+    if (!raw) return { lang: 'th', length: 'medium' }
+    const p = JSON.parse(raw) as Partial<Prefs>
+    return {
+      lang: p.lang === 'en' ? 'en' : 'th',
+      length: p.length === 'short' ? 'short' : 'medium',
+    }
+  } catch {
+    return { lang: 'th', length: 'medium' }
+  }
+}
+
+/**
+ * ฝึกพิมพ์คนเดียว — แตะเดียวเริ่มได้ตามข้อกำหนด
+ *
+ * ★★★ การนับทั้งหมดอยู่ใน lib/games/typing ไม่ใช่ในไฟล์นี้
+ *     ★ ไฟล์นี้รับผิดชอบแค่ "รับคีย์และวาดจอ" ★★ ซึ่งแปลว่าสูตร WPM
+ *       และกฎการนับตัวอักษรไทย ถูกทดสอบได้โดยไม่ต้องเปิดเบราว์เซอร์
+ */
+export function TypingPractice() {
+  const ot = useOt()
+  const [prefs, setPrefs] = useState<Prefs>({ lang: 'th', length: 'medium' })
+  const [text, setText] = useState('')
+  const [typed, setTyped] = useState('')
+  const [startedAt, setStartedAt] = useState<number | null>(null)
+  const [finishedAt, setFinishedAt] = useState<number | null>(null)
+  const [now, setNow] = useState(0)
+  const [best, setBest] = useState<number | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const counterRef = useRef(new TypingCounter())
+  const prevLenRef = useRef(0)
+  /* ★ ระหว่างประกอบอักษร (IME) ยังไม่นับ — ดูเหตุผลที่ onCompositionEnd */
+  const composingRef = useRef(false)
+
+  /* ★ อ่านค่าที่จำไว้หลัง mount — localStorage ไม่มีบน server */
+  useEffect(() => {
+    const p = loadPrefs()
+    setPrefs(p)
+    setText(pickText(p.lang, p.length))
+    try {
+      const b = window.localStorage.getItem(`${PREF_KEY}:best:${p.lang}`)
+      setBest(b ? Number(b) : null)
+    } catch {
+      setBest(null)
+    }
+  }, [])
+
+  /* นาฬิกาเดินระหว่างพิมพ์ */
+  useEffect(() => {
+    if (startedAt === null || finishedAt !== null) return
+    const id = window.setInterval(() => setNow(Date.now()), 200)
+    return () => window.clearInterval(id)
+  }, [startedAt, finishedAt])
+
+  const progress = useMemo(() => compare(text, typed), [text, typed])
+  /* ★ จบแล้วใช้เวลาที่จบ · ยังพิมพ์อยู่ใช้นาฬิกาที่เดิน · เพิ่งเริ่มใช้เวลาตอนนี้ */
+  const elapsed = startedAt === null ? 0 : (finishedAt ?? (now || Date.now())) - startedAt
+  const stats = counterRef.current.stats(elapsed)
+
+  const restart = useCallback(
+    (p: Prefs = prefs) => {
+      counterRef.current = new TypingCounter()
+      prevLenRef.current = 0
+      setTyped('')
+      setStartedAt(null)
+      setFinishedAt(null)
+      setText(pickText(p.lang, p.length))
+      window.setTimeout(() => inputRef.current?.focus(), 0)
+    },
+    [prefs],
+  )
+
+  function savePrefs(next: Prefs) {
+    setPrefs(next)
+    try {
+      window.localStorage.setItem(PREF_KEY, JSON.stringify(next))
+    } catch {
+      /* โหมดส่วนตัวเขียนไม่ได้ — ไม่ใช่เรื่องที่ต้องบอกผู้ใช้ */
+    }
+    restart(next)
+  }
+
+  function onChange(value: string) {
+    if (finishedAt !== null) return
+
+    /*
+     * ★★★ ระหว่าง IME กำลังประกอบอักษร ยังไม่นับการกด
+     *
+     *     ★ คีย์บอร์ดไทยบนมือถือและ IME ภาษาอื่นส่ง input event ระหว่าง
+     *       ประกอบตัวอักษรที่ยังไม่เสร็จ ★★ ถ้านับทุก event ความแม่นยำ
+     *       จะต่ำกว่าความจริงมากสำหรับคนที่ใช้ IME ทั้งที่พิมพ์ไม่ผิดเลย
+     *     ★ แต่ "ข้อความ" ยังต้องอัปเดตตาม เพื่อให้เห็นสิ่งที่กำลังพิมพ์
+     */
+    if (startedAt === null && value.length > 0) setStartedAt(Date.now())
+
+    setTyped(value)
+
+    if (composingRef.current) return
+
+    const delta = Math.max(1, toChars(value).length - prevLenRef.current)
+    prevLenRef.current = toChars(value).length
+    const p = counterRef.current.update(text, value, delta)
+
+    if (p.done) setFinishedAt(Date.now())
+  }
+
+  useEffect(() => {
+    if (finishedAt === null) return
+    const w = counterRef.current.stats(finishedAt - (startedAt ?? finishedAt)).wpm
+    if (best === null || w > best) {
+      setBest(w)
+      try {
+        window.localStorage.setItem(`${PREF_KEY}:best:${prefs.lang}`, String(w))
+      } catch {
+        /* เขียนไม่ได้ก็ไม่เป็นไร */
+      }
+    }
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [finishedAt])
+
+  const chars = toChars(text)
+  const done = finishedAt !== null
+  const isNewBest = done && best !== null && stats.wpm >= best
+
+  return (
+    <div className="mx-auto max-w-2xl py-2">
+      {/* ── ตัวเลือก ─────────────────────────────────────────────── */}
+      <div className="flex flex-wrap gap-1.5">
+        {(['th', 'en'] as TextLang[]).map((l) => (
+          <Chip key={l} active={prefs.lang === l} onClick={() => savePrefs({ ...prefs, lang: l })}>
+            {ot(l === 'th' ? 'game.typing.thai' : 'game.typing.english')}
+          </Chip>
+        ))}
+        <span className="mx-1 w-px self-stretch bg-line" />
+        {(['short', 'medium'] as TextLength[]).map((n) => (
+          <Chip key={n} active={prefs.length === n} onClick={() => savePrefs({ ...prefs, length: n })}>
+            {ot(n === 'short' ? 'game.typing.short' : 'game.typing.medium')}
+          </Chip>
+        ))}
+      </div>
+
+      {/* ── ตัวเลขสด ─────────────────────────────────────────────── */}
+      <div className="mt-4 flex gap-4">
+        <Stat label={ot('game.typing.wpm')} value={String(stats.wpm)} />
+        <Stat label={ot('game.typing.accuracy')} value={`${stats.accuracy}%`} />
+        <Stat
+          label={ot('game.typing.time')}
+          value={`${(elapsed / 1000).toFixed(1)}s`}
+        />
+        {best !== null ? <Stat label={ot('game.typing.best')} value={String(best)} muted /> : null}
+      </div>
+
+      {/* ── ข้อความที่ต้องพิมพ์ ─────────────────────────────────── */}
+      {/*
+        * ★★ คลิกที่ข้อความแล้วโฟกัสกลับไปที่ช่องพิมพ์
+        *    ★ ช่องพิมพ์ถูกซ่อนไว้ (คนพิมพ์มองที่ข้อความ ไม่ได้มองช่อง)
+        *      ★★ ถ้าคลิกแล้วไม่มีอะไรเกิดขึ้น คนจะคิดว่าเกมค้าง
+        */}
+      <div
+        onClick={() => inputRef.current?.focus()}
+        className="mt-4 cursor-text rounded-2xl border border-line bg-elevated/50 p-5 text-[19px] leading-[2] tracking-wide"
+      >
+        <p dir="auto" className="break-words">
+          {chars.map((ch, i) => {
+            const state =
+              i < progress.correct
+                ? 'ok'
+                : i === progress.correct && progress.wrong
+                  ? 'bad'
+                  : i === progress.correct
+                    ? 'cursor'
+                    : 'rest'
+            return (
+              <span
+                key={i}
+                ref={state === 'cursor' || state === 'bad' ? scrollIntoViewRef : undefined}
+                className={cn(
+                  state === 'ok' && 'text-ink',
+                  /* ★ ตัวที่ผิดไฮไลต์พื้นแดง ไม่ใช่แค่เปลี่ยนสีตัวอักษร
+                       ★★ ตัวอักษรไทยบางตัวบางมาก สีอย่างเดียวมองไม่ทัน */
+                  state === 'bad' && 'rounded bg-danger/30 text-danger',
+                  state === 'cursor' && 'rounded bg-accent/25 text-ink',
+                  state === 'rest' && 'text-ink-faint',
+                )}
+              >
+                {ch === ' ' && state === 'bad' ? '␣' : ch}
+              </span>
+            )
+          })}
+          {/* ★ พิมพ์เกินความยาวข้อความ — แสดงส่วนเกินเป็นสีแดงต่อท้าย */}
+          {toChars(typed).length > chars.length ? (
+            <span className="rounded bg-danger/30 text-danger">
+              {toChars(typed).slice(chars.length).join('')}
+            </span>
+          ) : null}
+        </p>
+      </div>
+
+      {/*
+        * ── ช่องพิมพ์ ───────────────────────────────────────────────
+        * ★★★ ปิด autocorrect/autocapitalize/autocomplete/spellcheck และห้าม paste
+        *     ★ ทั้งหมดอยู่ในข้อกำหนดข้อ 3.3 ★★ autocorrect บนมือถือจะแก้คำ
+        *       ให้เองระหว่างพิมพ์ ซึ่งทำให้ "สิ่งที่พิมพ์" ไม่ใช่สิ่งที่คนกดจริง
+        *       แล้วทั้ง WPM และความแม่นยำกลายเป็นตัวเลขของ IME ไม่ใช่ของคน
+        */}
+      <input
+        ref={inputRef}
+        value={typed}
+        onChange={(e) => onChange(e.target.value)}
+        onCompositionStart={() => {
+          composingRef.current = true
+        }}
+        onCompositionEnd={(e) => {
+          composingRef.current = false
+          /* ★ ประกอบเสร็จแล้วค่อยนับทีเดียว — ค่าใน event คือผลสุดท้ายจริง */
+          onChange((e.target as HTMLInputElement).value)
+        }}
+        onPaste={(e) => e.preventDefault()}
+        onDrop={(e) => e.preventDefault()}
+        autoComplete="off"
+        autoCorrect="off"
+        autoCapitalize="off"
+        spellCheck={false}
+        disabled={done}
+        aria-label={ot('game.typing.inputLabel')}
+        /*
+         * ★★ ช่องจริงอยู่บนจอ (ไม่ซ่อนด้วย display:none) แต่สูงแค่ 1px และโปร่งใส
+         *    ★ ซ่อนสนิทแล้วคีย์บอร์ดมือถือจะไม่เด้งขึ้นมา
+         *      ★★ และ screen reader จะหาช่องไม่เจอ
+         */
+        className="h-11 w-full rounded-xl border border-line bg-page px-4 text-base text-ink opacity-0 focus:outline-none"
+      />
+
+      {/* ── ปุ่ม ─────────────────────────────────────────────────── */}
+      <div className="mt-2 flex flex-wrap gap-2">
+        <Button variant="primary" className="min-h-11" onClick={() => restart()}>
+          <Untranslated>{done ? ot('game.typing.again') : ot('game.typing.newText')}</Untranslated>
+        </Button>
+        {!startedAt ? (
+          <Button variant="ghost" className="min-h-11" onClick={() => inputRef.current?.focus()}>
+            <Untranslated>{ot('game.typing.start')}</Untranslated>
+          </Button>
+        ) : null}
+      </div>
+
+      {done ? (
+        <div className="mt-4 rounded-2xl border border-line bg-elevated/60 p-5 text-center">
+          {isNewBest ? (
+            <p className="text-sm font-medium text-accent">
+              <Untranslated>{ot('game.typing.newRecord')}</Untranslated>
+            </p>
+          ) : null}
+          <p className="mt-1 text-2xl font-bold text-ink">{stats.wpm} WPM</p>
+          <p className="mt-0.5 text-sm text-ink-soft">
+            {ot('game.typing.accuracy')} {stats.accuracy}% · {(elapsed / 1000).toFixed(1)}s
+          </p>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+/**
+ * ★★★ เลื่อนให้บรรทัดที่กำลังพิมพ์ไม่ถูกคีย์บอร์ดบัง — ข้อกำหนดข้อ 3.3
+ *
+ *     ★ ใช้ block:'nearest' ไม่ใช่ 'center' ★★ 'center' จะกระชากหน้าจอ
+ *       ทุกตัวอักษรที่พิมพ์ ซึ่งทำให้ตาตามไม่ทันและคลื่นไส้
+ */
+function scrollIntoViewRef(el: HTMLSpanElement | null) {
+  el?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+}
+
+function Stat({ label, value, muted }: { label: string; value: string; muted?: boolean }) {
+  return (
+    <div>
+      <p className="text-[11px] uppercase tracking-wide text-ink-faint">
+        <Untranslated>{label}</Untranslated>
+      </p>
+      <p className={cn('text-xl font-bold tabular-nums', muted ? 'text-ink-soft' : 'text-ink')}>{value}</p>
+    </div>
+  )
+}
+
+function Chip({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        'h-11 shrink-0 rounded-full px-4 text-sm transition-colors',
+        active ? 'bg-ink font-medium text-page' : 'bg-surface text-ink-soft hover:bg-surface-hover hover:text-ink',
+      )}
+    >
+      {children}
+    </button>
+  )
+}
