@@ -175,7 +175,7 @@ export function CheckersGame() {
   /* ── ออนไลน์ ───────────────────────────────────────────────── */
   if (mode === 'ONLINE') {
     return onlineId ? (
-      <CheckersOnline gameId={onlineId} onExit={() => setOnlineId(null)} />
+      <CheckersOnline gameId={onlineId} onExit={() => setOnlineId(null)} onRematch={setOnlineId} />
     ) : (
       <div>
         <CheckersLobby onEnter={setOnlineId} />

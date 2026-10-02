@@ -84,6 +84,7 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
       text: room.text_body,
       status: room.status,
       startedAt: room.started_at,
+      createdAt: room.created_at,
       isOwner: room.owner_id === actor.id,
     },
     players: (players ?? []).map((p) => ({
@@ -105,7 +106,9 @@ const bodySchema = z.discriminatedUnion('action', [
     lang: z.enum(['th', 'en']),
     length: z.enum(['short', 'medium']),
   }),
-  z.object({ action: z.literal('start'), roomId: z.uuid() }),
+  /* ★ force = เริ่มอัตโนมัติเมื่อรอครบ 30 วิ — server ตรวจเวลาเอง ไม่เชื่อ client */
+  z.object({ action: z.literal('start'), roomId: z.uuid(), force: z.boolean().optional() }),
+  z.object({ action: z.literal('rematch'), roomId: z.uuid(), lang: z.enum(['th','en']), length: z.enum(['short','medium']) }),
   z.object({
     action: z.literal('progress'),
     roomId: z.uuid(),
@@ -165,9 +168,21 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
       p_actor: actor.id,
       p_room: body.roomId,
       p_delay: COUNTDOWN_SECONDS,
+      p_force: body.force ?? false,
     })
     if (error) throw fromPostgresError(error)
     return ok({ startedAt: (data as { started_at: string }).started_at })
+  }
+
+  if (body.action === 'rematch') {
+    /* ★ ข้อความใหม่เลือกที่ server เหมือนตอนสร้างห้อง */
+    const { error } = await admin.rpc('typing_rematch', {
+      p_actor: actor.id,
+      p_room: body.roomId,
+      p_text: pickText(body.lang as TextLang, body.length as TextLength),
+    })
+    if (error) throw fromPostgresError(error)
+    return ok({ restarted: true })
   }
 
   if (body.action === 'progress') {

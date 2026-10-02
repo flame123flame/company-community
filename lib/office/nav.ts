@@ -185,6 +185,8 @@ const PAGE_META: Record<string, PageMeta> = {
   '/office/wallet/qr': { titleKey: 'wallet.qr.title', descKey: 'pdesc.walletQr', section: '/office/wallet' },
   '/office/wallet/pay': { titleKey: 'wallet.action.pay', descKey: 'pdesc.walletPay', section: '/office/wallet' },
 
+  /* ★ หน้าหมวดเกมมีหน้าของตัวเองแล้ว — ของเดิมกดเข้าหมวดแล้วเจอ 404 */
+  '/office/fun': { titleKey: 'nav.fun', descKey: 'pdesc.funHub' },
   '/office/fun/checkers': { titleKey: 'game.checkers.title', descKey: 'game.checkers.desc', section: '/office/fun' },
   '/office/fun/typing': { titleKey: 'game.typing.title', descKey: 'game.typing.desc', section: '/office/fun' },
   '/office/fun/name': { titleKey: 'fun.name.title', descKey: 'pdesc.funName', section: '/office/fun' },

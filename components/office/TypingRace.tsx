@@ -26,6 +26,8 @@ type Room = {
   text: string
   status: 'WAITING' | 'COUNTDOWN' | 'RACING' | 'FINISHED'
   startedAt: string | null
+  /** ★ ใช้นับว่ารอมากี่วินาทีแล้ว สำหรับการเริ่มอัตโนมัติ */
+  createdAt?: string
   isOwner: boolean
 }
 
@@ -39,7 +41,18 @@ const PUSH_MS = 700
  *     ★ ไม่ใช่ "เวลาที่เครื่องฉันเห็นคำว่าเริ่ม" ★★ ซึ่งต่างกันตามความเร็วเน็ต
  *       แล้วคนเน็ตช้าจะได้ WPM ต่ำกว่าความจริงโดยไม่ใช่ความผิดของเขา
  */
-export function TypingRace({ roomId, onExit }: { roomId: string; onExit: () => void }) {
+export function TypingRace({
+  roomId,
+  onExit,
+  lang = 'th',
+  length = 'medium',
+}: {
+  roomId: string
+  onExit: () => void
+  /** ★ ใช้ตอนขอข้อความใหม่สำหรับรอบถัดไป */
+  lang?: TextLang
+  length?: 'short' | 'medium'
+}) {
   const ot = useOt()
   const [room, setRoom] = useState<Room | null>(null)
   const [players, setPlayers] = useState<Player[]>([])
@@ -96,6 +109,34 @@ export function TypingRace({ roomId, onExit }: { roomId: string; onExit: () => v
     const id = window.setInterval(() => setNow(Date.now()), 120)
     return () => window.clearInterval(id)
   }, [])
+
+  /*
+   * ★★★ เริ่มอัตโนมัติเมื่อรอครบ 30 วินาที (ข้อกำหนด 3.1)
+   *
+   *     ★ ของเดิมให้เฉพาะเจ้าของห้องกดได้ ★★ ถ้าเจ้าของห้องปิดแอปไป
+   *       ห้องค้างตลอดไปและทุกคนในนั้นติดอยู่โดยไม่มีทางออกนอกจากออกจากห้อง
+   *     ★★ ทุกเครื่องในห้องยิงคำสั่งนี้ ไม่ใช่เฉพาะเครื่องเดียว
+   *        ★ เพราะ "เครื่องที่ควรยิง" อาจเป็นเครื่องที่หายไปแล้วพอดี
+   *          ★★ server ตรวจเวลาเองและปฏิเสธคำสั่งที่มาเร็วเกิน
+   *             การยิงซ้ำจึงไม่ทำให้อะไรพัง
+   */
+  const autoFiredRef = useRef(false)
+  useEffect(() => {
+    if (!room || room.status !== 'WAITING' || players.length < 2) return
+    if (autoFiredRef.current) return
+    const waited = Date.now() - Date.parse(room.createdAt ?? new Date().toISOString())
+    if (waited < 30_000) return
+    autoFiredRef.current = true
+    void apiFetch('/api/office/games/typing', {
+      method: 'POST',
+      body: { action: 'start', roomId, force: true },
+    })
+      .then(load)
+      .catch(() => {
+        /* ★ ล้มแล้วปล่อยให้ลองใหม่รอบหน้า — server อาจเพิ่งถูกคนอื่นสั่งไปแล้ว */
+        autoFiredRef.current = false
+      })
+  }, [room, players.length, roomId, load, now])
 
   const startAt = room?.startedAt ? Date.parse(room.startedAt) : null
   /** ยังนับถอยหลังอยู่ไหม — บวก 1 เพราะ 0.4 วินาทีที่เหลือก็ยังไม่ถึงเวลา */
@@ -307,16 +348,41 @@ export function TypingRace({ roomId, onExit }: { roomId: string; onExit: () => v
           <p className="mt-0.5 text-sm text-ink-soft">
             {ot('game.typing.accuracy')} {stats.accuracy}% · {(elapsed / 1000).toFixed(1)}s
           </p>
-          <Button
-            variant="ghost"
-            className="mt-4 min-h-11"
-            onClick={async () => {
-              await apiFetch('/api/office/games/typing', { method: 'POST', body: { action: 'leave', roomId } }).catch(() => undefined)
-              onExit()
-            }}
-          >
-            <Untranslated>{ot('game.checkers.backToMenu')}</Untranslated>
-          </Button>
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            {/*
+              * ★★ แข่งอีกรอบใช้ "ห้องเดิม ข้อความใหม่" ตามข้อกำหนด
+              *    ★ คนที่อยู่ในห้องไม่ต้องส่งรหัสหากันใหม่
+              */}
+            <Button
+              variant="primary"
+              className="min-h-11"
+              onClick={async () => {
+                await apiFetch('/api/office/games/typing', {
+                  method: 'POST',
+                  body: { action: 'rematch', roomId, lang, length },
+                }).catch(() => undefined)
+                /* ★ ล้างสถานะในเครื่องให้ตรงกับห้องที่เพิ่งถูกรีเซ็ต */
+                finishedRef.current = false
+                counterRef.current = new TypingCounter()
+                prevLenRef.current = 0
+                autoFiredRef.current = false
+                setTyped('')
+                await load()
+              }}
+            >
+              <Untranslated>{ot('game.typing.raceAgain')}</Untranslated>
+            </Button>
+            <Button
+              variant="ghost"
+              className="min-h-11"
+              onClick={async () => {
+                await apiFetch('/api/office/games/typing', { method: 'POST', body: { action: 'leave', roomId } }).catch(() => undefined)
+                onExit()
+              }}
+            >
+              <Untranslated>{ot('game.checkers.backToMenu')}</Untranslated>
+            </Button>
+          </div>
         </div>
       ) : (
         <div className="mt-3 text-center">

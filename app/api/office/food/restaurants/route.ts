@@ -219,6 +219,11 @@ const createSchema = z.object({
   /* ★ พิกัดไม่บังคับ — ร้านที่ไม่มีก็ใช้งานได้ทุกอย่างยกเว้นระยะทาง */
   lat: z.number().min(-90).max(90).optional().nullable(),
   lng: z.number().min(-180).max(180).optional().nullable(),
+  /* ★ {"mon":["09:00","18:00"], "sun":null, …} — รูปแบบเดียวกับที่ isOpenNow อ่าน */
+  openHours: z
+    .record(z.string(), z.tuple([z.string(), z.string()]).nullable())
+    .optional()
+    .nullable(),
 })
 
 /** POST /api/office/food/restaurants — เพิ่มร้าน (FR-A01) */
@@ -250,6 +255,11 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
    *    ★★ ถ้าขั้นนี้ล้ม ร้านยังถูกสร้างสำเร็จ แค่ไม่มีพิกัด ซึ่งเป็น
    *       สถานะที่ถูกต้องอยู่แล้วสำหรับร้านเก่าทุกแห่ง
    */
+  /* ★ เวลาเปิด-ปิดเขียนตรง ๆ ได้ ไม่ต้องผ่าน RPC — มันไม่กระทบอะไรนอกแถวตัวเอง */
+  if (data?.id && body.openHours) {
+    await admin.from('restaurants').update({ open_hours: body.openHours } as never).eq('id', data.id)
+  }
+
   if (data?.id && body.lat != null && body.lng != null) {
     await admin.rpc('set_restaurant_latlng', {
       p_actor: actor.id,

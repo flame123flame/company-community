@@ -177,7 +177,14 @@ export function TypingPractice() {
   const isNewBest = done && best !== null && stats.wpm >= best
 
   if (raceRoom) {
-    return <TypingRace roomId={raceRoom} onExit={() => setRaceRoom(null)} />
+    return (
+      <TypingRace
+        roomId={raceRoom}
+        onExit={() => setRaceRoom(null)}
+        lang={prefs.lang}
+        length={prefs.length}
+      />
+    )
   }
 
   async function joinRace(code: string | null) {

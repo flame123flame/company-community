@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
+import type { OpenHours } from '@/lib/office/geo'
+import { OpenHoursField } from './OpenHoursField'
 import { apiFetch } from '@/lib/api/client'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -38,6 +40,7 @@ export function AddRestaurantForm({ onDone }: { onDone: () => void }) {
   /* ★ พิกัดไม่บังคับ — เพิ่มร้านตอนหิวไม่ควรต้องเปิดแผนที่ก่อน */
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [mapOpen, setMapOpen] = useState(false)
+  const [hours, setHours] = useState<OpenHours | null>(null)
   const [similar, setSimilar] = useState<Similar[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -96,6 +99,7 @@ export function AddRestaurantForm({ onDone }: { onDone: () => void }) {
           note: note.trim() || null,
           lat: coords?.lat ?? null,
           lng: coords?.lng ?? null,
+          openHours: hours,
         },
       })
       onDone()
@@ -209,6 +213,8 @@ export function AddRestaurantForm({ onDone }: { onDone: () => void }) {
           </div>
         ) : null}
       </div>
+
+      <OpenHoursField value={hours} onChange={setHours} />
 
       {error ? (
         <p role="alert" className="text-sm text-danger">

@@ -90,6 +90,7 @@ const bodySchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('challenge'), to: z.uuid() }),
   z.object({ action: z.literal('accept'), challengeId: z.uuid() }),
   z.object({ action: z.literal('decline'), challengeId: z.uuid() }),
+  z.object({ action: z.literal('rematch'), gameId: z.uuid() }),
   z.object({
     action: z.literal('move'),
     gameId: z.uuid(),
@@ -143,6 +144,17 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
       .eq('status', 'PENDING')
     if (error) throw fromPostgresError(error)
     return ok({ declined: true })
+  }
+
+  if (body.action === 'rematch') {
+    /* ★ กระดานเริ่มต้นสร้างที่ server เหมือนตอนรับคำท้า — เหตุผลเดียวกัน */
+    const { data, error } = await admin.rpc('checkers_rematch', {
+      p_actor: actor.id,
+      p_game: body.gameId,
+      p_board: initialBoard(),
+    })
+    if (error) throw fromPostgresError(error)
+    return ok({ gameId: data as string })
   }
 
   if (body.action === 'end') {

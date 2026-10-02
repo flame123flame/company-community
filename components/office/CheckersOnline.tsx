@@ -41,7 +41,16 @@ export type OnlineGame = {
  *          ผู้เล่นจะเห็นหมากเด้งกลับ ซึ่งทำให้ไม่เชื่อถือทั้งเกม
  *     ★ แลกมากับการหน่วงหนึ่งรอบคำขอ ซึ่งในเกมผลัดตากันไม่มีใครรู้สึก
  */
-export function CheckersOnline({ gameId, onExit }: { gameId: string; onExit: () => void }) {
+export function CheckersOnline({
+  gameId,
+  onExit,
+  onRematch,
+}: {
+  gameId: string
+  onExit: () => void
+  /** ★ ท้าคนเดิมแล้วได้เกมใหม่ — ผู้เรียกเป็นคนพาไป ไม่ใช่คอมโพเนนต์นี้ */
+  onRematch?: (gameId: string) => void
+}) {
   const ot = useOt()
   const [game, setGame] = useState<OnlineGame | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -221,9 +230,30 @@ export function CheckersOnline({ gameId, onExit }: { gameId: string; onExit: () 
               </Untranslated>
             </p>
           ) : null}
-          <Button variant="ghost" className="mt-4 min-h-11" onClick={onExit}>
-            <Untranslated>{ot('game.checkers.backToMenu')}</Untranslated>
-          </Button>
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            {/* ★ ท้าคนเดิมทันที — สลับฝั่งให้ที่ server ไม่งั้นคนเดิมเดินก่อนทุกเกม */}
+            <Button
+              variant="primary"
+              className="min-h-11"
+              loading={busy}
+              onClick={async () => {
+                try {
+                  const res = await apiFetch<{ gameId: string }>('/api/office/games/checkers', {
+                    method: 'POST',
+                    body: { action: 'rematch', gameId },
+                  })
+                  onRematch?.(res.gameId)
+                } catch (e) {
+                  setError(officeErrorText(e, ot))
+                }
+              }}
+            >
+              <Untranslated>{ot('game.checkers.again')}</Untranslated>
+            </Button>
+            <Button variant="ghost" className="min-h-11" onClick={onExit}>
+              <Untranslated>{ot('game.checkers.backToMenu')}</Untranslated>
+            </Button>
+          </div>
         </div>
       ) : (
         /* ── เมนู ⋯ : ขอเสมอ · ยอมแพ้ ───────────────────────── */
@@ -463,12 +493,67 @@ export function CheckersLobby({ onEnter }: { onEnter: (gameId: string) => void }
         </ul>
 
         {note ? <p className="mt-2 text-xs text-ink-soft">{note}</p> : null}
+        {/* ★ error ต้องอยู่ในส่วนที่มองเห็นเสมอ — ข้อความที่ถูกซ่อนไว้
+               ไม่ต่างอะไรกับการกลืน error ทิ้ง */}
         {error ? (
           <p role="alert" className="mt-2 text-sm text-danger">
             {error}
           </p>
         ) : null}
       </section>
+
+      <CheckersBoardTable />
     </div>
+  )
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════
+ * กระดานอันดับรายเดือน (ข้อกำหนด 2.5)
+ * ═══════════════════════════════════════════════════════════════════ */
+
+type BoardRow = { id: string; name: string; wins: number; losses: number; draws: number; me: boolean }
+
+export function CheckersBoardTable() {
+  const ot = useOt()
+  const [rows, setRows] = useState<BoardRow[]>([])
+
+  useEffect(() => {
+    void apiFetch<{ board: BoardRow[] }>('/api/office/games/checkers?board=month')
+      .then((r) => setRows(r.board))
+      .catch(() => setRows([]))
+  }, [])
+
+  if (rows.length === 0) return null
+
+  return (
+    <section className="mt-6">
+      <h2 className="mb-2 text-sm font-semibold text-ink">
+        <Untranslated>{ot('game.checkers.monthBoard')}</Untranslated>
+      </h2>
+      <ol className="flex flex-col gap-1">
+        {rows.map((r, i) => (
+          <li
+            key={r.id}
+            className={cn('flex min-h-11 items-center gap-3 rounded-xl px-3', r.me && 'bg-accent/10')}
+          >
+            <span className="w-6 shrink-0 text-center text-sm tabular-nums text-ink-faint">{i + 1}</span>
+            <span dir="auto" className="min-w-0 flex-1 truncate text-sm text-ink">{r.name}</span>
+            {/*
+              * ★ แสดงครบทั้งชนะ/แพ้/เสมอ ไม่ใช่แค่จำนวนชนะ
+              *   ★★ "ชนะ 10" จากการเล่น 12 เกม กับจากการเล่น 40 เกม
+              *      ไม่ใช่เรื่องเดียวกัน
+              */}
+            <span className="shrink-0 text-xs tabular-nums text-ink-soft">
+              <span className="font-semibold text-ink">{r.wins}</span>
+              <span className="text-ink-faint"> · {r.losses} · {r.draws}</span>
+            </span>
+          </li>
+        ))}
+      </ol>
+      <p className="mt-1 px-3 text-[11px] text-ink-faint">
+        <Untranslated>{ot('game.checkers.boardLegend')}</Untranslated>
+      </p>
+    </section>
   )
 }

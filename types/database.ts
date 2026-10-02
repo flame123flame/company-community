@@ -669,6 +669,9 @@ export type Database = {
           last_from: number | null
           last_to: number | null
           draw_offer_by: string | null
+          /** ★ หมดเวลาไปกี่ครั้ง — ครบ 3 ถึงแพ้ (0055) */
+          bottom_timeouts: number
+          top_timeouts: number
           created_at: string
           updated_at: string
         }
@@ -1566,6 +1569,15 @@ export type Database = {
         }
         Returns: Database['public']['Tables']['checkers_games']['Row']
       }
+      checkers_rematch: {
+        /** ★ สลับฝั่งให้ — ไม่งั้นคนเดิมได้เปรียบการเดินก่อนทุกเกม */
+        Args: { p_actor: string; p_game: string; p_board: unknown }
+        Returns: string
+      }
+      checkers_leaderboard: {
+        Args: { p_since: string }
+        Returns: { user_id: string; wins: number; losses: number; draws: number }[]
+      }
       checkers_end: {
         Args: { p_actor: string; p_game: string; p_action: string }
         Returns: Database['public']['Tables']['checkers_games']['Row']
@@ -1584,7 +1596,8 @@ export type Database = {
         Returns: Database['public']['Tables']['typing_rooms']['Row']
       }
       typing_start: {
-        Args: { p_actor: string; p_room: string; p_delay: number }
+        /** ★ p_force = เริ่มอัตโนมัติเมื่อรอครบ 30 วิ (server ตรวจเวลาเอง) */
+        Args: { p_actor: string; p_room: string; p_delay: number; p_force?: boolean }
         Returns: Database['public']['Tables']['typing_rooms']['Row']
       }
       typing_progress: {
@@ -1601,6 +1614,10 @@ export type Database = {
           /** ตัดสินที่ route ด้วย lib/games/typing — ไม่ให้ client ส่งมาเอง */
           p_credible: boolean
         }
+        Returns: Database['public']['Tables']['typing_rooms']['Row']
+      }
+      typing_rematch: {
+        Args: { p_actor: string; p_room: string; p_text: string }
         Returns: Database['public']['Tables']['typing_rooms']['Row']
       }
       typing_leave: {

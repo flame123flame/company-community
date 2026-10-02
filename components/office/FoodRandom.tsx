@@ -272,7 +272,15 @@ export function FoodRandom() {
           <p className="py-10 text-center text-sm text-ink-faint">{ot('common.loading')}</p>
         ) : wheelItems.length < 2 ? (
           <div className="rounded-2xl border border-line bg-elevated/30 backdrop-blur-md p-6 text-center">
-            <p className="text-sm text-ink-soft">{ot('food.random.needMore')}</p>
+            {/*
+              * ★★ แยกสองกรณีที่หน้าตาเหมือนกันแต่ทางแก้ตรงข้ามกัน
+              *    ★ ร้านในระบบมีน้อยจริง → ต้องไปเพิ่มร้าน
+              *    ★ ร้านมีเยอะแต่ตัวกรองแคบ → ต้องปลดตัวกรอง
+              *      ★★ บอกผิดข้อคือส่งคนไปทำงานที่ไม่ได้แก้ปัญหาของเขา
+              */}
+            <p className="text-sm text-ink-soft">
+              {data.items.length >= 2 ? ot('food.random.noneLeft') : ot('food.random.needMore')}
+            </p>
             <Link
               href="/office/food/picks"
               className="mt-3 inline-flex h-9 items-center rounded-full bg-surface px-4 text-sm font-medium text-ink hover:bg-surface-hover"
