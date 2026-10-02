@@ -700,6 +700,66 @@ export type Database = {
         Relationships: []
       }
 
+      /* ── แข่งพิมพ์ดีด (0053) ─────────────────────────────────────── */
+
+      typing_rooms: {
+        Row: {
+          id: string
+          code: string
+          owner_id: string
+          lang: 'th' | 'en'
+          length: 'short' | 'medium'
+          /** ข้อความที่ทุกคนในห้องพิมพ์ — เก็บที่ห้อง ไม่ให้แต่ละเครื่องสุ่มเอง */
+          text_body: string
+          status: 'WAITING' | 'COUNTDOWN' | 'RACING' | 'FINISHED'
+          /** ★ เวลาเริ่มพิมพ์จริง อยู่ในอนาคตตอนตั้ง เพื่อให้ทุกเครื่องเริ่มพร้อมกัน */
+          started_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: { code: string; owner_id: string; lang: string; length: string; text_body: string }
+        Update: { status?: string; started_at?: string | null }
+        Relationships: []
+      }
+
+      typing_players: {
+        Row: {
+          room_id: string
+          user_id: string
+          progress: number
+          wpm: number
+          accuracy: number
+          finished_at: string | null
+          joined_at: string
+        }
+        Insert: { room_id: string; user_id: string }
+        Update: { progress?: number; wpm?: number; accuracy?: number; finished_at?: string | null }
+        Relationships: []
+      }
+
+      typing_results: {
+        Row: {
+          id: number
+          user_id: string
+          room_id: string | null
+          lang: 'th' | 'en'
+          wpm: number
+          accuracy: number
+          elapsed_ms: number
+          created_at: string
+        }
+        Insert: {
+          user_id: string
+          room_id?: string | null
+          lang: string
+          wpm: number
+          accuracy: number
+          elapsed_ms: number
+        }
+        Update: Record<never, never>
+        Relationships: []
+      }
+
       restaurant_review_photos: {
         Row: { id: string; review_id: string; path: string; sort: number; created_at: string }
         Insert: { review_id: string; path: string; sort?: number }
@@ -1509,6 +1569,54 @@ export type Database = {
       checkers_end: {
         Args: { p_actor: string; p_game: string; p_action: string }
         Returns: Database['public']['Tables']['checkers_games']['Row']
+      }
+      /* ── แข่งพิมพ์ดีด (0053) ─────────────────────────────────────── */
+      typing_join: {
+        Args: {
+          p_actor: string
+          /** null = แข่งด่วน (หาห้องที่รออยู่ ถ้าไม่มีก็สร้าง) */
+          p_code: string | null
+          p_lang: string
+          p_len: string
+          p_text: string
+          p_newcode: string
+        }
+        Returns: Database['public']['Tables']['typing_rooms']['Row']
+      }
+      typing_start: {
+        Args: { p_actor: string; p_room: string; p_delay: number }
+        Returns: Database['public']['Tables']['typing_rooms']['Row']
+      }
+      typing_progress: {
+        Args: { p_actor: string; p_room: string; p_chars: number; p_wpm: number; p_acc: number }
+        Returns: boolean
+      }
+      typing_finish: {
+        Args: {
+          p_actor: string
+          p_room: string
+          p_wpm: number
+          p_acc: number
+          p_elapsed: number
+          /** ตัดสินที่ route ด้วย lib/games/typing — ไม่ให้ client ส่งมาเอง */
+          p_credible: boolean
+        }
+        Returns: Database['public']['Tables']['typing_rooms']['Row']
+      }
+      typing_leave: {
+        Args: { p_actor: string; p_room: string }
+        Returns: boolean
+      }
+      typing_solo_result: {
+        Args: {
+          p_actor: string
+          p_lang: string
+          p_wpm: number
+          p_acc: number
+          p_elapsed: number
+          p_credible: boolean
+        }
+        Returns: boolean
       }
       recompute_restaurant_travel: {
         Args: Record<never, never>
