@@ -15,7 +15,26 @@
 --     ★★ หน้าที่ของ RPC ที่นี่คือสิ่งที่ TypeScript ทำไม่ได้:
 --        ล็อกแถว · ตรวจว่าเป็นตาของคนที่เรียกจริง · กันสองคนเดินพร้อมกัน
 
-begin;
+-- ───────────────────────────────────────────────────────────────────────────
+-- ★★★ ล้างของค้างจากการรันที่ล้มกลางคันก่อน
+--
+--     รอบแรกไฟล์นี้ล้มที่ `create index ... (to_id …)` ด้วย
+--     "column to_id does not exist" ★ ทั้งที่ CREATE TABLE ข้างบนประกาศไว้
+--
+--     ★★ สาเหตุ: ตัวรัน SQL ยิงทีละคำสั่งโดยไม่ได้อยู่ใน transaction เดียว
+--        `begin;` ที่เขียนไว้จึงไม่ได้ปกป้องอะไร ★ ของที่ผ่านไปแล้วค้างอยู่
+--        แล้ว `create table if not exists` รอบถัดไปก็ "ข้าม" ตารางพิการนั้น
+--        ★★★ จึงล้มซ้ำที่เดิมตลอดไป โดยที่ข้อความ error ชี้ไปผิดที่
+--
+--     ★★ ปลอดภัยที่จะ drop: ทั้งสามตารางเป็นของใหม่ในไฟล์นี้ และตรวจแล้วว่า
+--        game_challenges มี 0 แถว ส่วนอีกสองตารางยังไม่ถูกสร้างเลย
+--     ★ ทำให้ไฟล์นี้รันซ้ำได้เสมอ — migration ที่รันซ้ำไม่ได้ คือ migration
+--       ที่ไม่มีใครกล้ารันตอนมีปัญหา
+-- ───────────────────────────────────────────────────────────────────────────
+drop table if exists public.checkers_moves cascade;
+drop table if exists public.checkers_games cascade;
+drop table if exists public.game_challenges cascade;
+
 
 -- ═════════════════════════════════════════════════════════════════════
 -- 1 · คำท้า
@@ -23,28 +42,25 @@ begin;
 
 create table if not exists public.game_challenges (
   id         uuid primary key default gen_random_uuid(),
-  /** 'checkers' | 'typing' — เผื่อเกมอื่นในอนาคต */
   game       text not null
              constraint game_challenges_game check (game in ('checkers', 'typing')),
   from_id    uuid not null references public.profiles(id) on delete cascade,
   to_id      uuid not null references public.profiles(id) on delete cascade,
-  /** PENDING | ACCEPTED | DECLINED | EXPIRED */
   status     text not null default 'PENDING'
              constraint game_challenges_status
              check (status in ('PENDING', 'ACCEPTED', 'DECLINED', 'EXPIRED')),
-  /** เกมที่เกิดขึ้นเมื่อรับคำท้า */
   game_id    uuid,
-  /*
-   * ★★ เก็บ "หมดอายุเมื่อไหร่" ไม่ใช่ "สร้างเมื่อไหร่แล้วคำนวณเอาตอนอ่าน"
-   *    ★ ถ้าเก็บแค่เวลาสร้าง ทุกที่ที่อ่านต้องรู้ว่าอายุคือ 10 นาที
-   *      ★★ แล้ววันที่เปลี่ยนเป็น 15 นาที จะมีที่ที่ลืมแก้เสมอ
-   */
   expires_at timestamptz not null default now() + interval '10 minutes',
   created_at timestamptz not null default now(),
-
-  /* ★ ท้าตัวเองไม่ได้ — บังคับที่ฐานข้อมูล ไม่ใช่แค่ซ่อนปุ่มใน UI */
   constraint game_challenges_not_self check (from_id <> to_id)
 );
+
+comment on table public.game_challenges is
+  'คำท้าเล่นเกม — ท้าตัวเองไม่ได้ (บังคับที่ฐานข้อมูล ไม่ใช่แค่ซ่อนปุ่มใน UI)';
+comment on column public.game_challenges.game_id is
+  'เกมที่เกิดขึ้นเมื่อรับคำท้า';
+comment on column public.game_challenges.expires_at is
+  'เก็บ "หมดอายุเมื่อไหร่" ไม่ใช่ "สร้างเมื่อไหร่แล้วคำนวณเอาตอนอ่าน" — เก็บเวลาสร้างแล้ววันที่เปลี่ยนอายุจาก 10 เป็น 15 นาที จะมีที่ที่ลืมแก้เสมอ';
 
 create index if not exists game_challenges_to_idx
   on public.game_challenges (to_id, status, created_at desc);
@@ -59,59 +75,41 @@ alter table public.game_challenges enable row level security;
 -- ═════════════════════════════════════════════════════════════════════
 
 create table if not exists public.checkers_games (
-  id           uuid primary key default gen_random_uuid(),
-  /** ฝ่ายล่าง = คนที่ท้า (เดินก่อน) */
-  bottom_id    uuid not null references public.profiles(id) on delete cascade,
-  top_id       uuid not null references public.profiles(id) on delete cascade,
-
-  /*
-   * ★ กระดานเป็น array ยาว 64 เก็บเป็น jsonb
-   *   ★★ รูปแบบเดียวกับที่ lib/games/checkers ใช้เป๊ะ จึงไม่ต้องแปลงอะไร
-   *      ตอนอ่าน/เขียน ★ ทุกการแปลงคือที่ที่ bug ซ่อนได้
-   */
-  board        jsonb not null,
-  /** 'BOTTOM' | 'TOP' */
-  turn         text not null default 'BOTTOM'
-               constraint checkers_games_turn check (turn in ('BOTTOM', 'TOP')),
-
-  /** กี่ตาแล้วที่ไม่มีการกิน — ใช้ตัดสินเสมอ */
-  quiet_plies  integer not null default 0,
-
-  /*
-   * ★★★ ตัวกันสองคนเดินพร้อมกัน
-   *
-   *     ทุกการเดินต้องบอกมาว่า "ฉันเห็นกระดานเวอร์ชันไหน"
-   *     ★ ถ้าไม่ตรง แปลว่ามีตาอื่นแทรกเข้ามาก่อน → ปฏิเสธ
-   *       ★★ ไม่มีตัวนี้ สองเครื่องที่ส่งตาพร้อมกันจะเขียนทับกัน
-   *          แล้วตาหนึ่งหายไปโดยไม่มีใครรู้
-   */
-  version      integer not null default 0,
-
-  /** PLAYING | FINISHED */
-  status       text not null default 'PLAYING'
-               constraint checkers_games_status check (status in ('PLAYING', 'FINISHED')),
-  /** ผู้ชนะ — null ตอนยังเล่นอยู่ หรือเมื่อเสมอ */
-  winner_id    uuid references public.profiles(id) on delete set null,
-  /** WIN | DRAW | RESIGN | TIMEOUT — null ตอนยังเล่นอยู่ */
-  end_reason   text
-               constraint checkers_games_reason
-               check (end_reason is null or end_reason in ('WIN', 'DRAW', 'RESIGN', 'TIMEOUT')),
-
-  /** บังคับกินไหม — ตั้งตอนสร้างห้อง */
+  id            uuid primary key default gen_random_uuid(),
+  bottom_id     uuid not null references public.profiles(id) on delete cascade,
+  top_id        uuid not null references public.profiles(id) on delete cascade,
+  board         jsonb not null,
+  turn          text not null default 'BOTTOM'
+                constraint checkers_games_turn check (turn in ('BOTTOM', 'TOP')),
+  quiet_plies   integer not null default 0,
+  version       integer not null default 0,
+  status        text not null default 'PLAYING'
+                constraint checkers_games_status check (status in ('PLAYING', 'FINISHED')),
+  winner_id     uuid references public.profiles(id) on delete set null,
+  end_reason    text
+                constraint checkers_games_reason
+                check (end_reason is null or end_reason in ('WIN', 'DRAW', 'RESIGN', 'TIMEOUT')),
   force_capture boolean not null default true,
-
-  /** ตาเดินล่าสุด ใช้ไฮไลต์ช่องต้นทาง-ปลายทาง */
-  last_from    smallint,
-  last_to      smallint,
-
-  /** ★ ใครขอเสมออยู่ — null = ไม่มีใครขอ */
+  last_from     smallint,
+  last_to       smallint,
   draw_offer_by uuid references public.profiles(id) on delete set null,
-
-  created_at   timestamptz not null default now(),
-  updated_at   timestamptz not null default now(),
-
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now(),
   constraint checkers_games_two_players check (bottom_id <> top_id)
 );
+
+comment on column public.checkers_games.bottom_id is
+  'ฝ่ายล่าง = คนที่ท้า และเป็นฝ่ายเดินก่อน';
+comment on column public.checkers_games.board is
+  'array ยาว 64 รูปแบบเดียวกับ lib/games/checkers เป๊ะ — ทุกการแปลงคือที่ที่ bug ซ่อนได้';
+comment on column public.checkers_games.quiet_plies is
+  'กี่ตาแล้วที่ไม่มีการกิน — ใช้ตัดสินเสมอ';
+comment on column public.checkers_games.version is
+  'กันสองคนเดินพร้อมกัน: ทุกตาต้องบอกว่าเห็นกระดานเวอร์ชันไหน ไม่ตรง = ปฏิเสธ ไม่ใช่เขียนทับ';
+comment on column public.checkers_games.winner_id is
+  'null ตอนยังเล่นอยู่ หรือเมื่อเสมอ';
+comment on column public.checkers_games.draw_offer_by is
+  'ใครขอเสมออยู่ — null = ไม่มีใครขอ';
 
 create index if not exists checkers_games_players_idx
   on public.checkers_games (bottom_id, status, updated_at desc);
@@ -155,12 +153,15 @@ create table if not exists public.checkers_moves (
   actor_id   uuid not null references public.profiles(id) on delete cascade,
   from_sq    smallint not null,
   to_sq      smallint not null,
-  /** ช่องที่ถูกกินในตานี้ */
   captured   smallint[] not null default '{}',
   created_at timestamptz not null default now(),
-
   unique (game_id, ply)
 );
+
+comment on table public.checkers_moves is
+  'ประวัติตาเดิน — ให้ "กลับเข้ามาแล้วเล่นต่อ" เห็นตาล่าสุด และสืบย้อนได้เวลามีคนแย้ง';
+comment on column public.checkers_moves.captured is
+  'ช่องที่ถูกกินในตานี้';
 
 create index if not exists checkers_moves_game_idx
   on public.checkers_moves (game_id, ply);
@@ -442,4 +443,3 @@ grant execute on function
   public.checkers_end(uuid, uuid, text)
   to service_role;
 
-commit;
