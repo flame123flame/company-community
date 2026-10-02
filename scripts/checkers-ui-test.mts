@@ -1,5 +1,5 @@
 import { chromium } from 'playwright-core'
-const APP = 'http://localhost:3001'
+const APP = process.env.APP_URL ?? 'http://localhost:3001'
 let pass = 0, fail = 0
 const check = (ok: boolean, n: string, d = '') => { ok ? pass++ : fail++; console.log(`  ${ok ? '\x1b[32m✓\x1b[0m' : '\x1b[31m✗\x1b[0m'} ${n}${d ? ` \x1b[2m${d}\x1b[0m` : ''}`) }
 

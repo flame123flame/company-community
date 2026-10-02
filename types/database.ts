@@ -632,6 +632,74 @@ export type Database = {
         Relationships: []
       }
 
+      /* ── เกม (0051) ──────────────────────────────────────────────── */
+
+      game_challenges: {
+        Row: {
+          id: string
+          game: 'checkers' | 'typing'
+          from_id: string
+          to_id: string
+          status: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'EXPIRED'
+          game_id: string | null
+          /** ★ เก็บเวลาหมดอายุ ไม่ใช่เวลาสร้างแล้วคำนวณเอาตอนอ่าน */
+          expires_at: string
+          created_at: string
+        }
+        Insert: { game: string; from_id: string; to_id: string }
+        Update: { status?: string; game_id?: string | null }
+        Relationships: []
+      }
+
+      checkers_games: {
+        Row: {
+          id: string
+          bottom_id: string
+          top_id: string
+          /** array ยาว 64 รูปแบบเดียวกับ lib/games/checkers เป๊ะ */
+          board: unknown
+          turn: 'BOTTOM' | 'TOP'
+          quiet_plies: number
+          /** ★ กันสองคนเดินพร้อมกัน — ทุกตาต้องบอกว่าเห็นเวอร์ชันไหน */
+          version: number
+          status: 'PLAYING' | 'FINISHED'
+          winner_id: string | null
+          end_reason: 'WIN' | 'DRAW' | 'RESIGN' | 'TIMEOUT' | null
+          force_capture: boolean
+          last_from: number | null
+          last_to: number | null
+          draw_offer_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: { bottom_id: string; top_id: string; board: unknown; force_capture?: boolean }
+        Update: { status?: string; winner_id?: string | null }
+        Relationships: []
+      }
+
+      checkers_moves: {
+        Row: {
+          id: number
+          game_id: string
+          ply: number
+          actor_id: string
+          from_sq: number
+          to_sq: number
+          captured: number[]
+          created_at: string
+        }
+        Insert: {
+          game_id: string
+          ply: number
+          actor_id: string
+          from_sq: number
+          to_sq: number
+          captured?: number[]
+        }
+        Update: Record<never, never>
+        Relationships: []
+      }
+
       restaurant_review_photos: {
         Row: { id: string; review_id: string; path: string; sort: number; created_at: string }
         Insert: { review_id: string; path: string; sort?: number }
@@ -1410,6 +1478,37 @@ export type Database = {
         Args: { p_actor: string; p_lat: number | null; p_lng: number | null }
         /** จำนวนร้านที่ถูกคำนวณระยะทางใหม่ */
         Returns: number
+      }
+      /* ── เกม (0051) ──────────────────────────────────────────────── */
+      challenge_create: {
+        Args: { p_actor: string; p_game: string; p_to: string }
+        Returns: string
+      }
+      challenge_accept: {
+        Args: { p_actor: string; p_id: string; p_board: unknown }
+        Returns: string
+      }
+      checkers_play: {
+        Args: {
+          p_actor: string
+          p_game: string
+          /** เวอร์ชันที่ผู้เล่นเห็นตอนตัดสินใจ — ไม่ตรง = มีตาอื่นแทรก → ปฏิเสธ */
+          p_version: number
+          p_from: number
+          p_to: number
+          p_captured: number[]
+          p_board: unknown
+          p_turn: string
+          p_quiet: number
+          p_status: string
+          p_winner: string | null
+          p_reason: string | null
+        }
+        Returns: Database['public']['Tables']['checkers_games']['Row']
+      }
+      checkers_end: {
+        Args: { p_actor: string; p_game: string; p_action: string }
+        Returns: Database['public']['Tables']['checkers_games']['Row']
       }
       recompute_restaurant_travel: {
         Args: Record<never, never>
