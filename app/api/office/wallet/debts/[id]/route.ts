@@ -88,7 +88,15 @@ export const POST = withErrorHandling(
       /* ★ ลูกหนี้ต้องรู้ว่าถูกตีกลับ ไม่งั้นเขาคิดว่าจบไปแล้ว */
       await admin.rpc('notify', {
         p_user: data.debtor_id,
-        p_type: 'debtCreated',
+        /*
+         * ★★★ ชนิดของตัวเอง ไม่ใช่ยืม 'debtCreated' มาใช้
+         *
+         *     ★ สวิตช์ปิดแจ้งเตือนทำงานจากช่อง type ★★ การยืมชนิดของคนอื่น
+         *       แปลว่าคนที่ปิด "มีคนสร้างรายการค้างจ่าย" จะไม่ได้รับข่าวว่า
+         *       "เจ้าหนี้แจ้งว่ายังไม่ได้รับเงิน" ไปด้วย
+         *       ★ ซึ่งเป็นข่าวที่เขาต้องรู้ที่สุด — เงินที่โอนไปแล้วถูกตีกลับ
+         */
+        p_type: 'debtRejected',
         p_title_key: 'notify.type.debtRejected',
         p_params: { amount: data.amount },
         p_link: '/office/wallet/owed',

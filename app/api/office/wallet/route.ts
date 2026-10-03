@@ -286,7 +286,8 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
         if ((sent ?? []).length === 0) {
           await admin.rpc('notify', {
             p_user: actor.id,
-            p_type: 'debtCreated',
+            /* ★ ชนิดของตัวเอง — เหตุผลเดียวกับ debtRejected */
+            p_type: 'setUpQr',
             p_title_key: 'notify.type.setUpQr',
             p_params: {},
             p_link: '/office/wallet/qr',

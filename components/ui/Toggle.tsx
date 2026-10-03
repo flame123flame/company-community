@@ -29,6 +29,15 @@ export function Toggle({
   hint,
   icon,
   disabled,
+  /**
+   * แถวเรียบ ไม่มีกรอบการ์ด
+   *
+   * ★★ ใช้กับ "รายการสวิตช์หลายอัน" ที่ค่าเริ่มต้นเป็นเปิดเกือบหมด
+   *    ★ การ์ดสีเน้นมีไว้บอกว่า "อันนี้เปิดอยู่" ซึ่งมีความหมายเมื่อมันเป็น
+   *      ตัวเลือกเดี่ยว ๆ ★★ แต่พอสิบสองแถวติดสีเหมือนกันหมด สีก็เลิกบอกอะไร
+   *      เหลือแค่หน้าจอที่แดงทั้งหน้า
+   */
+  plain,
   className,
 }: {
   checked: boolean
@@ -39,6 +48,7 @@ export function Toggle({
   /** path ของ SVG 24×24 */
   icon?: string
   disabled?: boolean
+  plain?: boolean
   className?: string
 }) {
   const knob = (
@@ -82,10 +92,12 @@ export function Toggle({
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={cn(
-        'flex min-h-11 w-full items-center gap-3 rounded-2xl border p-3 text-start transition-all duration-200',
-        checked
-          ? 'border-accent/45 bg-accent/8'
-          : 'border-line bg-elevated/50 hover:border-line-strong hover:bg-surface',
+        'flex min-h-11 w-full items-center gap-3 rounded-2xl p-3 text-start transition-all duration-200',
+        plain
+          ? 'hover:bg-surface'
+          : checked
+            ? 'border border-accent/45 bg-accent/8'
+            : 'border border-line bg-elevated/50 hover:border-line-strong hover:bg-surface',
         disabled && 'cursor-not-allowed',
         className,
       )}

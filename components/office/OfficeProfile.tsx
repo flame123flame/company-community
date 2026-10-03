@@ -8,6 +8,7 @@ import { shrinkImage } from '@/lib/image/shrink'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { cn } from '@/lib/cn'
+import { Toggle } from '@/components/ui/Toggle'
 import { companyLabel } from '@/lib/office/company'
 import { DEPARTMENTS } from '@/lib/office/departments'
 import { Untranslated, useOt, type OfficeKey } from '@/lib/i18n/office'
@@ -37,15 +38,60 @@ type Profile = {
  *      ถ้าดึงรายการจากตารางนั้น หน้าตั้งค่าจะว่างเปล่าสำหรับผู้ใช้ใหม่ทุกคน
  *      ★ รายการที่ผู้ใช้ควรเห็นคือ "ทุกชนิดที่ระบบส่ง" ซึ่งเป็นความรู้ของโค้ด
  */
-const NOTIFY_TYPES: { type: string; labelKey: OfficeKey }[] = [
-  { type: 'debtCreated', labelKey: 'profile.n.debtCreated' },
-  { type: 'debtReminder', labelKey: 'profile.n.debtReminder' },
-  { type: 'debtPaidPending', labelKey: 'profile.n.debtPaidPending' },
-  { type: 'marketReserved', labelKey: 'profile.n.marketReserved' },
-  { type: 'marketQueueTurn', labelKey: 'profile.n.marketQueueTurn' },
-  { type: 'marketMessage', labelKey: 'profile.n.marketMessage' },
-  { type: 'marketAlert', labelKey: 'profile.n.marketAlert' },
-  { type: 'contentHidden', labelKey: 'profile.n.contentHidden' },
+/**
+ * ชนิดแจ้งเตือนทั้งหมดที่ระบบส่งจริง
+ *
+ * ★★★ รายการนี้ต้องตรงกับค่า p_type ที่ public.notify() ถูกเรียกด้วย
+ *
+ *     ★ ของเดิมขาดสามชนิดและเกินความจริงหนึ่งชนิด:
+ *       ★★ "ข้อความใหม่ในแชท" ไม่มีสวิตช์เลย ทั้งที่เป็นชนิดที่ส่งบ่อยที่สุด
+ *          ในทั้งระบบ — คนที่อยู่ในกลุ่มใหญ่จึงปิดมันไม่ได้
+ *       ★★ "เจ้าหนี้แจ้งว่ายังไม่ได้รับเงิน" · "หักลบยอดค้าง" · "ชวนตั้งค่า QR"
+ *          ถูกส่งด้วยชนิด debtCreated ที่ยืมมา
+ *          ★ แปลว่าคนที่ปิด "มีคนสร้างรายการค้างจ่าย" จะเงียบไปอีกสามเรื่อง
+ *            ที่เขาไม่ได้สั่งให้เงียบ (แก้ที่ route และ migration 0059 แล้ว)
+ *
+ * ★★ จัดกลุ่มตามโมดูล ★ สิบสองสวิตช์เรียงติดกันเป็นกองเดียวอ่านไม่ออกว่า
+ *    อันไหนเรื่องเงิน อันไหนเรื่องแชท
+ */
+type NotifyGroup = {
+  titleKey: OfficeKey
+  items: { type: string; labelKey: OfficeKey }[]
+}
+
+const NOTIFY_GROUPS: NotifyGroup[] = [
+  {
+    titleKey: 'profile.n.gWallet',
+    items: [
+      { type: 'debtCreated', labelKey: 'profile.n.debtCreated' },
+      { type: 'debtReminder', labelKey: 'profile.n.debtReminder' },
+      { type: 'debtPaidPending', labelKey: 'profile.n.debtPaidPending' },
+      { type: 'debtRejected', labelKey: 'profile.n.debtRejected' },
+      { type: 'debtNetted', labelKey: 'profile.n.debtNetted' },
+      { type: 'setUpQr', labelKey: 'profile.n.setUpQr' },
+    ],
+  },
+  {
+    titleKey: 'profile.n.gChat',
+    items: [
+      /* ★ chatMention ใช้ชนิดเดียวกับ chatMessage — สวิตช์เดียวคุมทั้งคู่
+           ★★ ฐานข้อมูลส่ง type 'chatMessage' เสมอ ต่างแค่ข้อความที่แสดง */
+      { type: 'chatMessage', labelKey: 'profile.n.chatMessage' },
+    ],
+  },
+  {
+    titleKey: 'profile.n.gMarket',
+    items: [
+      { type: 'marketReserved', labelKey: 'profile.n.marketReserved' },
+      { type: 'marketQueueTurn', labelKey: 'profile.n.marketQueueTurn' },
+      { type: 'marketMessage', labelKey: 'profile.n.marketMessage' },
+      { type: 'marketAlert', labelKey: 'profile.n.marketAlert' },
+    ],
+  },
+  {
+    titleKey: 'profile.n.gSystem',
+    items: [{ type: 'contentHidden', labelKey: 'profile.n.contentHidden' }],
+  },
 ]
 
 /** หน้าโปรไฟล์ + ตั้งค่าแจ้งเตือน (หัวข้อ 8.1) */
@@ -453,36 +499,28 @@ export function OfficeProfile() {
         <p className="text-sm font-medium text-ink">{ot('profile.notify')}</p>
         <p className="mt-0.5 text-xs text-ink-faint">{ot('profile.notifyHint')}</p>
 
-        <div className="mt-3 flex flex-col gap-1">
-          {NOTIFY_TYPES.map((n) => {
-            const on = !off.has(n.type)
-            return (
-              <button
-                key={n.type}
-                type="button"
-                role="switch"
-                aria-checked={on}
-                onClick={() => void toggle(n.type)}
-                className="flex items-center gap-3 rounded-xl p-2 text-start transition-colors hover:bg-surface"
-              >
-                <span className="min-w-0 flex-1 text-sm text-ink">{ot(n.labelKey)}</span>
-                <span
-                  className={cn(
-                    'relative h-5 w-9 shrink-0 rounded-full transition-colors',
-                    on ? 'bg-accent' : 'bg-surface-hover',
-                  )}
-                  aria-hidden="true"
-                >
-                  <span
-                    className={cn(
-                      'absolute top-0.5 size-4 rounded-full bg-elevated transition-[inset-inline-start]',
-                      on ? 'start-4.5' : 'start-0.5',
-                    )}
-                  />
-                </span>
-              </button>
-            )
-          })}
+        <div className="mt-3 flex flex-col gap-4">
+          {NOTIFY_GROUPS.map((g) => (
+            <div key={g.titleKey}>
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
+                {ot(g.titleKey)}
+              </p>
+              <div className="flex flex-col gap-1">
+                {g.items.map((n) => {
+                  const on = !off.has(n.type)
+                  return (
+                    <Toggle
+                      key={n.type}
+                      plain
+                      checked={on}
+                      onChange={() => void toggle(n.type)}
+                      label={ot(n.labelKey)}
+                    />
+                  )
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
