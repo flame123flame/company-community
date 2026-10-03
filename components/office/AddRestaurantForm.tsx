@@ -11,6 +11,8 @@ import { cn } from '@/lib/cn'
 import { officeErrorText } from '@/lib/i18n/office-format'
 import { useOt } from '@/lib/i18n/office'
 import { DISTANCE_OPTIONS, PRICE_OPTIONS, distanceLabel } from '@/lib/office/food'
+import { shrinkImage } from '@/lib/image/shrink'
+import { ShopPhotos, type ShopPhoto } from './ShopPhotos'
 import type { DistanceBand, PriceRange } from '@/types/database'
 
 type Similar = { id: string; name: string; signatureDish: string; similarity: number }
@@ -28,7 +30,11 @@ export type EditingShop = {
   lat?: number | null
   lng?: number | null
   openHours?: OpenHours | null
+  photos?: ShopPhoto[]
 }
+
+/** เพดานเดียวกับที่ add_restaurant_photos บังคับในฐานข้อมูล */
+const MAX_PHOTOS = 10
 
 /**
  * ฟอร์มเพิ่ม/แก้ไขร้าน (FR-A01 + FR-A02 + FR-A06)
@@ -100,6 +106,27 @@ export function AddRestaurantForm({
       })
   }, [])
   const [similar, setSimilar] = useState<Similar[]>([])
+
+  /*
+   * ★★★ ตอน "เพิ่มร้าน" ยังไม่มี id ให้ผูกรูป — พักไฟล์ไว้ก่อน
+   *
+   *     ★ ShopPhotos ต้องมี shopId ถึงจะอัปโหลดได้ แต่ร้านยังไม่ถูกสร้าง
+   *       ★★ ทางเลือกคือสร้างร้านเปล่าก่อนแล้วค่อยให้ใส่รูป ซึ่งจะทิ้งร้าน
+   *          ว่างเปล่าไว้ทุกครั้งที่คนกรอกไปครึ่งทางแล้วปิดหน้า
+   *     ★ จึงเก็บเป็น File ไว้ในหน่วยความจำ แล้วอัปหลังสร้างร้านสำเร็จ
+   *       ★★ ตอน "แก้ไข" มี id อยู่แล้ว จึงใช้ ShopPhotos ตรง ๆ ได้เลย
+   */
+  const [staged, setStaged] = useState<{ file: File; url: string }[]>([])
+  const photoRef = useRef<HTMLInputElement>(null)
+
+  /* ★ คืน object URL ตอนถอดคอมโพเนนต์ — ไม่คืนแปลว่ารูปค้างในหน่วยความจำ
+       ไปจนกว่าจะรีเฟรชหน้า */
+  useEffect(
+    () => () => {
+      for (const s of staged) URL.revokeObjectURL(s.url)
+    },
+    [staged],
+  )
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -162,7 +189,31 @@ export function AddRestaurantForm({
       if (editing) {
         await apiFetch(`/api/office/food/restaurants/${editing.id}`, { method: 'PATCH', body })
       } else {
-        await apiFetch('/api/office/food/restaurants', { method: 'POST', body })
+        const created = await apiFetch<{ id: string }>('/api/office/food/restaurants', {
+          method: 'POST',
+          body,
+        })
+
+        /*
+         * ★★ อัปรูปหลังร้านถูกสร้างแล้ว และล้มแล้วไม่ย้อนการสร้างร้าน
+         *    ★ ร้านถูกบันทึกไปแล้วจริง ๆ การโยน error ตรงนี้จะทำให้หน้าจอ
+         *      บอกว่า "บันทึกไม่สำเร็จ" ทั้งที่ร้านขึ้นในรายการแล้ว
+         *      ★★ แล้วคนจะกดบันทึกซ้ำ ได้ร้านซ้ำสองร้าน
+         *    ★ รูปที่อัปไม่ขึ้นยังเพิ่มทีหลังจากหน้ารายละเอียดได้
+         */
+        for (const item of staged) {
+          try {
+            const small = await shrinkImage(item.file, 1600)
+            const form = new FormData()
+            form.append('file', small)
+            await fetch(`/api/office/food/restaurants/${created.id}/photos`, {
+              method: 'POST',
+              body: form,
+            })
+          } catch {
+            /* ★ เงียบไว้ — ร้านถูกสร้างแล้ว รูปเพิ่มทีหลังได้ */
+          }
+        }
       }
       onDone()
     } catch (e) {
@@ -273,8 +324,105 @@ export function AddRestaurantForm({
         </Button>
       </div>
 
-      {/* ══ คอลัมน์ขวา · แผนที่และเวลาทำการ ═══════════════════ */}
+      {/* ══ คอลัมน์ขวา · รูป แผนที่ และเวลาทำการ ═════════════ */}
       <aside className="mt-4 flex flex-col gap-4 lg:mt-0">
+        {/*
+          * ── รูปร้านและรูปอาหาร ─────────────────────────────────
+          *
+          * ★★★ อยู่บนสุดของคอลัมน์ขวา ไม่ใช่ท้ายฟอร์ม
+          *     ★ คนที่เพิ่งกินเสร็จแล้วมาเพิ่มร้าน มีรูปอยู่ในมือถืออยู่แล้ว
+          *       ★★ ถ้าช่องใส่รูปอยู่ท้ายสุด เขาจะกดบันทึกไปก่อนเจอมัน
+          *          แล้วรูปนั้นก็จะไม่ถูกใส่เลยตลอดไป
+          *
+          * ★ โหมดแก้ไขใช้ ShopPhotos ตรง ๆ เพราะมี id แล้ว — อัปแล้วขึ้นทันที
+          *   ★★ โหมดเพิ่มยังไม่มี id จึงพักไฟล์ไว้แล้วอัปหลังสร้างร้านเสร็จ
+          */}
+        <div className="rounded-2xl border border-line bg-elevated/50 p-4 backdrop-blur-md">
+          <p className="text-[14px] font-semibold text-ink">
+            {ot('food.photos.title')}
+          </p>
+          <p className="mt-0.5 text-[11.5px] text-ink-faint">
+            {ot('food.photos.hint')}
+          </p>
+
+          <div className="mt-3">
+            {editing ? (
+              <ShopPhotos
+                shopId={editing.id}
+                photos={editing.photos ?? []}
+                canEdit
+                compact
+                onChanged={onDone}
+              />
+            ) : (
+              <>
+                {staged.length > 0 ? (
+                  <div className="grid grid-cols-4 gap-2">
+                    {staged.map((item, i) => (
+                      <div
+                        key={item.url}
+                        className="relative overflow-hidden rounded-xl border border-line bg-surface"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={item.url} alt="" className="h-20 w-full object-cover" />
+                        <button
+                          type="button"
+                          aria-label={ot('common.delete')}
+                          onClick={() => {
+                            URL.revokeObjectURL(item.url)
+                            setStaged((prev) => prev.filter((_, j) => j !== i))
+                          }}
+                          className="absolute end-1 top-1 grid size-7 place-items-center rounded-full bg-black/55 text-white backdrop-blur-sm hover:bg-black/75"
+                        >
+                          <svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+                            <path d="M6 6l12 12M18 6 6 18" />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+
+                <input
+                  ref={photoRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    const picked = [...(e.target.files ?? [])]
+                    /* ★ รับได้แค่ที่เหลือจริง — เลือก 10 ใบตอนมีแล้ว 7 ต้องขึ้นแค่ 3 */
+                    setStaged((prev) => [
+                      ...prev,
+                      ...picked.slice(0, MAX_PHOTOS - prev.length).map((file) => ({
+                        file,
+                        url: URL.createObjectURL(file),
+                      })),
+                    ])
+                    e.target.value = ''
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => photoRef.current?.click()}
+                  disabled={staged.length >= MAX_PHOTOS}
+                  className={cn(
+                    'mt-2 inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-[13px] transition-colors',
+                    staged.length >= MAX_PHOTOS
+                      ? 'cursor-not-allowed bg-surface text-ink-faint'
+                      : 'bg-surface text-ink hover:bg-surface-hover',
+                  )}
+                >
+                  <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M4 6a1 1 0 0 1 1-1h3l1.5-2h5L16 5h3a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1zM12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />
+                  </svg>
+                  {ot('food.photos.add', { n: MAX_PHOTOS - staged.length })}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
         {/*
           * ── ตำแหน่งร้าน ───────────────────────────────────────
           * ★★ ยุบไว้ default แผนที่โหลด tile จากอินเทอร์เน็ตเมื่อถูกกางเท่านั้น
