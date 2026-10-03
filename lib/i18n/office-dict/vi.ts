@@ -158,6 +158,8 @@ export const vi: OfficeDict = {
   "food.picks.sortRating": "คะแนนสูงสุด",
   "food.picks.noReviews": "ยังไม่มีรีวิว",
   "food.review.heading": "รีวิว ({n})",
+  "food.detail.rateHint": "กดดาวเพื่อให้คะแนนและเขียนรีวิว",
+  "food.review.starsN": "ให้ {n} ดาว",
   "food.review.write": "เขียนรีวิว",
   "food.review.post": "โพสต์รีวิว",
   "food.review.empty": "ยังไม่มีใครรีวิวร้านนี้ — เป็นคนแรกเลยไหม",

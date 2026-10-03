@@ -35,11 +35,22 @@ export function RestaurantReviews({
   shopId,
   shopLat,
   shopLng,
+  /**
+   * คะแนนที่กดมาจากข้างนอก (แถวดาวบนหัวหน้ารายละเอียด)
+   *
+   * ★★★ กดดาวแล้วต้องได้เขียนรีวิวต่อทันที ไม่ใช่กดแล้วไม่มีอะไรเกิดขึ้น
+   *     ★ แถวดาวที่กดไม่ได้ อ่านเป็นปุ่มที่เสีย
+   *       ★★ และ "ให้ดาว" คือสิ่งที่คนอยากทำมากที่สุดเมื่อเปิดหน้านี้มา
+   */
+  seedRating,
+  onSeedUsed,
 }: {
   shopId: string
   /** พิกัดร้าน — ไม่มีก็รีวิวได้ แค่ติดป้าย "รีวิวที่ร้าน" ให้ไม่ได้ */
   shopLat?: number | null
   shopLng?: number | null
+  seedRating?: number | null
+  onSeedUsed?: () => void
 }) {
   const ot = useOt()
   const [items, setItems] = useState<Review[]>([])
@@ -48,6 +59,11 @@ export function RestaurantReviews({
   const [composing, setComposing] = useState(false)
   const [editing, setEditing] = useState<Review | null>(null)
   const [lightbox, setLightbox] = useState<{ photos: string[]; index: number } | null>(null)
+
+  /* ★ กดดาวจากข้างนอก → กางกล่องเขียนรีวิวให้เลย พร้อมคะแนนที่กด */
+  useEffect(() => {
+    if (seedRating && seedRating > 0) setComposing(true)
+  }, [seedRating])
 
   const load = useCallback(async () => {
     try {
@@ -96,13 +112,16 @@ export function RestaurantReviews({
           shopLat={shopLat}
           shopLng={shopLng}
           existing={editing}
+          seedRating={editing ? null : seedRating}
           onCancel={() => {
             setComposing(false)
             setEditing(null)
+            onSeedUsed?.()
           }}
           onDone={() => {
             setComposing(false)
             setEditing(null)
+            onSeedUsed?.()
             void load()
           }}
         />
@@ -253,6 +272,7 @@ function ReviewComposer({
   shopLat,
   shopLng,
   existing,
+  seedRating,
   onCancel,
   onDone,
 }: {
@@ -260,11 +280,12 @@ function ReviewComposer({
   shopLat?: number | null
   shopLng?: number | null
   existing: Review | null
+  seedRating?: number | null
   onCancel: () => void
   onDone: () => void
 }) {
   const ot = useOt()
-  const [rating, setRating] = useState(existing?.rating ?? 0)
+  const [rating, setRating] = useState(existing?.rating ?? seedRating ?? 0)
   const [body, setBody] = useState(existing?.body ?? '')
   const [photos, setPhotos] = useState<Pending[]>(
     (existing?.photos ?? []).map((url) => ({

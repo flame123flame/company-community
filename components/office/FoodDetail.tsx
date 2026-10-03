@@ -39,6 +39,9 @@ type Restaurant = {
   travelMeters?: number | null
   /* ── 0056 ── รูปของร้าน */
   photos?: { id: string; url: string }[]
+  /* ── 0049 ── ดาวเฉลี่ยและจำนวนรีวิว */
+  rating?: number | null
+  ratingCount?: number
   travelMinutes?: number | null
   travelMode?: 'walking' | 'driving' | null
 }
@@ -69,6 +72,8 @@ export function FoodDetail({ id }: { id: string }) {
   const [gone, setGone] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /* ★ ดาวที่กดจากแถวบนหัว — ส่งต่อให้กล่องเขียนรีวิวกางพร้อมคะแนนนั้น */
+  const [seedRating, setSeedRating] = useState<number | null>(null)
   /*
    * ★ พิกัดออฟฟิศ — ต้องมีถึงจะสร้างลิงก์เส้นทางได้
    *   ★★ ดึงแยกจากข้อมูลร้าน และล้มแล้วเป็น null เงียบ ๆ
@@ -210,6 +215,58 @@ export function FoodDetail({ id }: { id: string }) {
           </p>
         ) : null}
 
+        {/*
+          * ── ให้ดาว ────────────────────────────────────────────
+          *
+          * ★★★ กดได้ตรงนี้เลย ไม่ต้องเลื่อนลงไปหาปุ่ม "เขียนรีวิว"
+          *     ★ "ให้ดาว" คือสิ่งที่คนอยากทำมากที่สุดเมื่อเปิดหน้าร้านมา
+          *       ★★ ของเดิมต้องเลื่อนผ่านสถิติและปุ่มแผนที่ก่อนถึงจะเจอ
+          *     ★ กดดาวที่ 4 แล้วกล่องเขียนรีวิวกางพร้อมคะแนน 4 ดาวให้เลย
+          *       ★★ ไม่ใช่กางกล่องเปล่าแล้วต้องกดดาวซ้ำอีกรอบ
+          */}
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+          <span className="flex items-center gap-0.5">
+            {[1, 2, 3, 4, 5].map((n) => (
+              <button
+                key={n}
+                type="button"
+                onClick={() => setSeedRating(n)}
+                aria-label={ot('food.review.starsN', { n })}
+                className="grid size-9 place-items-center rounded-full transition-colors hover:bg-surface"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  className={cn(
+                    'size-5 transition-colors',
+                    /* ★ ไล่สีตามคะแนนเฉลี่ยที่มีอยู่ ไม่ใช่ว่างเปล่าเสมอ
+                         ★★ คนเห็นว่าร้านนี้ได้กี่ดาวแล้ว ก่อนจะให้ของตัวเอง */
+                    (seedRating ?? Math.round(r.rating ?? 0)) >= n
+                      ? 'text-warn'
+                      : 'text-ink-faint/40',
+                  )}
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path d="m12 4 2.4 4.9 5.4.8-3.9 3.8.9 5.4-4.8-2.5-4.8 2.5.9-5.4L4.2 9.7l5.4-.8z" />
+                </svg>
+              </button>
+            ))}
+          </span>
+
+          <span className="text-[13px] text-ink-soft">
+            {r.ratingCount && r.ratingCount > 0 ? (
+              <>
+                <span className="font-semibold text-ink">{r.rating?.toFixed(1)}</span>{' '}
+                <span className="text-ink-faint">
+                  {ot('food.review.heading', { n: r.ratingCount })}
+                </span>
+              </>
+            ) : (
+              <Untranslated>{ot('food.detail.rateHint')}</Untranslated>
+            )}
+          </span>
+        </div>
+
         <div className="mt-3 flex flex-wrap gap-1.5 text-xs">
           {r.cuisine ? <Tag>{r.cuisine}</Tag> : null}
           {r.priceRange ? <Tag>{r.priceRange}</Tag> : null}
@@ -332,7 +389,13 @@ export function FoodDetail({ id }: { id: string }) {
         *   ★★ มันเป็นลิสต์ที่ยาวได้ไม่จำกัด การยัดไว้ในการ์ดทำให้การ์ด
         *      ที่ควรเป็น "สรุปร้านหนึ่งหน้าจอ" กลายเป็นหน้าเลื่อนยาว
         */}
-      <RestaurantReviews shopId={id} shopLat={r.lat ?? null} shopLng={r.lng ?? null} />
+      <RestaurantReviews
+        shopId={id}
+        shopLat={r.lat ?? null}
+        shopLng={r.lng ?? null}
+        seedRating={seedRating}
+        onSeedUsed={() => setSeedRating(null)}
+      />
 
       <Toast toast={toast} />
     </div>

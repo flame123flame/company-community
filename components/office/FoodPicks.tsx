@@ -588,19 +588,38 @@ function Card({
   return (
     <article
       className={cn(
-        'flex flex-col rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-4',
+        'group/card relative flex flex-col rounded-2xl border border-line bg-elevated/50 p-4 backdrop-blur-md',
+        'transition-all duration-200 hover:-translate-y-0.5 hover:border-line-strong hover:shadow-lg',
         /* ★ ร้านที่อาจปิดจางลงแต่ยังอ่านได้ — ไม่ซ่อน เพราะคนที่รู้ว่ายังเปิด
              ต้องเห็นมันเพื่อกดยืนยัน (FR-A05) */
         r.maybeClosed && 'opacity-60',
       )}
     >
       {/*
+        * ★★★ ทั้งใบกดเข้าหน้ารายละเอียดได้ ไม่ใช่เฉพาะตรงชื่อ
+        *
+        *     ★ ของเดิมชื่อร้านเป็นลิงก์ แต่ไม่มีอะไรบนจอบอกว่ามันกดได้ —
+        *       ไม่มีขีดเส้นใต้ ไม่มีสีลิงก์ ไม่มีลูกศร
+        *       ★★ ผู้ใช้ถามตรง ๆ ว่า "กดเข้าไปดูรายละเอียดร้านยังไง"
+        *          ซึ่งเป็นคำตอบที่ชัดที่สุดว่าทางเข้ามันมองไม่เห็น
+        *
+        * ★★ ทำเป็นลิงก์คลุมทั้งใบ แล้วยกปุ่มจริง (หัวใจ · เมนู ⋯ · รูป)
+        *    ขึ้นมาอยู่เหนือมันด้วย z-index
+        *    ★ ไม่ใช่ห่อ <Link> รอบทั้งการ์ด เพราะปุ่มซ้อนในลิงก์เป็น HTML
+        *      ที่ไม่ถูกต้อง และกดปุ่มแล้วจะเด้งไปหน้าอื่นด้วย
+        */}
+      <Link
+        href={`/office/food/picks/${r.id}`}
+        aria-label={r.name}
+        className="absolute inset-0 z-0 rounded-2xl focus-visible:ring-2 focus-visible:ring-accent"
+      />
+      {/*
         * ── รูปปก ──────────────────────────────────────────────────
         * ★ มาจากรูปล่าสุดในรีวิว ไม่ใช่ช่องอัปโหลดแยก
         *   ★★ ช่องอัปโหลดแยกแปลว่ามีคนต้องรับหน้าที่หารูปมาใส่ ซึ่งไม่มีใครทำ
         *      ส่วนรูปจากรีวิวเกิดขึ้นเองทุกครั้งที่มีคนไปกินแล้วถ่ายรูป
         */}
-      <div className="relative -mx-4 -mt-4 mb-3 overflow-hidden rounded-t-2xl">
+      <div className="pointer-events-none relative -mx-4 -mt-4 mb-3 overflow-hidden rounded-t-2xl">
         {r.coverUrl ? (
           <div className="relative aspect-video">
             <Image src={r.coverUrl} alt="" fill sizes="(max-width:640px) 100vw, 360px" className="object-cover" unoptimized />
@@ -648,23 +667,16 @@ function Card({
 
       <div className="flex items-start justify-between gap-2">
         {/* ★ ชื่อร้านเป็นลิงก์เข้าหน้ารายละเอียด — เป็นที่ที่คนคาดว่าจะกดได้อยู่แล้ว */}
-        <h2 className="min-w-0 font-medium">
-          {/*
-            * ★★ ชื่อร้านเป็นทางเข้าหลักของหน้ารายละเอียด จึงต้องกดโดนแน่ ๆ
-            *    ★ ตัวหนังสือสูง 19px เอง — ใช้ min-h-11 + inline-flex
-            *      เพื่อขยาย "พื้นที่แตะ" โดยไม่เปลี่ยนขนาดตัวอักษร
-            *      ★★ ต่างจากการเพิ่ม font-size ซึ่งจะทำให้ดีไซน์การ์ดเพี้ยนทั้งหน้า
-            */}
-          <Link
-            href={`/office/food/picks/${r.id}`}
-            dir="auto"
-            className="inline-flex min-h-11 items-center text-ink transition-colors hover:text-link"
-          >
-            {r.name}
-          </Link>
+        {/* ★ ไม่เป็นลิงก์ซ้อนอีกแล้ว — ลิงก์คลุมทั้งใบรับหน้าที่นั้นไป
+               ★★ ลิงก์ซ้อนลิงก์ทำให้โปรแกรมอ่านหน้าจอประกาศทางเข้าเดียวสองครั้ง */}
+        <h2
+          dir="auto"
+          className="flex min-h-11 min-w-0 items-center font-medium text-ink transition-colors group-hover/card:text-link"
+        >
+          {r.name}
         </h2>
 
-        <div className="flex shrink-0 items-start gap-1">
+        <div className="relative z-10 flex shrink-0 items-start gap-1">
           {r.maybeClosed ? (
             <span className="mt-1 rounded-full bg-danger/15 px-2 py-0.5 text-xs text-danger">
               {ot('food.picks.maybeClosed')}
@@ -835,7 +847,7 @@ function Card({
         </p>
       ) : null}
 
-      <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-line pt-3">
+      <div className="relative z-10 mt-3 flex flex-wrap items-center gap-1.5 border-t border-line pt-3">
         <button
           type="button"
           onClick={onVote}
@@ -870,7 +882,7 @@ function Card({
         *      ★★ ร้านที่ไม่มีใครรีวิวจึงไม่มีรูปตลอดกาล แม้จะมีคนอยากใส่ให้
         */}
       {r.canManage ? (
-        <div className="mt-3 border-t border-line pt-3">
+        <div className="relative z-10 mt-3 border-t border-line pt-3">
           <ShopPhotos
             shopId={r.id}
             photos={r.photos ?? []}

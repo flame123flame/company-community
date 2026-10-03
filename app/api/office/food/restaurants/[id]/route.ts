@@ -102,6 +102,19 @@ export const GET = withErrorHandling(
         : Promise.resolve({ data: null }),
     ])
 
+    /* ★ อ่านแบบล้มแล้วถอยได้ — คอลัมน์มาจาก 0049 */
+    let ratingSum = 0
+    let ratingCount = 0
+    {
+      const { data: agg } = await admin
+        .from('restaurants')
+        .select('rating_sum, rating_count')
+        .eq('id', id)
+        .maybeSingle()
+      ratingSum = agg?.rating_sum ?? 0
+      ratingCount = agg?.rating_count ?? 0
+    }
+
     const shopPhotos: { id: string; url: string }[] = []
     {
       const { data: photoRows } = await admin
@@ -147,6 +160,13 @@ export const GET = withErrorHandling(
          *   ★★ หน้ารายละเอียดต้องไม่พังทั้งหน้าเพราะแกลเลอรีว่าง
          */
         photos: shopPhotos,
+        /*
+         * ── 0049 ── ดาวเฉลี่ยและจำนวนรีวิว
+         * ★ ส่งทั้งคู่เสมอ ★★ ★4.0 จากรีวิวเดียว กับ ★4.0 จาก 40 รีวิว
+         *   ไม่ใช่ข้อมูลเดียวกัน
+         */
+        rating: ratingCount > 0 ? ratingSum / ratingCount : null,
+        ratingCount,
       },
       /** จำนวนบิลของร้านนี้ในเดือนนี้ — ทั้งออฟฟิศ */
       visitsThisMonth: (bills ?? []).length,
