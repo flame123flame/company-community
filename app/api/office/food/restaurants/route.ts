@@ -62,6 +62,16 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
   const sort = q.get('sort')
   const maxWalk = Number(q.get('max_walk_min'))
   const openNow = q.get('open_now') === 'true'
+  const query = (q.get('q') ?? '').trim()
+  const cuisine = q.get('cuisine')
+  const price = q.get('price')
+  const tag = q.get('tag')
+  /*
+   * ★ ไม่ส่ง per_page มา = ไม่แบ่งหน้า ได้ทั้งหมดเหมือนเดิม
+   *   ★★ เพดาน 100 กันไม่ให้ใครขอทีละพันแถวแล้วลาก server ไปด้วย
+   */
+  const perPage = Math.min(100, Math.max(0, Number(q.get('per_page')) || 0))
+  const page = Math.max(0, Number(q.get('page')) || 0)
 
   const admin = getSupabaseAdminClient()
 
@@ -181,6 +191,33 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
     for (const p of profiles ?? []) names.set(p.id, p.nickname || p.display_name)
   }
 
+  /*
+   * ── รูปของร้าน (0056) ──────────────────────────────────────────
+   *
+   * ★ อ่านแบบล้มแล้วถอยได้ — ตารางนี้มาจาก migration 0056
+   *   ★★ หน้ารายการร้านต้องไม่พังถ้ายังไม่ได้รัน ซึ่งเป็นกฎเดียวกับ
+   *      คอลัมน์พิกัดของ 0050 ที่ไฟล์นี้ทำอยู่แล้ว
+   */
+  const shopPhotos = new Map<string, { id: string; url: string }[]>()
+  {
+    const ids = (rows ?? []).map((r) => r.id)
+    if (ids.length > 0) {
+      const { data: photoRows } = await admin
+        .from('restaurant_photos')
+        .select('id, restaurant_id, path')
+        .in('restaurant_id', ids)
+        .order('sort', { ascending: true })
+      for (const row of photoRows ?? []) {
+        const list = shopPhotos.get(row.restaurant_id) ?? []
+        list.push({
+          id: row.id,
+          url: admin.storage.from('restaurants').getPublicUrl(row.path).data.publicUrl,
+        })
+        shopPhotos.set(row.restaurant_id, list)
+      }
+    }
+  }
+
   const items = (rows ?? []).map((r) => ({
       id: r.id,
       name: r.name,
@@ -214,7 +251,15 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
         (ratings.get(r.id)?.count ?? 0) > 0
           ? (ratings.get(r.id)!.sum / ratings.get(r.id)!.count)
           : null,
-      coverUrl: covers.get(r.id) ?? null,
+      /*
+       * ★★★ หน้าปกมาจากรูปของร้านก่อน แล้วค่อยถอยไปใช้รูปรีวิว
+       *
+       *     ★ ของเดิมใช้รูปรีวิวที่ใหม่ที่สุดอย่างเดียว ★★ แปลว่าหน้าปก
+       *       เปลี่ยนเองทุกครั้งที่มีคนรีวิวใหม่ และหายไปเลยถ้าคนนั้นลบรีวิว
+       *       ★ ร้านที่ไม่มีใครรีวิวจึงไม่มีรูปตลอดกาล
+       */
+      photos: shopPhotos.get(r.id) ?? [],
+      coverUrl: shopPhotos.get(r.id)?.[0]?.url ?? covers.get(r.id) ?? null,
       /* ★ ?? null ทุกช่อง — เส้นทางถอยไม่มีคอลัมน์พวกนี้เลย
            หน้าเว็บจึงได้ null เหมือนร้านที่ยังไม่ได้ปักพิกัด ซึ่งมันรับมือได้อยู่แล้ว */
       lat: r.lat ?? null,
@@ -283,8 +328,43 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
     })
   }
 
+  /*
+   * ── กรองด้วยคำค้น · ประเภท · ราคา ────────────────────────────────
+   *
+   * ★★ ย้ายมาฝั่ง server เพราะการแบ่งหน้าต้องนับ "ทั้งหมดหลังกรอง"
+   *    ★ ถ้ากรองฝั่งหน้าเว็บหลังแบ่งหน้าแล้ว จำนวนหน้าจะผิดทุกครั้งที่กรอง
+   *      ★★ และหน้าที่ 3 อาจว่างเปล่าทั้งที่ยังมีผลลัพธ์อยู่
+   */
+  if (query) {
+    const needle = query.toLowerCase()
+    shown = shown.filter((r) =>
+      `${r.name} ${r.signatureDish} ${r.cuisine ?? ''} ${r.note ?? ''}`
+        .toLowerCase()
+        .includes(needle),
+    )
+  }
+  if (cuisine) shown = shown.filter((r) => r.cuisine === cuisine)
+  if (price) shown = shown.filter((r) => r.priceRange === price)
+  if (tag) shown = shown.filter((r) => r.distance_tag === tag || r.distance === tag)
+
+  /*
+   * ── แบ่งหน้า ────────────────────────────────────────────────────
+   *
+   * ★★★ ส่ง total มาด้วยเสมอ ไม่ใช่แค่แถวของหน้านี้
+   *     ★ หน้าเว็บต้องรู้ว่ามีกี่หน้าถึงจะวาดปุ่มเลขหน้าได้
+   *       ★★ การเดาจาก "ได้มาเต็มหน้าแสดงว่ายังมีต่อ" ทำให้หน้าสุดท้าย
+   *          ที่พอดีเป๊ะ มีปุ่มถัดไปที่กดแล้วได้หน้าว่าง
+   * ★ ไม่ส่ง page มาเลย = ได้ทั้งหมดเหมือนเดิมเป๊ะ — ของเดิมจึงไม่พัง
+   */
+  const total = shown.length
+  const paged = perPage > 0 ? shown.slice(page * perPage, page * perPage + perPage) : shown
+
   return ok({
-    items: shown,
+    items: paged,
+    total,
+    page,
+    perPage: perPage > 0 ? perPage : total,
+    pageCount: perPage > 0 ? Math.max(1, Math.ceil(total / perPage)) : 1,
     /** รายชื่อประเภทอาหารที่มีจริง — ใช้สร้างตัวกรองโดยไม่ต้อง hardcode */
     cuisines: [...new Set((rows ?? []).map((r) => r.cuisine).filter(Boolean))].sort(),
   })

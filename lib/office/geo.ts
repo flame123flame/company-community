@@ -289,3 +289,29 @@ export function isAllowedMapHost(host: string): boolean {
   /* ★ google.co.th · google.de — ยอมเฉพาะรูปแบบ (www.|maps.)google.<tld> */
   return /^(www\.|maps\.)?google\.[a-z]{2,3}(\.[a-z]{2})?$/.test(h)
 }
+
+/**
+ * ระยะทางในรูปแบบที่พร้อมเอาไปเข้าคำแปล
+ *
+ * ★★★ ของเดิมบอกแต่ "เดิน ~6 นาที" ไม่เคยบอกเป็นระยะทางเลยสักที่
+ *
+ *     ★ นาทีตอบว่า "ไปนานไหม" แต่ไม่ตอบว่า "ไกลแค่ไหน"
+ *       ★★ ซึ่งเป็นคำถามที่คนถามเวลาตัดสินใจว่าจะเดินหรือเรียกรถ
+ *     ★ และนาทีของเราเป็นค่าประมาณจากความเร็วคงที่ — ระยะทางวัดได้จริงกว่า
+ *
+ * ★★★ คืนตัวเลขกับหน่วย ไม่ใช่สตริงสำเร็จรูป
+ *
+ *     ★ "350 ม." ที่ประกอบในนี้จะหลุดเป็นภาษาไทยในทุกภาษา
+ *       ★★ และ scripts/i18n-test.ts จะจับได้ทันที ซึ่งถูกต้องแล้ว
+ *     ★ ตัวเรียกเอาไปใส่ ot('food.geo.metres'|'food.geo.km', { n }) เอง
+ *
+ * ★★ ต่ำกว่า 1 กม. ปัดเป็นหลักสิบเมตร ★ ความแม่นระดับเมตรเดียวเป็น
+ *    ความแม่นปลอม เพราะเราคูณ ROAD_FACTOR จากระยะเส้นตรงอยู่แล้ว
+ */
+export function distanceParts(
+  meters: number | null | undefined,
+): { unit: 'm' | 'km'; n: number } | null {
+  if (meters == null || !Number.isFinite(meters)) return null
+  if (meters < 1000) return { unit: 'm', n: Math.round(meters / 10) * 10 }
+  return { unit: 'km', n: Math.round(meters / 100) / 10 }
+}

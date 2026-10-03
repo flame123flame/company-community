@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { cn } from '@/lib/cn'
 import { officeErrorText } from '@/lib/i18n/office-format'
-import { useOt } from '@/lib/i18n/office'
+import { Untranslated, useOt } from '@/lib/i18n/office'
 import {
   DISTANCE_OPTIONS,
   PRICE_OPTIONS,
@@ -20,7 +20,10 @@ import {
   type Restaurant,
   type RestaurantList,
 } from '@/lib/office/food'
-import { isOpenNow } from '@/lib/office/geo'
+import { distanceParts, isOpenNow } from '@/lib/office/geo'
+import { cuisineStyle } from '@/lib/office/cuisine'
+import { Section } from '@/components/ui/Section'
+import { ShopPhotos } from './ShopPhotos'
 import { AddRestaurantForm } from './AddRestaurantForm'
 import { FilterSheet, FilterGroup, FilterChip } from './FilterSheet'
 
@@ -41,6 +44,13 @@ export function FoodPicks() {
   const [adding, setAdding] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  /*
+   * ★★ แบ่งหน้าฝั่งนี้ จากรายการที่กรอง+เรียงเสร็จแล้ว
+   *    ★ ร้านรอบออฟฟิศมีหลักสิบ การขอใหม่ทุกครั้งที่เปลี่ยนหน้าคือการรอเน็ต
+   *      โดยไม่ได้อะไร ★★ server รองรับ page/per_page ไว้แล้วสำหรับวันที่
+   *      ข้อมูลโตจนทำแบบนี้ไม่ไหว — วันนั้นหน้าจอไม่ต้องเปลี่ยนอะไรเลย
+   */
+  const [page, setPage] = useState(0)
 
   const load = useCallback(async () => {
     try {
@@ -186,53 +196,103 @@ export function FoodPicks() {
     )
   }
 
-  return (
-    <div className="py-2">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="mt-1 text-sm text-ink-soft">
-            {ot('food.picks.count', { n: data.items.length })}
-          </p>
-        </div>
-        <Button variant="primary" className="min-h-11" onClick={() => setAdding(true)}>
-          {ot('food.picks.add')}
-        </Button>
-      </div>
+  /* ★ เปลี่ยนตัวกรองหรือการเรียงแล้วต้องกลับหน้าแรก
+       ★★ ไม่งั้นผลลัพธ์ 4 ร้านที่ดูอยู่หน้า 3 จะกลายเป็นหน้าว่าง */
+  useEffect(() => {
+    setPage(0)
+  }, [filters.query, filters.cuisine, filters.price, filters.distance, sort])
 
-      {/* ── ตัวกรอง (FR-A03) ─────────────────────────────────────── */}
-      <div className="mt-5 flex flex-col gap-3">
-        <Input radius="round"
+  const pageCount = Math.max(1, Math.ceil(shown.length / PER_PAGE))
+  const safePage = Math.min(page, pageCount - 1)
+  const pageRows = shown.slice(safePage * PER_PAGE, safePage * PER_PAGE + PER_PAGE)
+
+  return (
+    <div className="w-full pb-10">
+      {/*
+        * ══ 1 · ค้นหาและกรอง ═══════════════════════════════════
+        *
+        * ★★★ ของเดิมเป็นแถวลอย ๆ สามแถวที่ไม่มีหัวข้อ
+        *     ★ ช่องค้นหา · ชิปประเภท · ปุ่มตัวกรอง — ทั้งสามอ่านเป็นของ
+        *       คนละชุดที่บังเอิญอยู่ติดกัน
+        *       ★★ ตอนนี้อยู่ในเซกชันเดียวที่มีชื่อ และหุบได้เมื่อเลือกเสร็จแล้ว
+        */}
+      <Section
+        collapsible
+        /* ★ ชื่อเซกชันต้องไม่ซ้ำกับปุ่ม "ตัวกรอง" ที่อยู่ข้างใน
+             ★★ ซ้ำแล้วทั้งคนและสคริปต์ทดสอบแยกไม่ออกว่าจะกดอันไหน —
+                สคริปต์กดหัวเซกชันแล้วรอแผ่นตัวกรองที่ไม่มีวันเปิด */
+        title={<Untranslated>{ot('food.picks.findTitle')}</Untranslated>}
+        hint={<Untranslated>{ot('food.picks.count', { n: data.items.length })}</Untranslated>}
+        badge={
+          filterCount > 0 ? (
+            <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[11px] font-medium tabular-nums text-accent">
+              {filterCount}
+            </span>
+          ) : undefined
+        }
+        summary={
+          [
+            filters.query,
+            filters.cuisine,
+            filters.price,
+            filters.distance ? distanceLabel(ot, filters.distance) : '',
+          ]
+            .filter(Boolean)
+            .join(' · ') || undefined
+        }
+        action={
+          <Button variant="primary" className="min-h-11 shrink-0" onClick={() => setAdding(true)}>
+            <Untranslated>{ot('food.picks.add')}</Untranslated>
+          </Button>
+        }
+      >
+        <Input
+          radius="round"
           value={filters.query}
           onChange={(e) => setFilters((f) => ({ ...f, query: e.target.value }))}
           placeholder={ot('food.picks.searchPlaceholder')}
-          className="max-w-sm"
         />
 
         {/*
-          * ★★ แถวประเภทอาหารเลื่อนแนวนอน ไม่ขึ้นบรรทัดใหม่บนมือถือ
-          *
-          *    ของเดิมเป็น flex-wrap ★ ออฟฟิศที่มีประเภทอาหาร 10 กว่าแบบ
-          *    จะได้ตัวกรองสูงสามบรรทัด ซึ่งดันรายการร้านหลุดจอแรกไปทั้งหมด
-          *    ★★ -mx-4 px-4 ทำให้ขอบที่เลื่อนไปชนเป็นขอบจอจริง
-          *       ไม่ใช่ขอบในที่ดูเหมือนรายการถูกตัด
+          * ★★ ประเภทอาหารเป็นชิปที่มีไอคอนประจำประเภท ไม่ใช่ตัวหนังสือล้วน
+          *    ★ ชุดเดียวกับการ์ดร้าน — คนเห็นไอคอนชามเส้นบนชิป แล้วเจอ
+          *      ไอคอนเดียวกันบนการ์ดที่กรองออกมา จึงรู้ว่ากรองทำงานจริง
           */}
-        <div className="scrollbar-none -mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
+        <div className="scrollbar-none -mx-4 mt-3 flex gap-1.5 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
           <Chip active={!filters.cuisine} onClick={() => setFilters((f) => ({ ...f, cuisine: null }))}>
             {ot('food.picks.allCuisines')}
           </Chip>
-          {data.cuisines.map((c) => (
-            <Chip
-              key={c}
-              active={filters.cuisine === c}
-              onClick={() => setFilters((f) => ({ ...f, cuisine: f.cuisine === c ? null : c }))}
-            >
-              {c}
-            </Chip>
-          ))}
+          {data.cuisines.map((c) => {
+            const style = cuisineStyle(c, c)
+            return (
+              <Chip
+                key={c}
+                active={filters.cuisine === c}
+                onClick={() => setFilters((f) => ({ ...f, cuisine: f.cuisine === c ? null : c }))}
+              >
+                <span className="inline-flex items-center gap-1.5">
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="size-3.5"
+                    style={{ color: `rgb(${style.tint})` }}
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.9"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d={style.icon} />
+                  </svg>
+                  <span dir="auto">{c}</span>
+                </span>
+              </Chip>
+            )
+          })}
         </div>
 
-        {/* ── ราคา · การเดินทาง · การเรียง รวมอยู่ในปุ่มเดียว ───────── */}
-        <div className="relative">
+        {/* ── ราคา · การเดินทาง · การเรียง ───────────────────── */}
+        <div className="relative mt-3">
           <button
             type="button"
             onClick={() => setFilterOpen((v) => !v)}
@@ -307,7 +367,7 @@ export function FoodPicks() {
             </FilterGroup>
           </FilterSheet>
         </div>
-      </div>
+      </Section>
 
       {error ? (
         <p role="alert" className="mt-4 text-sm text-danger">
@@ -315,31 +375,142 @@ export function FoodPicks() {
         </p>
       ) : null}
 
-      {/* ── การ์ดร้าน ────────────────────────────────────────────── */}
-      <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {loading ? (
-          <p className="col-span-full py-10 text-center text-sm text-ink-faint">
-            {ot('common.loading')}
-          </p>
-        ) : shown.length === 0 ? (
-          <p className="col-span-full py-10 text-center text-sm text-ink-faint">
-            {data.items.length === 0 ? ot('food.picks.empty') : ot('common.empty')}
-          </p>
-        ) : (
-          shown.map((r) => (
-            <Card
-              key={r.id}
-              r={r}
-              note={notes[r.id]}
-              onVote={() => void vote(r.id)}
-              onReport={() => void reportClosed(r.id)}
-              onRemove={() => void remove(r.id)}
-              onMarkOpen={() => void markOpen(r)}
+      {/* ══ 2 · รายการร้าน ═══════════════════════════════════════ */}
+      <Section
+        title={<Untranslated>{ot('food.picks.listTitle')}</Untranslated>}
+        badge={
+          shown.length > 0 ? (
+            <span className="rounded-full bg-surface px-2 py-0.5 text-[11px] font-normal tabular-nums text-ink-soft">
+              {ot('food.picks.count', { n: shown.length })}
+            </span>
+          ) : undefined
+        }
+      >
+        <div className="grid items-start gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {loading ? (
+            <p className="col-span-full py-10 text-center text-sm text-ink-faint">
+              {ot('common.loading')}
+            </p>
+          ) : pageRows.length === 0 ? (
+            <p className="col-span-full py-10 text-center text-sm text-ink-faint">
+              {data.items.length === 0 ? ot('food.picks.empty') : ot('common.empty')}
+            </p>
+          ) : (
+            pageRows.map((r) => (
+              <Card
+                key={r.id}
+                r={r}
+                note={notes[r.id]}
+                onVote={() => void vote(r.id)}
+                onReport={() => void reportClosed(r.id)}
+                onRemove={() => void remove(r.id)}
+                onMarkOpen={() => void markOpen(r)}
+                onPhotos={() => void load()}
+              />
+            ))
+          )}
+        </div>
+
+        {/*
+          * ── แบ่งหน้า ───────────────────────────────────────
+          * ★★ กดเลขหน้าได้ ไม่ใช่มีแค่ก่อนหน้า/ถัดไป
+          *    ★ คนที่อยู่หน้า 1 แล้วอยากดูหน้า 4 ต้องกดสามครั้ง
+          *      ★★ และไม่มีทางรู้ว่ามีกี่หน้าจนกว่าจะกดไปจนสุด
+          */}
+        {pageCount > 1 ? (
+          <nav
+            aria-label={ot('food.picks.listTitle')}
+            className="mt-5 flex flex-wrap items-center justify-center gap-1.5"
+          >
+            <PageArrow
+              dir="prev"
+              label={ot('wallet.owed.pagePrev')}
+              disabled={safePage === 0}
+              onClick={() => setPage(safePage - 1)}
             />
-          ))
-        )}
-      </div>
+            {pageNumbers(safePage, pageCount).map((n, i) =>
+              n === null ? (
+                <span key={`gap${i}`} className="px-1 text-ink-faint">
+                  ·
+                </span>
+              ) : (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setPage(n)}
+                  aria-current={n === safePage ? 'page' : undefined}
+                  className={cn(
+                    'grid size-11 place-items-center rounded-full text-[13px] tabular-nums transition-colors',
+                    n === safePage
+                      ? 'bg-ink font-semibold text-page'
+                      : 'text-ink-soft hover:bg-surface hover:text-ink',
+                  )}
+                >
+                  {n + 1}
+                </button>
+              ),
+            )}
+            <PageArrow
+              dir="next"
+              label={ot('wallet.owed.pageNext')}
+              disabled={safePage >= pageCount - 1}
+              onClick={() => setPage(safePage + 1)}
+            />
+          </nav>
+        ) : null}
+      </Section>
     </div>
+  )
+}
+
+/** ร้านต่อหน้า */
+const PER_PAGE = 9
+
+/**
+ * เลขหน้าที่จะวาด
+ *
+ * ★★ ไม่วาดทุกหน้าเมื่อมีเยอะ — 1 · 2 3 [4] 5 6 · 20
+ *    ★ ยี่สิบปุ่มเรียงกันกินทั้งบรรทัดบนมือถือ แล้วปุ่มที่ต้องกดจริง
+ *      (ก่อนหน้า/ถัดไป) ถูกดันหลุดจอ
+ */
+function pageNumbers(current: number, total: number): (number | null)[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i)
+  const out: (number | null)[] = [0]
+  const from = Math.max(1, current - 1)
+  const to = Math.min(total - 2, current + 1)
+  if (from > 1) out.push(null)
+  for (let i = from; i <= to; i++) out.push(i)
+  if (to < total - 2) out.push(null)
+  out.push(total - 1)
+  return out
+}
+
+function PageArrow({
+  dir,
+  label,
+  disabled,
+  onClick,
+}: {
+  dir: 'prev' | 'next'
+  label: string
+  disabled: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      className={cn(
+        'grid size-11 place-items-center rounded-full transition-colors',
+        disabled ? 'cursor-not-allowed text-ink-faint/35' : 'text-ink-soft hover:bg-surface hover:text-ink',
+      )}
+    >
+      <svg viewBox="0 0 24 24" className="size-4 rtl:-scale-x-100" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d={dir === 'prev' ? 'm15 6-6 6 6 6' : 'm9 6 6 6-6 6'} />
+      </svg>
+    </button>
   )
 }
 
@@ -350,6 +521,7 @@ function Card({
   onReport,
   onRemove,
   onMarkOpen,
+  onPhotos,
 }: {
   r: Restaurant
   note?: string
@@ -357,6 +529,7 @@ function Card({
   onReport: () => void
   onRemove: () => void
   onMarkOpen: () => void
+  onPhotos: () => void
 }) {
   const ot = useOt()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -370,6 +543,11 @@ function Card({
   useEffect(() => {
     setOpenNow(isOpenNow(r.openHours, new Date()))
   }, [r.openHours])
+
+  /* ★ ไอคอนและสีประจำประเภท — โมดูลเดียวกับหน้าสร้างบิล */
+  const style = cuisineStyle(r.name, r.cuisine)
+  /* ★★ ระยะทางเป็นตัวเลข+หน่วย ไม่ใช่สตริงไทยสำเร็จรูป (ดู lib/office/geo.ts) */
+  const dist = distanceParts(r.travelMeters)
 
   /* ★ คลิกที่อื่นแล้วเมนูต้องปิด — เมนูที่ค้างอยู่หลังเลื่อนหน้าไปแล้วคือขยะบนจอ */
   useEffect(() => {
@@ -398,19 +576,50 @@ function Card({
         *   ★★ ช่องอัปโหลดแยกแปลว่ามีคนต้องรับหน้าที่หารูปมาใส่ ซึ่งไม่มีใครทำ
         *      ส่วนรูปจากรีวิวเกิดขึ้นเองทุกครั้งที่มีคนไปกินแล้วถ่ายรูป
         */}
-      <div className="-mx-4 -mt-4 mb-3 overflow-hidden rounded-t-2xl">
+      <div className="relative -mx-4 -mt-4 mb-3 overflow-hidden rounded-t-2xl">
         {r.coverUrl ? (
           <div className="relative aspect-video">
             <Image src={r.coverUrl} alt="" fill sizes="(max-width:640px) 100vw, 360px" className="object-cover" unoptimized />
           </div>
         ) : (
-          /* ★ ไม่มีรูป = แผ่นสีพร้อมไอคอนตามประเภท ไม่ใช่กล่องว่าง
-               ★★ กล่องว่างทำให้การ์ดสูงไม่เท่ากันในตาราง ซึ่งอ่านยากกว่า
-                  การมีที่ว่างที่ตั้งใจ */
-          <div className="grid aspect-video place-items-center bg-surface text-3xl" aria-hidden="true">
-            {cuisineEmoji(r.cuisine)}
+          /*
+           * ★ ไม่มีรูป = แผ่นสีประจำประเภทพร้อมไอคอน ไม่ใช่กล่องว่าง
+           *   ★★ กล่องว่างทำให้การ์ดสูงไม่เท่ากันในตาราง ซึ่งอ่านยากกว่า
+           *      การมีที่ว่างที่ตั้งใจ
+           *   ★ ใช้ชุดเดียวกับหน้าสร้างบิลและชิปตัวกรอง — ร้านเดียวกัน
+           *     ต้องมีหน้าตาเดียวกันทุกที่ในระบบ
+           */
+          <div
+            className="grid aspect-video place-items-center"
+            style={{
+              background: `linear-gradient(145deg, rgb(${style.tint} / 0.22), rgb(${style.tint} / 0.06))`,
+            }}
+            aria-hidden="true"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              className="size-12"
+              style={{ color: `rgb(${style.tint})` }}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d={style.icon} />
+            </svg>
           </div>
         )}
+
+        {/* ★ จำนวนรูปมุมขวาล่าง — บอกว่ากดเข้าไปแล้วมีอะไรให้ดูต่อ */}
+        {(r.photos?.length ?? 0) > 1 ? (
+          <span className="absolute bottom-2 end-2 inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-[11px] text-white backdrop-blur-sm">
+            <svg viewBox="0 0 24 24" className="size-3" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <path d="M4 7a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1zM4 14l4-4 4 4 3-3 5 5" />
+            </svg>
+            {r.photos!.length}
+          </span>
+        ) : null}
       </div>
 
       <div className="flex items-start justify-between gap-2">
@@ -551,13 +760,28 @@ function Card({
           *    ★ "เดินได้ · 🚶 เดิน ~6 นาที" คือการพูดเรื่องเดียวกันสองครั้ง
           *      ด้วยคำที่ต่างกัน ซึ่งทำให้คนสงสัยว่ามันต่างกันตรงไหน
           */}
+        {/*
+          * ★★★ บอกทั้งระยะทางและเวลา ไม่ใช่เวลาอย่างเดียว
+          *
+          *     ★ นาทีตอบว่า "ไปนานไหม" แต่ไม่ตอบว่า "ไกลแค่ไหน" ซึ่งเป็น
+          *       คำถามที่คนถามตอนตัดสินใจว่าจะเดินหรือเรียกรถ
+          *       ★★ และนาทีของเราเป็นค่าประมาณจากความเร็วคงที่ —
+          *          ระยะทางเป็นของที่วัดได้จริงกว่า
+          */}
+        {dist ? (
+          <Tag>
+            <span className="tabular-nums">
+              {ot(dist.unit === 'km' ? 'food.geo.km' : 'food.geo.metres', { n: dist.n })}
+            </span>
+          </Tag>
+        ) : null}
         {r.travelMinutes != null && r.travelMode ? (
           <Tag>
             {ot(r.travelMode === 'walking' ? 'food.geo.walkMin' : 'food.geo.driveMin', {
               n: r.travelMinutes,
             })}
           </Tag>
-        ) : r.distance ? (
+        ) : dist ? null : r.distance ? (
           <Tag>{distanceLabel(ot, r.distance)}</Tag>
         ) : null}
       </div>
@@ -599,6 +823,23 @@ function Card({
         {/* ★ "ร้านปิด" กับ "ลบ" ย้ายไปเมนู ⋯ ด้านบนแล้ว แถวนี้เหลือแต่ของที่กดบ่อย */}
       </div>
 
+      {/*
+        * ★★ ช่องเพิ่มรูปโผล่เฉพาะคนที่แก้ร้านนั้นได้
+        *    ★ ของเดิมไม่มีทางใส่รูปให้ร้านเลย — หน้าปกมาจากรูปรีวิวใบล่าสุด
+        *      ★★ ร้านที่ไม่มีใครรีวิวจึงไม่มีรูปตลอดกาล แม้จะมีคนอยากใส่ให้
+        */}
+      {r.canManage ? (
+        <div className="mt-3 border-t border-line pt-3">
+          <ShopPhotos
+            shopId={r.id}
+            photos={r.photos ?? []}
+            canEdit
+            compact
+            onChanged={onPhotos}
+          />
+        </div>
+      ) : null}
+
       {note ? <p className="mt-2 text-xs text-ink-soft">{note}</p> : null}
     </article>
   )
@@ -608,33 +849,11 @@ function Tag({ children }: { children: React.ReactNode }) {
   return <span className="rounded-full bg-surface px-2 py-0.5">{children}</span>
 }
 
-/**
- * ไอคอนแทนรูปปกเมื่อร้านยังไม่มีรีวิวที่มีรูป
- *
- * ★ จับคู่จากคำที่อยู่ในชื่อประเภท ไม่ใช่รายการปิดที่ต้องตรงเป๊ะ
- *   ★★ ประเภทอาหารในระบบนี้เป็นข้อความอิสระที่พนักงานพิมพ์เอง
- *      รายการปิดจะพลาดทุกครั้งที่มีคนพิมพ์ "อาหารญี่ปุ่น" แทน "ญี่ปุ่น"
+/*
+ * ★ cuisineEmoji ถูกถอดออก — ไอคอนประจำประเภทย้ายไป lib/office/cuisine.ts
+ *   ★★ ของเดิมเป็นอีโมจิที่ขึ้นกับฟอนต์ของเครื่อง หน้าตาจึงต่างกันทุกเครื่อง
+ *      ★ และหน้าสร้างบิลกับหน้านี้ใช้คนละชุด ร้านเดียวกันเลยมีสองหน้าตา
  */
-function cuisineEmoji(cuisine: string | null): string {
-  const c = (cuisine ?? '').toLowerCase()
-  const table: [string[], string][] = [
-    [['กาแฟ', 'coffee', 'cafe', 'คาเฟ่'], '☕'],
-    [['ญี่ปุ่น', 'japan', 'sushi', 'ซูชิ', 'ราเมน'], '🍜'],
-    [['จีน', 'china', 'chinese', 'ติ่มซำ'], '🥟'],
-    [['อีสาน', 'ส้มตำ', 'isaan'], '🌶️'],
-    [['เกาหลี', 'korea'], '🍲'],
-    [['อิตาเลียน', 'italian', 'pizza', 'พิซซ่า', 'pasta'], '🍕'],
-    [['เวียดนาม', 'viet', 'pho'], '🍲'],
-    [['ก๋วยเตี๋ยว', 'noodle'], '🍜'],
-    [['ตามสั่ง', 'ข้าว', 'rice'], '🍛'],
-    [['ของหวาน', 'เบเกอรี่', 'dessert', 'bakery'], '🍰'],
-    [['เครื่องดื่ม', 'ชา', 'tea', 'drink'], '🧋'],
-  ]
-  for (const [words, emoji] of table) {
-    if (words.some((w) => c.includes(w))) return emoji
-  }
-  return '🍽️'
-}
 
 function Chip({
   active,

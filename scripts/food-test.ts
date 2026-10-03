@@ -124,7 +124,16 @@ async function run() {
 
   /* ── ปุ่มตัวกรอง → แผ่นล่างจอ ──────────────────────────────── */
   head('ตัวกรองรวมปุ่มเดียว (เฟส 1.2.4)')
-  const filterBtn = p.locator('main button[aria-expanded]').first()
+  /*
+   * ★ เจาะจงปุ่มตัวกรอง ไม่ใช่ "ปุ่มแรกที่มี aria-expanded"
+   *   ★★ หน้านี้มีเซกชันกางหุบได้แล้ว ซึ่งก็มี aria-expanded เหมือนกัน
+   *      ★ ตัวจับแบบ "อันแรกที่เจอ" ผูกกับลำดับใน DOM ซึ่งเปลี่ยนทุกครั้ง
+   *        ที่รีดีไซน์ — ผูกกับข้อความบนปุ่มแทน
+   */
+  const filterBtn = p
+    .locator('main button[aria-expanded]')
+    .filter({ hasText: /ตัวกรอง|Filter/i })
+    .first()
   check((await filterBtn.count()) > 0, 'มีปุ่มตัวกรอง')
   if (await filterBtn.count()) {
     await filterBtn.click()

@@ -770,6 +770,21 @@ export type Database = {
         Relationships: []
       }
 
+      /* ── 0056 · รูปของร้าน (ต่างจากรูปที่แนบมากับรีวิว) ─────────── */
+      restaurant_photos: {
+        Row: {
+          id: string
+          restaurant_id: string
+          added_by: string | null
+          path: string
+          sort: number
+          created_at: string
+        }
+        Insert: { restaurant_id: string; added_by?: string | null; path: string; sort?: number }
+        Update: { sort?: number }
+        Relationships: []
+      }
+
       /* ── โมดูล B · กระเป๋าเงิน (0026/0027) ──────────────────────── */
 
       expense_bills: {
@@ -1533,6 +1548,16 @@ export type Database = {
         Returns: boolean
       }
       /* ── พิกัดและระยะทาง (0050) ─────────────────────────────────── */
+      /* ── 0056 ── */
+      add_restaurant_photos: {
+        Args: { p_actor: string; p_shop: string; p_paths: string[] }
+        /** จำนวนรูปที่เพิ่มจริง */
+        Returns: number
+      }
+      delete_restaurant_photo: {
+        Args: { p_actor: string; p_photo: string }
+        Returns: boolean
+      }
       set_restaurant_latlng: {
         Args: { p_actor: string; p_id: string; p_lat: number | null; p_lng: number | null }
         Returns: Database['public']['Tables']['restaurants']['Row']

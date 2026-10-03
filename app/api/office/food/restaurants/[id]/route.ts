@@ -102,6 +102,21 @@ export const GET = withErrorHandling(
         : Promise.resolve({ data: null }),
     ])
 
+    const shopPhotos: { id: string; url: string }[] = []
+    {
+      const { data: photoRows } = await admin
+        .from('restaurant_photos')
+        .select('id, path')
+        .eq('restaurant_id', id)
+        .order('sort', { ascending: true })
+      for (const row of photoRows ?? []) {
+        shopPhotos.push({
+          id: row.id,
+          url: admin.storage.from('restaurants').getPublicUrl(row.path).data.publicUrl,
+        })
+      }
+    }
+
     return ok({
       restaurant: {
         id: r.id,
@@ -126,6 +141,12 @@ export const GET = withErrorHandling(
         travelMinutes: (r.travel_minutes as number | null) ?? null,
         travelMode: (r.travel_mode as 'walking' | 'driving' | null) ?? null,
         openHours: (r.open_hours as Record<string, [string, string] | null> | null) ?? null,
+        /*
+         * ── 0056 ── รูปของร้าน
+         * ★ ล้มแล้วถอยได้ — ตารางมาจาก migration 0056 ซึ่งอาจยังไม่ได้รัน
+         *   ★★ หน้ารายละเอียดต้องไม่พังทั้งหน้าเพราะแกลเลอรีว่าง
+         */
+        photos: shopPhotos,
       },
       /** จำนวนบิลของร้านนี้ในเดือนนี้ — ทั้งออฟฟิศ */
       visitsThisMonth: (bills ?? []).length,
@@ -184,6 +205,9 @@ const updateSchema = z.object({
   mapUrl: z.url().startsWith('https://').max(500).optional().nullable().or(z.literal('')),
   note: z.string().trim().max(300).optional().nullable(),
   clearClosed: z.boolean().optional(),
+  /* ★ ชุดเดียวกับตอนสร้างร้าน — ส่งมาคู่กันเท่านั้นถึงจะถูกใช้ */
+  lat: z.number().min(-90).max(90).optional().nullable(),
+  lng: z.number().min(-180).max(180).optional().nullable(),
 })
 
 /** PATCH — แก้ไขร้าน (FR-A06) · สิทธิ์ตรวจใน RPC */
@@ -212,6 +236,26 @@ export const PATCH = withErrorHandling(async (request: NextRequest, context: Rou
   })
 
   if (error) throw fromPostgresError(error)
+
+  /*
+   * ★★★ แก้พิกัดได้หลังสร้างร้านแล้ว
+   *
+   *     ★ set_restaurant_latlng มีมาตั้งแต่ 0050 แต่ถูกเรียกที่เดียว
+   *       คือตอนสร้างร้าน ★★ ร้านที่ปักหมุดผิด หรือร้านเก่าที่สร้างก่อน
+   *       มีแผนที่ จึงแก้ไม่ได้เลยตลอดกาล และระยะทางของมันว่างไปตลอด
+   *     ★ ล้มแล้วไม่ล้มทั้งคำขอ — ข้อมูลอื่นที่แก้ไปแล้วถูกบันทึกไปแล้ว
+   *       ★★ การโยน error ตรงนี้จะทำให้หน้าจอบอกว่า "บันทึกไม่สำเร็จ"
+   *          ทั้งที่ชื่อร้านกับโน้ตถูกเปลี่ยนไปเรียบร้อยแล้ว
+   */
+  if (body.lat != null && body.lng != null) {
+    await admin.rpc('set_restaurant_latlng', {
+      p_actor: actor.id,
+      p_id: id,
+      p_lat: body.lat,
+      p_lng: body.lng,
+    })
+  }
+
   return ok({ id: data?.id, maybeClosed: data?.maybe_closed ?? false })
 })
 

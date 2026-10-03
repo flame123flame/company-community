@@ -8,9 +8,11 @@ import { Toast, useToast } from '@/components/ui/Toast'
 import { cn } from '@/lib/cn'
 import { officeErrorText } from '@/lib/i18n/office-format'
 import { Untranslated, useOt } from '@/lib/i18n/office'
+import { cuisineStyle } from '@/lib/office/cuisine'
+import { ShopPhotos } from './ShopPhotos'
 import { distanceLabel } from '@/lib/office/food'
 import { RestaurantReviews } from './RestaurantReviews'
-import { directionsUrl, searchUrl } from '@/lib/office/geo'
+import { directionsUrl, distanceParts, searchUrl } from '@/lib/office/geo'
 
 type Restaurant = {
   id: string
@@ -35,6 +37,8 @@ type Restaurant = {
   lat?: number | null
   lng?: number | null
   travelMeters?: number | null
+  /* ── 0056 ── รูปของร้าน */
+  photos?: { id: string; url: string }[]
   travelMinutes?: number | null
   travelMode?: 'walking' | 'driving' | null
 }
@@ -146,9 +150,16 @@ export function FoodDetail({ id }: { id: string }) {
   }
 
   const r = data.restaurant
+  /* ★ ไอคอน/สีประจำประเภท และระยะทาง — ชุดเดียวกับหน้ารายการร้าน */
+  const style = cuisineStyle(r.name, r.cuisine)
+  const dist = distanceParts(r.travelMeters)
 
   return (
-    <div className="max-w-2xl pb-10">
+    /*
+     * ★★ กว้างเต็มคอลัมน์ของหน้า ไม่ใช่ max-w-2xl ลอยซ้าย
+     *    ★ ชุดเดียวกับหน้ายอดค้างและหน้าสร้างบิลที่เพิ่งรื้อไป
+     */
+    <div className="w-full pb-10">
       <Link
         href="/office/food/picks"
         className="inline-flex min-h-11 items-center gap-1 text-sm text-ink-soft transition-colors hover:text-ink"
@@ -166,8 +177,32 @@ export function FoodDetail({ id }: { id: string }) {
           </p>
         ) : null}
 
-        <h2 dir="auto" className="text-[26px] font-bold leading-tight text-ink">
-          {r.name}
+        {/*
+          * ── แกลเลอรีรูปร้าน ───────────────────────────────────
+          * ★★ อยู่บนสุดของการ์ด ★ คนเปิดหน้ารายละเอียดของร้านอาหาร
+          *    มาดูรูปก่อนอ่านอะไรทั้งนั้น
+          */}
+        <ShopPhotos
+          shopId={r.id}
+          photos={r.photos ?? []}
+          canEdit={r.canManage}
+          onChanged={() => void load()}
+        />
+
+        <h2 dir="auto" className="mt-4 flex items-start gap-2.5 text-[26px] font-bold leading-tight text-ink">
+          <span
+            aria-hidden="true"
+            className="mt-0.5 grid size-10 shrink-0 place-items-center rounded-xl"
+            style={{
+              background: `linear-gradient(145deg, rgb(${style.tint} / 0.22), rgb(${style.tint} / 0.08))`,
+              color: `rgb(${style.tint})`,
+            }}
+          >
+            <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+              <path d={style.icon} />
+            </svg>
+          </span>
+          <span className="min-w-0">{r.name}</span>
         </h2>
         {r.signatureDish ? (
           <p dir="auto" className="mt-0.5 text-sm text-ink-soft">
@@ -178,7 +213,18 @@ export function FoodDetail({ id }: { id: string }) {
         <div className="mt-3 flex flex-wrap gap-1.5 text-xs">
           {r.cuisine ? <Tag>{r.cuisine}</Tag> : null}
           {r.priceRange ? <Tag>{r.priceRange}</Tag> : null}
-          {r.distance ? <Tag>{distanceLabel(ot, r.distance)}</Tag> : null}
+          {/* ★★ ระยะทางจริงมาก่อนป้ายหยาบ ๆ ("เดินได้" / "ต้องขับ")
+                 ★ ตัวเลขตอบคำถามได้ตรงกว่า และป้ายหยาบยังอยู่ให้ร้านที่
+                   ยังไม่ได้ปักหมุด */}
+          {dist ? (
+            <Tag>
+              <span className="tabular-nums">
+                {ot(dist.unit === 'km' ? 'food.geo.km' : 'food.geo.metres', { n: dist.n })}
+              </span>
+            </Tag>
+          ) : r.distance ? (
+            <Tag>{distanceLabel(ot, r.distance)}</Tag>
+          ) : null}
         </div>
 
         {r.note ? (

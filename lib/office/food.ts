@@ -40,6 +40,8 @@ export type Restaurant = {
   travelMode: 'walking' | 'driving' | null
   /** {"mon":["09:00","18:00"], "sun":null, …} — null = ไม่ได้กรอก */
   openHours: Record<string, [string, string] | null> | null
+  /** ── 0056 ── รูปของร้าน (ต่างจากรูปที่แนบมากับรีวิว) */
+  photos?: { id: string; url: string }[]
 }
 
 export type RestaurantList = {

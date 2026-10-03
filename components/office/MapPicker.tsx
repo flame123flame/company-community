@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import 'leaflet/dist/leaflet.css'
 import { Untranslated, useOt } from '@/lib/i18n/office'
+import { apiFetch } from '@/lib/api/client'
 import { parseLatLngFromMapUrl } from '@/lib/office/geo'
 
 /**
@@ -41,6 +42,7 @@ export function MapPicker({
   const mapRef = useRef<{ setView: (ll: [number, number], z?: number) => void; remove: () => void } | null>(null)
   const [urlText, setUrlText] = useState('')
   const [urlNote, setUrlNote] = useState<string | null>(null)
+  const [resolving, setResolving] = useState(false)
   const [ready, setReady] = useState(false)
 
   /* ★ onChange เปลี่ยนตัวตนทุก render ของ parent — เก็บไว้ใน ref
@@ -124,15 +126,49 @@ export function MapPicker({
     mapRef.current?.setView([lat, lng], 17)
   }, [ready, lat, lng])
 
-  function applyUrl() {
-    const hit = parseLatLngFromMapUrl(urlText.trim())
-    if (!hit) {
-      /* ★ ดึงไม่ได้ = บอกให้ลากหมุดแทน ตามข้อกำหนด ไม่ใช่ขึ้น error เฉย ๆ */
-      setUrlNote(ot('food.geo.urlFailed'))
+  /**
+   * วางลิงก์ Google Maps แล้วปักหมุดให้
+   *
+   * ★★★ ลิงก์ที่คนแชร์กันจริงคือลิงก์สั้น (maps.app.goo.gl/XXXX)
+   *
+   *     ★ ซึ่งไม่มีพิกัดอยู่ในข้อความเลย — parseLatLngFromMapUrl จึงคืน null
+   *       แล้วหน้าจอขึ้นว่า "แกะไม่ได้ ลากหมุดเอง" ทุกครั้ง
+   *       ★★ แปลว่าช่องนี้ใช้ไม่ได้กับลิงก์ที่คนใช้จริงมาตลอด
+   *
+   * ★★★ ของที่แก้เรื่องนี้มีอยู่แล้วตั้งแต่เฟส 1 แต่ไม่มีใครเรียก
+   *
+   *     POST /api/office/food/resolve-map-link ไล่ตาม redirect ฝั่ง server
+   *     พร้อม allowlist โดเมนทุก hop · จำกัด 5 hop · timeout 5 วินาที
+   *     ★ endpoint ที่ไม่มีใครเรียก คือโค้ดที่ไม่มีอยู่จริงสำหรับผู้ใช้
+   *
+   * ★ ยังลองแกะจากข้อความก่อนเสมอ ★★ ลิงก์เต็มมีพิกัดอยู่ในตัว
+   *   การยิงคำขอออกไปทั้งที่ตอบได้จากข้อความ คือการรอเน็ตโดยไม่ได้อะไรเพิ่ม
+   */
+  async function applyUrl() {
+    const text = urlText.trim()
+    if (!text) return
+
+    const local = parseLatLngFromMapUrl(text)
+    if (local) {
+      setUrlNote(null)
+      onChange(local.lat, local.lng)
       return
     }
+
+    setResolving(true)
     setUrlNote(null)
-    onChange(hit.lat, hit.lng)
+    try {
+      const res = await apiFetch<{ lat: number; lng: number }>(
+        '/api/office/food/resolve-map-link',
+        { method: 'POST', body: { url: text } },
+      )
+      onChange(res.lat, res.lng)
+    } catch {
+      /* ★ ดึงไม่ได้ = บอกให้ลากหมุดแทน ตามข้อกำหนด ไม่ใช่ขึ้น error เฉย ๆ */
+      setUrlNote(ot('food.geo.urlFailed'))
+    } finally {
+      setResolving(false)
+    }
   }
 
   return (
@@ -159,10 +195,11 @@ export function MapPicker({
         />
         <button
           type="button"
-          onClick={applyUrl}
-          className="h-11 shrink-0 rounded-full bg-surface px-4 text-sm text-ink transition-colors hover:bg-surface-hover"
+          onClick={() => void applyUrl()}
+          disabled={resolving || !urlText.trim()}
+          className="h-11 shrink-0 rounded-full bg-surface px-4 text-sm text-ink transition-colors hover:bg-surface-hover disabled:opacity-50"
         >
-          <Untranslated>{ot('food.geo.useUrl')}</Untranslated>
+          <Untranslated>{resolving ? ot('common.loading') : ot('food.geo.useUrl')}</Untranslated>
         </button>
       </div>
 
