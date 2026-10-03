@@ -433,7 +433,7 @@ function SearchAlerts() {
   }
 
   return (
-    <div className="mt-6 rounded-2xl border border-line bg-elevated/30 backdrop-blur-md p-4">
+    <div className="mt-6 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-4">
       <p className="text-sm font-medium text-ink">{ot('market.alert.title')}</p>
       <p className="mt-0.5 text-xs text-ink-faint">{ot('market.alert.hint')}</p>
 

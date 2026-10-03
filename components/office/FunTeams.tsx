@@ -256,7 +256,7 @@ export function FunTeams() {
 
       {!teams ? (
         <div className="mt-4 grid gap-5 lg:grid-cols-[1fr_20rem]">
-          <div className="rounded-2xl border border-line bg-elevated/60 backdrop-blur-md p-4">
+          <div className="rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-4">
             <p className="text-sm font-medium text-ink">
               {ot('fun.team.players')} ({total})
             </p>
@@ -327,7 +327,7 @@ export function FunTeams() {
             ) : null}
           </div>
 
-          <aside className="flex flex-col gap-3 rounded-2xl border border-line bg-elevated/30 backdrop-blur-md p-4">
+          <aside className="flex flex-col gap-3 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-4">
             <div className="flex gap-1.5">
               <Chip active={mode === 'BY_TEAMS'} onClick={() => setMode('BY_TEAMS')}>
                 {ot('fun.team.byTeams')}

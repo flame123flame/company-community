@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/cn'
 import { useOt } from '@/lib/i18n/office'
-import { OFFICE_NAV, isWidePage } from '@/lib/office/nav'
+import { OFFICE_NAV, columnClass } from '@/lib/office/nav'
 
 /**
  * ท้ายหน้าของทุกหน้าในระบบออฟฟิศ
@@ -33,7 +33,7 @@ export function OfficeFooter() {
       <div
         className={cn(
           'mx-auto w-full px-4 py-8',
-          isWidePage(pathname) ? 'max-w-[1340px]' : 'max-w-[1000px]',
+          columnClass(pathname),
         )}
       >
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2">

@@ -353,7 +353,7 @@ function Section({
   children: React.ReactNode
 }) {
   return (
-    <section className="mt-4 rounded-2xl border border-line bg-elevated/60 p-5 backdrop-blur-md">
+    <section className="mt-4 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-5">
       <div className="flex items-center gap-2.5">
         <span className="grid size-7 shrink-0 place-items-center rounded-full bg-accent text-[13px] font-bold text-accent-ink">
           {n}

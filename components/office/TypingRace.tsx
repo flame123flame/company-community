@@ -218,7 +218,7 @@ export function TypingRace({
     <div className="mx-auto max-w-2xl py-2">
       {/* ── รหัสห้อง ────────────────────────────────────────────── */}
       {room.status === 'WAITING' ? (
-        <div className="rounded-2xl border border-line bg-elevated/50 p-4 text-center">
+        <div className="rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-4 text-center">
           <p className="text-xs text-ink-faint">
             <Untranslated>{ot('game.typing.roomCode')}</Untranslated>
           </p>
@@ -281,7 +281,7 @@ export function TypingRace({
       {startAt !== null ? (
         <div
           onClick={() => inputRef.current?.focus()}
-          className="mt-4 cursor-text rounded-2xl border border-line bg-elevated/50 p-5 text-[19px] leading-[2] tracking-wide"
+ className="mt-4 cursor-text rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-5 text-[19px] leading-[2] tracking-wide"
         >
           <p dir="auto" className="break-words">
             {chars.map((ch, i) => {
@@ -343,7 +343,7 @@ export function TypingRace({
 
       {/* ── จบ ──────────────────────────────────────────────────── */}
       {done ? (
-        <div className="mt-4 rounded-2xl border border-line bg-elevated/60 p-5 text-center">
+        <div className="mt-4 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-5 text-center">
           <p className="text-2xl font-bold text-ink">{stats.wpm} WPM</p>
           <p className="mt-0.5 text-sm text-ink-soft">
             {ot('game.typing.accuracy')} {stats.accuracy}% · {(elapsed / 1000).toFixed(1)}s

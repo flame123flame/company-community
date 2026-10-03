@@ -107,7 +107,7 @@ export function WalletQr() {
         *       ★★ ซึ่งเป็นจุดที่โอนผิดจำนวนกันบ่อยที่สุด
         *     ★ ใส่เบอร์แล้วระบบสร้าง QR พร้อมยอดให้ทุกครั้งที่มีคนจะจ่าย
         */}
-      <div className="mt-5 rounded-2xl border border-line bg-elevated/60 p-5 backdrop-blur-md">
+      <div className="mt-5 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-5">
         <label htmlFor="pp" className="block text-sm font-medium text-ink">
           <Untranslated>{ot('wallet.qr.promptpay')}</Untranslated>
         </label>
@@ -177,7 +177,7 @@ export function WalletQr() {
         ) : null}
       </div>
 
-      <div className="mt-5 rounded-2xl border border-line bg-elevated/60 backdrop-blur-md p-5">
+      <div className="mt-5 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-5">
         {!loaded ? (
           <p className="py-10 text-center text-sm text-ink-faint">{ot('common.loading')}</p>
         ) : url ? (

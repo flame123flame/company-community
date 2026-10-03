@@ -207,7 +207,7 @@ export function CheckersLobby({ onEnter }: { onEnter: (gameId: string) => void }
           <Untranslated>{ot('game.checkers.challengeFriend')}</Untranslated>
         </SectionTitle>
 
-        <div className="rounded-2xl border border-line bg-elevated/40 p-4">
+        <div className="rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-4">
           {/*
             * ★★ คนที่เล่นด้วยบ่อยอยู่บนสุดและเป็นวงใหญ่กว่า
             *    ★ คนส่วนใหญ่ท้าคนเดิมซ้ำ ๆ การให้พิมพ์ชื่อก่อนทุกครั้ง
@@ -375,7 +375,7 @@ export function CheckersBoardTable() {
       <SectionTitle>
         <Untranslated>{ot('game.checkers.monthBoard')}</Untranslated>
       </SectionTitle>
-      <ol className="overflow-hidden rounded-2xl border border-line bg-elevated/40">
+      <ol className="overflow-hidden rounded-2xl border border-line bg-elevated/50 backdrop-blur-md">
         {rows.map((r, i) => (
           <li
             key={r.id}

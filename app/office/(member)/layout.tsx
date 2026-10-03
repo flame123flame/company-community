@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { getOfficeViewer } from '@/lib/office/session'
 import { OfficePageChrome } from '@/components/office/OfficePageChrome'
 import { OfficeFooter } from '@/components/office/OfficeFooter'
+import { OfficeBody } from '@/components/office/OfficeBody'
 
 /**
  * ด่าน "ต้องผูกรหัสพนักงานก่อน" + หัวหน้าของทุกหน้าในระบบออฟฟิศ (NFR-11)
@@ -40,16 +41,12 @@ export default async function OfficeMemberLayout({ children }: LayoutProps<'/off
       <OfficePageChrome isAdmin={viewer.isAdmin} />
 
       {/*
-       * ★ กว้าง 1000px เท่าหัวหน้า — เนื้อหากับหัวเรื่องต้องชิดขอบซ้ายตรงกัน
+       * ★ กว้างเท่าหัวหน้าเสมอ — เนื้อหากับหัวเรื่องต้องชิดขอบซ้ายตรงกัน
        *   ไม่งั้นทุกหน้าจะดูเหมือนวางเยื้องกันทีละนิด
-       *
-       * ★★ min-h ดันท้ายหน้าลงไปอยู่ขอบล่างของจอเสมอ
-       *    ★ ไม่ได้ทำให้เนื้อหาเยอะขึ้น แต่ทำให้ "พื้นที่ว่าง" มีจุดจบ
-       *      แทนที่จะหล่นหายไปเฉย ๆ
+       *   ★★ ความกว้างมาจาก columnClass() ที่เดียวกับหัวหน้าและท้ายหน้า
+       *      ไม่ใช่เลขที่พิมพ์ซ้ำในไฟล์นี้อีกตัว
        */}
-      <div className="office-body mx-auto flex w-full max-w-[1000px] flex-col px-4 pb-10 [min-height:calc(100vh-19rem)]">
-        {children}
-      </div>
+      <OfficeBody>{children}</OfficeBody>
 
       <OfficeFooter />
     </>

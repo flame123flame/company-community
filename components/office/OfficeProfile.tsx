@@ -321,7 +321,7 @@ export function OfficeProfile() {
         *          การ์ดบนแล้วสรุปว่า "หน้านี้แก้อะไรไม่ได้เลย" แล้วออกไป
         *     ★ ของที่กดได้ควรอยู่ก่อนของที่อ่านอย่างเดียวเสมอ
         */}
-      <div className="mt-4 rounded-2xl border border-line bg-elevated/30 p-5 backdrop-blur-md">
+      <div className="mt-4 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-5">
         {/*
           * ★ สองบรรทัดนี้ยังไม่ได้แปล (กติกา "ทำไทยอย่างเดียว" ใน AGENTS.md)
           *   ★★ <Untranslated> ติดป้าย lang="th" ให้ และจะเลิกติดเองวันที่แปลเสร็จ
@@ -375,7 +375,7 @@ export function OfficeProfile() {
       </div>
 
       {/* ── ข้อมูลพนักงาน (อ่านอย่างเดียว) ───────────────────── */}
-      <div className="mt-4 rounded-2xl border border-line bg-elevated/30 p-5 backdrop-blur-md">
+      <div className="mt-4 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-5">
         <p className="text-sm font-medium text-ink">{ot('profile.secEmployee')}</p>
         <p className="mt-0.5 text-xs text-ink-faint">{ot('profile.askAdmin')}</p>
 
@@ -400,7 +400,7 @@ export function OfficeProfile() {
       </div>
 
       {/* ── ฝ่าย/แผนก ────────────────────────────────────────── */}
-      <div className="mt-4 rounded-2xl border border-line bg-elevated/30 backdrop-blur-md p-4">
+      <div className="mt-4 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-4">
         <label htmlFor="dept" className="block text-sm font-medium text-ink">
           {ot('profile.department')}
         </label>
@@ -449,7 +449,7 @@ export function OfficeProfile() {
       </div>
 
       {/* ── สวิตช์แจ้งเตือน ──────────────────────────────────── */}
-      <div className="mt-4 rounded-2xl border border-line bg-elevated/30 backdrop-blur-md p-4">
+      <div className="mt-4 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-4">
         <p className="text-sm font-medium text-ink">{ot('profile.notify')}</p>
         <p className="mt-0.5 text-xs text-ink-faint">{ot('profile.notifyHint')}</p>
 

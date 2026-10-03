@@ -181,7 +181,7 @@ export function DrawRoom({ roomId }: { roomId: string }) {
       </div>
 
       {/* ── คนในห้อง ──────────────────────────────────────────── */}
-      <div className="mt-4 rounded-2xl border border-line bg-elevated/30 backdrop-blur-md p-3">
+      <div className="mt-4 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-3">
         <p className="text-xs text-ink-soft">{ot('room.members', { n: members.length })}</p>
         <div className="mt-2 flex flex-wrap gap-1.5">
           {members.map((m) => (
@@ -199,7 +199,7 @@ export function DrawRoom({ roomId }: { roomId: string }) {
       {/* ── วงล้อ ─────────────────────────────────────────────── */}
       <div className="mt-5">
         {showResultOnly ? (
-          <div className="rounded-2xl border border-line bg-elevated/60 backdrop-blur-md p-6 text-center">
+          <div className="rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-6 text-center">
             <p className="text-xs text-ink-faint">{ot('room.late')}</p>
             <p className="mt-2 text-2xl font-bold text-ink">{room.winnerLabel}</p>
           </div>

@@ -174,7 +174,7 @@ export function FoodPicks() {
             {ot('common.cancel')}
           </Button>
         </div>
-        <div className="mt-5 rounded-2xl border border-line bg-elevated/60 backdrop-blur-md p-5">
+        <div className="mt-5 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-5">
           <AddRestaurantForm
             onDone={() => {
               setAdding(false)
@@ -386,7 +386,7 @@ function Card({
   return (
     <article
       className={cn(
-        'flex flex-col rounded-2xl border border-line bg-elevated/60 backdrop-blur-md p-4',
+        'flex flex-col rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-4',
         /* ★ ร้านที่อาจปิดจางลงแต่ยังอ่านได้ — ไม่ซ่อน เพราะคนที่รู้ว่ายังเปิด
              ต้องเห็นมันเพื่อกดยืนยัน (FR-A05) */
         r.maybeClosed && 'opacity-60',

@@ -5,9 +5,9 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/cn'
-import { useOt } from '@/lib/i18n/office'
+import { Untranslated, useOt } from '@/lib/i18n/office'
 import type { OfficeKey } from '@/lib/i18n/office-format'
-import { pageMetaOf, siblingsOf, activeHref, isWidePage, groupsOf } from '@/lib/office/nav'
+import { pageMetaOf, siblingsOf, activeHref, columnClass, groupsOf } from '@/lib/office/nav'
 
 /**
  * หัวหน้าของทุกหน้าในระบบออฟฟิศ
@@ -78,7 +78,7 @@ export function OfficePageChrome({ isAdmin }: { isAdmin: boolean }) {
       <div
         className={cn(
           'relative mx-auto w-full px-4 pb-6 pt-6 sm:pb-8 sm:pt-10',
-          isWidePage(pathname) ? 'max-w-[1340px]' : 'max-w-[1000px]',
+          columnClass(pathname),
         )}
       >
         <Link
@@ -136,7 +136,9 @@ export function OfficePageChrome({ isAdmin }: { isAdmin: boolean }) {
                       : 'text-ink-soft hover:bg-surface hover:text-ink',
                   )}
                 >
-                  {ot(g)}
+                  {/* ★ ชื่อหมวดยังมีแต่ภาษาไทย — ป้ายนี้บอกความจริงนั้นให้
+                      โปรแกรมอ่านหน้าจอ และหายไปเองวันที่แปลเสร็จ */}
+                  <Untranslated>{ot(g)}</Untranslated>
                 </button>
               )
             })}

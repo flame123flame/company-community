@@ -108,7 +108,7 @@ export function AdminSettings() {
         />
 
         {/* ── พิกัดออฟฟิศ (0050) ──────────────────────────────── */}
-        <div className="rounded-2xl border border-line bg-elevated/40 p-4">
+        <div className="rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-4">
           <p className="text-sm font-medium text-ink">
             <Untranslated>{ot('admin.office.latlng')}</Untranslated>
           </p>
@@ -193,7 +193,7 @@ function Card({
 }) {
   const ot = useOt()
   return (
-    <div className="rounded-2xl border border-line bg-elevated/60 backdrop-blur-md p-4">
+    <div className="rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-medium text-ink">{label}</p>

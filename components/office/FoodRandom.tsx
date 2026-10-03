@@ -271,7 +271,7 @@ export function FoodRandom() {
         {loading ? (
           <p className="py-10 text-center text-sm text-ink-faint">{ot('common.loading')}</p>
         ) : wheelItems.length < 2 ? (
-          <div className="rounded-2xl border border-line bg-elevated/30 backdrop-blur-md p-6 text-center">
+          <div className="rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-6 text-center">
             {/*
               * ★★ แยกสองกรณีที่หน้าตาเหมือนกันแต่ทางแก้ตรงข้ามกัน
               *    ★ ร้านในระบบมีน้อยจริง → ต้องไปเพิ่มร้าน
@@ -313,7 +313,7 @@ export function FoodRandom() {
 
       {/* ── ผลการสุ่ม ────────────────────────────────────────────── */}
       {winner ? (
-        <div className="mx-auto mt-6 max-w-md overflow-hidden rounded-2xl border border-line bg-elevated/60 backdrop-blur-md">
+        <div className="mx-auto mt-6 max-w-md overflow-hidden rounded-2xl border border-line bg-elevated/50 backdrop-blur-md">
           {/* ★ รูปปกจากรีวิวล่าสุด — ไม่มีก็ไม่ต้องเว้นที่ว่างไว้
                 ★★ ต่างจากการ์ดในหน้ารายการที่ต้องสูงเท่ากันทั้งตาราง
                    การ์ดนี้มีใบเดียว จึงไม่มีอะไรให้เรียงให้ตรงกัน */}

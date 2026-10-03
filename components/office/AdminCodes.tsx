@@ -115,7 +115,7 @@ export function AdminCodes() {
       </p>
 
       {/* ── เพิ่มรหัส ─────────────────────────────────────────────── */}
-      <div className="mt-5 flex flex-col gap-3 rounded-2xl border border-line bg-elevated/60 backdrop-blur-md p-4 sm:flex-row sm:items-end">
+      <div className="mt-5 flex flex-col gap-3 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-4 sm:flex-row sm:items-end">
         <label className="flex-1">
           <span className="mb-1.5 block text-sm font-medium text-ink">
             {ot('admin.codes.add')}

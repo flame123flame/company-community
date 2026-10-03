@@ -125,7 +125,7 @@ export function RestaurantReviews({
       ) : (
         <ul className="mt-4 flex flex-col gap-4">
           {items.map((r) => (
-            <li key={r.id} className="rounded-2xl border border-line bg-elevated/50 p-4">
+            <li key={r.id} className="rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-4">
               <div className="flex items-start gap-3">
                 {r.authorAvatar ? (
                   <Image
@@ -390,7 +390,7 @@ function ReviewComposer({
   }
 
   return (
-    <div className="mt-4 rounded-2xl border border-line bg-elevated/60 p-4">
+    <div className="mt-4 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-4">
       {/* ── ดาว ─────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-1">
         {[1, 2, 3, 4, 5].map((n) => (

@@ -28,21 +28,30 @@ const TONE: Record<Tone, string> = {
   dashed: 'border-dashed border-line bg-transparent',
 }
 
-export function Card({
-  tone = 'plain',
-  interactive,
-  className,
-  children,
-}: {
+type CardOptions = {
   tone?: Tone
   /** กดได้ไหม — ใส่เฉพาะเมื่อทั้งใบเป็นปุ่ม/ลิงก์จริง */
   interactive?: boolean
+  /**
+   * ใส่ระยะขอบในให้ไหม
+   *
+   * ★★ ต้องปิดได้ เพราะ `cn` ของโปรเจกต์นี้เป็นการต่อสตริงเฉย ๆ ไม่ใช่
+   *    tailwind-merge ★ ใบที่อยากได้ `p-2` จึงเขียนทับ `p-4` ไม่ได้ —
+   *    ลำดับในไฟล์ CSS เป็นคนตัดสิน ไม่ใช่ลำดับใน className
+   *    ★★ และการ์ดที่ข้างในเป็นลิสต์ ต้องไม่มีระยะขอบเลยเพื่อให้เส้นคั่นชนขอบ
+   */
+  pad?: boolean
+}
+
+export function Card({
+  className,
+  children,
+  ...opts
+}: CardOptions & {
   className?: string
   children: React.ReactNode
 }) {
-  return (
-    <div className={cn(cardClass(tone, interactive), className)}>{children}</div>
-  )
+  return <div className={cn(cardClass(opts), className)}>{children}</div>
 }
 
 /**
@@ -51,9 +60,10 @@ export function Card({
  * ★★ ไม่ห่อ Card รอบปุ่ม เพราะจะได้กล่องซ้อนกล่องและพื้นที่กดไม่เต็มใบ
  *    ★ คนคาดว่าการ์ดที่กดได้ จะกดโดนทั้งใบ ไม่ใช่เฉพาะตรงกลาง
  */
-export function cardClass(tone: Tone = 'plain', interactive = false): string {
+export function cardClass({ tone = 'plain', interactive = false, pad = true }: CardOptions = {}): string {
   return cn(
-    'rounded-2xl border p-4 transition-all duration-200',
+    'rounded-2xl border backdrop-blur-md transition-all duration-200',
+    pad && 'p-4',
     TONE[tone],
     interactive &&
       (tone === 'accent'
@@ -118,7 +128,7 @@ export function LinkCard({
   tone?: Tone
 }) {
   return (
-    <Link href={href} className={cn(cardClass(tone, true), 'group flex items-start gap-3')}>
+    <Link href={href} className={cn(cardClass({ tone, interactive: true }), 'group flex items-start gap-3')}>
       {icon ? (
         <span
           aria-hidden="true"
@@ -198,7 +208,7 @@ export function StatCard({
  */
 export function EmptyCard({ children }: { children: React.ReactNode }) {
   return (
-    <p className={cn(cardClass('dashed'), 'px-4 py-10 text-center text-sm text-ink-faint')}>
+    <p className={cn(cardClass({ tone: 'dashed', pad: false }), 'px-4 py-10 text-center text-sm text-ink-faint')}>
       {children}
     </p>
   )

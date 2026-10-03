@@ -202,7 +202,7 @@ export function MarketDetail({ id }: { id: string }) {
             *     ★ คำถามแรกของคนซื้อของมือสองคือ "ใครขาย" ★★ ในออฟฟิศ
             *       คำตอบนั้นสำคัญกว่าสภาพของด้วยซ้ำ เพราะเจอหน้ากันทุกวัน
             */}
-          <div className="mt-4 flex items-center gap-3 rounded-2xl border border-line bg-elevated/40 p-3">
+          <div className="mt-4 flex items-center gap-3 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-3">
             <ChatAvatar name={l.sellerName ?? '—'} url={l.sellerAvatar} size={44} />
             <div className="min-w-0 flex-1">
               <p className="text-[11px] text-ink-faint"><Untranslated>{ot('market.seller')}</Untranslated></p>
@@ -308,7 +308,7 @@ export function MarketDetail({ id }: { id: string }) {
         *      ซึ่งเป็นเรื่องที่ทำให้คนในออฟฟิศไม่พอใจกันได้จริง
         */}
       {l.canManage ? (
-        <div className="mt-8 rounded-2xl border border-line bg-elevated/30 p-4">
+        <div className="mt-8 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-4">
           <p className="text-sm font-medium text-ink"><Untranslated>{ot('market.queueList')}</Untranslated></p>
           {queue.length === 0 ? (
             <p className="mt-2 text-xs text-ink-faint"><Untranslated>{ot('market.noQueue')}</Untranslated></p>

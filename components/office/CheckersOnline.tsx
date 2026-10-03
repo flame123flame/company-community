@@ -213,7 +213,7 @@ export function CheckersOnline({
 
       {/* ── จบเกม ───────────────────────────────────────────────── */}
       {over ? (
-        <div className="mx-auto mt-4 max-w-md rounded-2xl border border-line bg-elevated/60 p-5 text-center">
+        <div className="mx-auto mt-4 max-w-md rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-5 text-center">
           <p className="text-lg font-bold text-ink">
             <Untranslated>
               {game.endReason === 'DRAW'

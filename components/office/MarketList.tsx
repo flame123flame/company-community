@@ -274,7 +274,7 @@ function Card({
   return (
     <article
       className={cn(
-        'market-card group flex flex-col overflow-hidden rounded-2xl border border-line bg-elevated/60 backdrop-blur-md',
+        'market-card group flex flex-col overflow-hidden rounded-2xl border border-line bg-elevated/50 backdrop-blur-md',
         l.status === 'SOLD' && 'is-sold',
         /* ★ ประกาศที่ถูกซ่อนมีขอบแดง — เจ้าของเห็นแต่คนอื่นไม่เห็น (FR-X08) */
         l.hidden && 'border-danger',

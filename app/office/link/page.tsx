@@ -93,7 +93,7 @@ export default async function LinkCodePage() {
 
           {/* ★ คำถามแรกของทุกคนคือ "ของเดิมหายไหม" — ตอบก่อนถูกถาม */}
           <p
-            className="hero-in mt-4 flex max-w-[520px] items-start gap-2.5 rounded-2xl border border-line bg-elevated/40 p-3.5 text-sm leading-relaxed text-ink-soft backdrop-blur-md"
+ className="hero-in mt-4 flex max-w-[520px] items-start gap-2.5 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-3.5 text-sm leading-relaxed text-ink-soft"
             style={{ '--d': '560ms' } as CSSProperties}
           >
             <svg

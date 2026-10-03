@@ -323,7 +323,7 @@ export function WalletSummary() {
           </div>
 
           {/* ── กินข้าวด้วยบ่อยสุด ─────────────────────────────── */}
-          <div className="mt-4 rounded-2xl border border-line bg-elevated/30 p-4 backdrop-blur-md">
+          <div className="mt-4 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-4">
             <p className="text-sm font-medium text-ink">
               <Untranslated>{ot('wallet.summary.withWhom')}</Untranslated>
             </p>
@@ -372,7 +372,7 @@ function Stat({
   const ot = useOt()
   return (
     /* ★ min-w + snap-start — การ์ดต้องกว้างพอให้อ่านยอดได้เต็มตอนเลื่อน */
-    <div className="min-w-[62%] shrink-0 snap-start rounded-2xl border border-line bg-elevated/60 p-4 backdrop-blur-md sm:min-w-0">
+    <div className="min-w-[62%] shrink-0 snap-start rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-4 sm:min-w-0">
       <p className="text-xs text-ink-soft">
         {untranslated ? <Untranslated>{label}</Untranslated> : label}
       </p>
@@ -418,7 +418,7 @@ function Stat({
 
 function Panel({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-line bg-elevated/30 backdrop-blur-md p-4">
+    <div className="rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-4">
       <p className="text-sm font-medium text-ink">{title}</p>
       <div className="mt-2 flex flex-col gap-1">{children}</div>
     </div>
@@ -531,7 +531,7 @@ function BudgetBar({
 
   if (editing) {
     return (
-      <div className="mt-4 rounded-2xl border border-line bg-elevated/30 p-4">
+      <div className="mt-4 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-4">
         <p className="text-sm font-medium text-ink">
           <Untranslated>{ot('wallet.summary.budget')}</Untranslated>
         </p>
@@ -609,7 +609,7 @@ function BudgetBar({
   const tone = over ? 'bg-danger' : pct >= 80 ? 'bg-warn' : 'bg-link'
 
   return (
-    <div className="mt-4 rounded-2xl border border-line bg-elevated/30 p-4 backdrop-blur-md">
+    <div className="mt-4 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-4">
       <div className="flex items-baseline justify-between gap-2">
         <p className="text-sm font-medium text-ink">
           <Untranslated>{ot('wallet.summary.budget')}</Untranslated>

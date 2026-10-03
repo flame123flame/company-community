@@ -248,7 +248,7 @@ export function FunNameWheel() {
 
           {/* ── ลำดับที่ออกไปแล้ว ───────────────────────────────── */}
           {drawn.length > 1 ? (
-            <div className="mx-auto mt-4 max-w-md rounded-2xl border border-line bg-elevated/30 p-4 backdrop-blur-md">
+            <div className="mx-auto mt-4 max-w-md rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-4">
               <p className="text-sm font-medium text-ink">{ot('fun.name.drawn')}</p>
               <ol className="mt-2 flex flex-wrap gap-1.5">
                 {drawn.map((d, i) => (
@@ -267,7 +267,7 @@ export function FunNameWheel() {
 
         {/* ═══ รายชื่อ ═══════════════════════════════════════════ */}
         <aside className="flex flex-col gap-4">
-          <div className="rounded-2xl border border-line bg-elevated/60 p-4 backdrop-blur-md">
+          <div className="rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-4">
             <div className="flex items-center gap-2">
               <Input
                 radius="round"
@@ -406,7 +406,7 @@ export function FunNameWheel() {
           </div>
 
           {/* ชุดที่บันทึกไว้ */}
-          <div className="rounded-2xl border border-line bg-elevated/30 p-4 backdrop-blur-md">
+          <div className="rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-4">
             <p className="text-sm font-medium text-ink">{ot('fun.sets.title')}</p>
             {sets.length === 0 ? (
               <p className="mt-1.5 text-xs text-ink-faint">{ot('fun.sets.empty')}</p>

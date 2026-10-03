@@ -262,6 +262,24 @@ export function isWidePage(pathname: string): boolean {
   return WIDE_PAGES.has(pathname)
 }
 
+/**
+ * คอลัมน์ของหน้า — หัวเรื่อง เนื้อหา และท้ายหน้า ต้องได้ค่าเดียวกัน
+ *
+ * ★★★ เกิดจากบั๊กจริง ไม่ใช่การจัดระเบียบเฉย ๆ
+ *
+ *     คอมเมนต์เหนือ WIDE_PAGES เขียนไว้ว่า "มีสองที่ต้องรู้" ★ แต่จริง ๆ
+ *     มีสามที่ และที่สาม (layout ของเนื้อหา) ตรึง 1000px ไว้ไม่ได้สลับตาม
+ *     ★★ ผลคือบนหน้ากว้างอย่าง /office/fun ชื่อหน้าอยู่ที่ขอบ 1340px
+ *        แต่การ์ดเริ่มที่ขอบ 1000px — เยื้องกัน 170px เต็ม ๆ และเห็นชัด
+ *        บนจอโน้ตบุ๊กทุกเครื่อง
+ *
+ * ★ คืนเป็นคลาสทั้งก้อน ไม่ใช่ boolean — ตัวเรียกจึงไม่มีโอกาสแปลผลต่างกัน
+ *   ★★ ซึ่งคือสิ่งที่เพิ่งเกิดขึ้นกับ boolean ตัวเดิม
+ */
+export function columnClass(pathname: string): string {
+  return isWidePage(pathname) ? 'max-w-[1340px]' : 'max-w-[1000px]'
+}
+
 /** เมนูพี่น้องของหมวดนี้ — ใช้วาดชิปใต้หัวหน้า */
 export function siblingsOf(pathname: string, isAdmin: boolean): NavChild[] {
   const meta = pageMetaOf(pathname)

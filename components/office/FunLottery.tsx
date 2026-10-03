@@ -233,7 +233,7 @@ export function FunLottery() {
       </p>
 
       {/* ── กระดานเลขยอดฮิต (FR-C12) ────────────────────────────── */}
-      <div className="mt-5 rounded-2xl border border-line bg-elevated/30 backdrop-blur-md p-4">
+      <div className="mt-5 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-4">
         <p className="text-sm font-medium text-ink">{ot('fun.lottery.board')}</p>
         {board.length === 0 ? (
           <p className="mt-1.5 text-xs text-ink-faint">{ot('fun.lottery.boardEmpty')}</p>
@@ -261,7 +261,7 @@ export function FunLottery() {
       </div>
 
       {/* ── เลขของฉัน ───────────────────────────────────────────── */}
-      <div className="mt-5 rounded-2xl border border-line bg-elevated/30 backdrop-blur-md p-4">
+      <div className="mt-5 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-4">
         <p className="text-sm font-medium text-ink">{ot('fun.lottery.mine')}</p>
         {picks.length === 0 ? (
           <p className="mt-1.5 text-xs text-ink-faint">{ot('fun.lottery.empty')}</p>

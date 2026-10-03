@@ -636,7 +636,7 @@ export function WalletCreate() {
         </div>
 
         {showAll ? (
-          <div className="mt-2 rounded-2xl border border-line bg-elevated/40 p-3">
+          <div className="mt-2 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-3">
             <Input
               radius="round"
               value={query}
@@ -692,7 +692,7 @@ export function WalletCreate() {
 
       {/* ── 5 · สรุปยอดต่อคน ─────────────────────────────────── */}
       {picked.length > 0 && Number(amount) > 0 ? (
-        <div className="mt-4 rounded-2xl border border-line bg-elevated/50 p-4">
+        <div className="mt-4 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-4">
           <p className="text-[22px] font-bold text-ink">
             <Untranslated>
               {ot('wallet.create.summaryHead', {
@@ -735,7 +735,7 @@ export function WalletCreate() {
       </button>
 
       {open ? (
-        <div className="mt-2 flex flex-col gap-4 rounded-2xl border border-line bg-elevated/30 p-4">
+        <div className="mt-2 flex flex-col gap-4 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-4">
           <Field label={ot('wallet.create.billTitle')}>
             <Input
               radius="round"

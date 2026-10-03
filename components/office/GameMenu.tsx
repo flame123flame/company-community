@@ -60,7 +60,7 @@ export function GameMenu() {
   return (
     /*
       * ★★ ใช้ CardGrid/LinkCard จากของกลาง ไม่เขียนคลาสการ์ดเอง
-      *    ★ หน้านี้เคยเขียน rounded-2xl border border-line bg-elevated/50 เอง
+      *    ★ หน้านี้เคยเขียน rounded-2xl border border-line bg-elevated/50 backdrop-blur-md เอง
       *      ซึ่งเป็นต้นเหตุที่การ์ดของแต่ละหน้าค่อย ๆ ต่างกัน
       */
     <CardGrid cols={3} className="py-2">

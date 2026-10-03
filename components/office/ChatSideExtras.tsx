@@ -26,7 +26,7 @@ export function ChatUnreadCard({ rooms }: { rooms: Room[] }) {
 
   if (total === 0) {
     return (
-      <div className="flex items-center gap-3 rounded-2xl border border-line bg-elevated/40 px-4 py-3 backdrop-blur-md">
+      <div className="flex items-center gap-3 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md px-4 py-3">
         <span className="grid size-10 shrink-0 place-items-center rounded-full bg-surface text-ink-soft">
           <svg
             viewBox="0 0 24 24"
@@ -82,7 +82,7 @@ export function ChatQuickStart({
   if (shown.length === 0) return null
 
   return (
-    <div className="rounded-2xl border border-line bg-elevated/40 p-4 backdrop-blur-md">
+    <div className="rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-4">
       <p className="text-sm font-medium text-ink">{ot('chat.quickStart')}</p>
       <p className="mt-0.5 text-xs text-ink-faint">{ot('chat.quickStartHint')}</p>
 
@@ -205,7 +205,7 @@ export function ChatStats({ rooms }: { rooms: Room[] }) {
         <div
           key={c.label}
           className={cn(
-            'rounded-2xl border border-line bg-elevated/40 px-3 py-2.5 text-center backdrop-blur-md',
+            'rounded-2xl border border-line bg-elevated/50 backdrop-blur-md px-3 py-2.5 text-center',
             'chat-stat',
           )}
           style={{ animationDelay: `${i * 70}ms` }}

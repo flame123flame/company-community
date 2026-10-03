@@ -101,7 +101,7 @@ export function SpendChart({
   const detailTotal = detail.reduce((s, i) => s + Number(i.amount), 0)
 
   return (
-    <div className="rounded-2xl border border-line bg-elevated/30 p-4 backdrop-blur-md">
+    <div className="rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-4">
       <div className="flex items-baseline justify-between gap-2">
         <p className="text-sm font-medium text-ink">
           <Untranslated>{ot(mode === 'month' ? 'wallet.summary.byDay' : 'wallet.summary.byMonth')}</Untranslated>

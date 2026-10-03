@@ -185,7 +185,7 @@ export function FunCup() {
                 {ot('fun.stats.empty')}
               </p>
             ) : (
-              <div className="overflow-hidden rounded-2xl border border-line bg-elevated/40">
+              <div className="overflow-hidden rounded-2xl border border-line bg-elevated/50 backdrop-blur-md">
                 {/*
                   * ★★★ สามอันดับแรกเป็นแท่นโพเดียม ไม่ใช่แถวที่ 1-2-3 ของตาราง
                   *     ★ ตารางเรียงเท่ากันหมดทำให้ "ที่หนึ่ง" ไม่ต่างจาก "ที่แปด"
@@ -345,7 +345,7 @@ function MatchCard({
   const ready = Boolean(a && b) && !match.winner
 
   return (
-    <div className="rounded-2xl border border-line bg-elevated/60 backdrop-blur-md p-2">
+    <div className="rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-2">
       {[a, b].map((t, i) => {
         const isWinner = t && match.winner === t.id
         return (
@@ -390,7 +390,7 @@ function MatchCard({
 /** ตัวเลขสรุปหนึ่งช่อง */
 function Metric({ label, value, text }: { label: string; value: string; text?: boolean }) {
   return (
-    <div className="rounded-2xl border border-line bg-elevated/40 p-4">
+    <div className="rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-4">
       <p className="text-[11px] uppercase tracking-wide text-ink-faint">{label}</p>
       <p
         dir="auto"

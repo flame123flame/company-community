@@ -117,7 +117,7 @@ export function CheckersGame() {
               />
 
               {/* ── ตั้งค่าเพิ่ม ─────────────────────────────────── */}
-              <div className="rounded-2xl border border-line bg-elevated/30 p-5">
+              <div className="rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-5">
                 <button
                   type="button"
                   onClick={() => setShowOptions((v) => !v)}
@@ -235,7 +235,7 @@ export function CheckersGame() {
       ) : null}
 
       {over ? (
-        <div className="mx-auto mt-4 max-w-md rounded-2xl border border-line bg-elevated/60 p-5 text-center">
+        <div className="mx-auto mt-4 max-w-md rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-5 text-center">
           <p className="text-lg font-bold text-ink">
             <Untranslated>
               {result.kind === 'DRAW'

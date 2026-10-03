@@ -229,7 +229,7 @@ export function TypingPractice() {
         *     ★ ตอนพิมพ์ ตาจับอยู่ที่ข้อความ — ของที่อยู่ไกลออกไปไม่มีใครเห็น
         *       ★★ วางไว้ติดตัวเลขที่คนชำเลืองดูอยู่แล้ว จึงได้ถูกเห็นจริง
         */}
-      <div className="mt-4 flex items-center gap-5 rounded-2xl border border-line bg-elevated/40 p-4">
+      <div className="mt-4 flex items-center gap-5 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-4">
         <ProgressRing pct={pct} />
         <div className="flex flex-1 flex-wrap gap-x-7 gap-y-2">
           <Stat label={ot('game.typing.wpm')} value={String(stats.wpm)} big />
@@ -247,7 +247,7 @@ export function TypingPractice() {
         */}
       <div
         onClick={() => inputRef.current?.focus()}
-        className="mt-4 cursor-text rounded-2xl border border-line bg-elevated/50 p-5 text-[19px] leading-[2] tracking-wide"
+ className="mt-4 cursor-text rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-5 text-[19px] leading-[2] tracking-wide"
       >
         <p dir="auto" className="break-words">
           {chars.map((ch, i) => {
@@ -374,7 +374,7 @@ export function TypingPractice() {
 
 
       {done ? (
-        <div className="result-pop mt-4 rounded-2xl border border-line bg-elevated/60 p-5 text-center">
+        <div className="result-pop mt-4 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-5 text-center">
           {isNewBest ? (
             <p className="text-sm font-medium text-accent">
               <Untranslated>{ot('game.typing.newRecord')}</Untranslated>
@@ -409,7 +409,7 @@ export function TypingPractice() {
 function ScoringNote() {
   const ot = useOt()
   return (
-    <div className="rounded-2xl border border-line bg-elevated/30 p-4">
+    <div className="rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-4">
       <p className="text-sm font-semibold text-ink">
         <Untranslated>{ot('game.typing.howTitle')}</Untranslated>
       </p>
@@ -552,7 +552,7 @@ function MyTypingStats({ lang, refreshKey }: { lang: TextLang; refreshKey: numbe
   if (!mine || mine.count === 0) return null
 
   return (
-    <div className="mt-5 flex gap-6 rounded-2xl border border-line bg-elevated/40 p-4">
+    <div className="mt-5 flex gap-6 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-4">
       <div>
         <p className="text-[11px] uppercase tracking-wide text-ink-faint">
           <Untranslated>{ot('game.typing.myBest')}</Untranslated>

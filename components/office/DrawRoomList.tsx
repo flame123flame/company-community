@@ -88,7 +88,7 @@ export function DrawRoomList() {
       <p className="mt-1 text-sm text-ink-soft">{ot('room.hint')}</p>
 
       {/* ── เปิดห้องใหม่ ───────────────────────────────────────── */}
-      <div className="mt-5 rounded-2xl border border-line bg-elevated/30 backdrop-blur-md p-4">
+      <div className="mt-5 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-4">
         <label className="block text-sm font-medium text-ink" htmlFor="room-title">
           {ot('room.nameLabel')}
         </label>
@@ -157,7 +157,7 @@ export function DrawRoomList() {
             <Link
               key={r.id}
               href={`/office/fun/room/${r.id}`}
-              className="flex items-center gap-3 rounded-2xl border border-line bg-elevated/60 backdrop-blur-md p-4 transition-colors hover:bg-surface"
+ className="flex items-center gap-3 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-4 transition-colors hover:bg-surface"
             >
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium text-ink">{r.title}</p>

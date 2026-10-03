@@ -605,7 +605,7 @@ export function OfficeChat() {
 
         {/* ── ตัวเลือกคนคุย / สร้างกลุ่ม ────────────────────────── */}
         {composer !== 'none' ? (
-          <div className="rounded-2xl border border-line bg-elevated/60 p-4 backdrop-blur-md">
+          <div className="rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-4">
             {composer === 'group' ? (
               <Input
                 radius="round"

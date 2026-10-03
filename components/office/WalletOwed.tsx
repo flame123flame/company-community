@@ -322,7 +322,7 @@ export function WalletOwed() {
             return (
               <div
                 key={g.otherId}
-                className="rounded-2xl border border-line bg-elevated/60 backdrop-blur-md"
+ className="rounded-2xl border border-line bg-elevated/50 backdrop-blur-md"
               >
                 <div className="flex items-center gap-3 p-3">
                   <ChatAvatar name={g.otherName} url={g.otherAvatar} size={44} />
@@ -540,7 +540,7 @@ export function WalletOwed() {
               placeholder={ot('wallet.owed.settledSearch')}
               aria-label={ot('wallet.owed.settledSearch')}
             />
-            <ul className="mt-2 divide-y divide-line rounded-2xl border border-line bg-elevated/40">
+            <ul className="mt-2 divide-y divide-line rounded-2xl border border-line bg-elevated/50 backdrop-blur-md">
               {settled.length === 0 ? (
                 <li className="px-3 py-4 text-center text-xs text-ink-faint">
                   <Untranslated>{ot('wallet.owed.nothingHere')}</Untranslated>
