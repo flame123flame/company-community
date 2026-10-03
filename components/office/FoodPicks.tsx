@@ -24,6 +24,7 @@ import { distanceParts, isOpenNow } from '@/lib/office/geo'
 import { cuisineStyle } from '@/lib/office/cuisine'
 import { Section } from '@/components/ui/Section'
 import { ShopPhotos } from './ShopPhotos'
+import { Stars } from './Stars'
 import { AddRestaurantForm, type EditingShop } from './AddRestaurantForm'
 import { FilterSheet, FilterGroup, FilterChip } from './FilterSheet'
 
@@ -407,7 +408,10 @@ export function FoodPicks() {
           ) : undefined
         }
       >
-        <div className="grid items-start gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {/* ★★ ไม่ใส่ items-start — การ์ดในแถวเดียวกันต้องสูงเท่ากัน
+               ★ ของเดิมแถวดูขาด ๆ เพราะร้านที่มีป้าย "เปิดอยู่" หรือเมนูสี่รายการ
+                 สูงกว่าใบข้าง ๆ แล้วเส้นฐานไม่ตรงกันสักแถว */}
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {loading ? (
             <p className="col-span-full py-10 text-center text-sm text-ink-faint">
               {ot('common.loading')}
@@ -588,7 +592,7 @@ function Card({
   return (
     <article
       className={cn(
-        'group/card relative flex flex-col rounded-2xl border border-line bg-elevated/50 p-4 backdrop-blur-md',
+        'group/card relative flex h-full flex-col rounded-2xl border border-line bg-elevated/50 p-4 backdrop-blur-md',
         'transition-all duration-200 hover:-translate-y-0.5 hover:border-line-strong hover:shadow-lg',
         /* ★ ร้านที่อาจปิดจางลงแต่ยังอ่านได้ — ไม่ซ่อน เพราะคนที่รู้ว่ายังเปิด
              ต้องเห็นมันเพื่อกดยืนยัน (FR-A05) */
@@ -653,6 +657,29 @@ function Card({
             </svg>
           </div>
         )}
+
+        {/*
+          * ★★ ไล่สีเข้มที่ก้นรูป — ป้ายสีขาวบนรูปอาหารสว่าง ๆ อ่านไม่ออก
+          *    ★ เป็นชั้นไล่สี ไม่ใช่กล่องทึบ เพราะกล่องทึบบังรูปที่คนอยากดู
+          */}
+        {r.coverUrl ? (
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-20"
+            style={{ background: 'linear-gradient(to top, rgb(0 0 0 / 0.55), transparent)' }}
+          />
+        ) : null}
+
+        {/* ★ ดาวอยู่บนรูป ไม่ใช่ใต้ชื่อ — ตากวาดเจอก่อนอ่านชื่อร้านด้วยซ้ำ */}
+        {r.ratingCount > 0 ? (
+          <span className="absolute bottom-2 start-2 inline-flex items-center gap-1.5 rounded-full bg-black/55 px-2 py-1 backdrop-blur-sm">
+            <Stars value={r.rating ?? 0} size={12} />
+            <span className="text-[11px] font-semibold tabular-nums text-white">
+              {r.rating?.toFixed(1)}
+            </span>
+            <span className="text-[10.5px] text-white/70">({r.ratingCount})</span>
+          </span>
+        ) : null}
 
         {/* ★ จำนวนรูปมุมขวาล่าง — บอกว่ากดเข้าไปแล้วมีอะไรให้ดูต่อ */}
         {(r.photos?.length ?? 0) > 1 ? (
@@ -768,7 +795,36 @@ function Card({
         </div>
       </div>
 
-      <p className="mt-0.5 text-sm text-ink-soft">{r.signatureDish}</p>
+      {/*
+        * ★★ รายการเมนูพร้อมราคา ไม่ใช่บรรทัดเดียว
+        *    ★ ของเดิมมีช่องเดียว คนจึงพิมพ์รวมกัน ("ข้าวมันไก่ + ต้มเลือดหมู")
+        *      ★★ ซึ่งค้นหาแยกไม่ได้และใส่ราคาไม่ได้
+        *    ★ การ์ดโชว์สามรายการแรก ที่เหลือบอกเป็นจำนวน —
+        *      ★★ ร้านที่มีสิบเมนูจะทำให้การ์ดสูงกว่าใบอื่นสามเท่า แล้วแถวเพี้ยน
+        */}
+      {(r.dishes?.length ?? 0) > 0 ? (
+        <ul className="mt-1 flex flex-col gap-0.5">
+          {r.dishes!.slice(0, 3).map((d) => (
+            <li key={d.name} className="flex items-baseline justify-between gap-2 text-[13px]">
+              <span dir="auto" className="min-w-0 truncate text-ink-soft">
+                {d.name}
+              </span>
+              {d.price != null ? (
+                <span className="shrink-0 tabular-nums text-ink-faint">
+                  ฿{d.price.toLocaleString()}
+                </span>
+              ) : null}
+            </li>
+          ))}
+          {r.dishes!.length > 3 ? (
+            <li className="text-[11.5px] text-ink-faint">
+              {ot('food.picks.moreDishes', { n: r.dishes!.length - 3 })}
+            </li>
+          ) : null}
+        </ul>
+      ) : (
+        <p className="mt-0.5 text-sm text-ink-soft">{r.signatureDish}</p>
+      )}
 
       {/*
         * ★★ ดาวเฉลี่ยมาคู่กับจำนวนรีวิวเสมอ ไม่เคยแสดงเดี่ยว
@@ -793,17 +849,11 @@ function Card({
         </p>
       ) : null}
 
-      <p className="mt-1.5 text-[13px]">
-        {r.ratingCount > 0 ? (
-          <>
-            <span className="text-warn">★</span>{' '}
-            <span className="font-medium text-ink">{r.rating?.toFixed(1)}</span>{' '}
-            <span className="text-ink-faint">({r.ratingCount})</span>
-          </>
-        ) : (
-          <span className="text-ink-faint">{ot('food.picks.noReviews')}</span>
-        )}
-      </p>
+      {/* ★ ดาวย้ายไปอยู่บนรูปแล้ว — ตรงนี้เหลือเฉพาะกรณียังไม่มีใครรีวิว
+             ★★ ป้ายบนรูปจะไม่ขึ้นเลยเมื่อยังไม่มีคะแนน จึงต้องมีที่บอกตรงนี้ */}
+      {r.ratingCount === 0 ? (
+        <p className="mt-1.5 text-[12px] text-ink-faint">{ot('food.picks.noReviews')}</p>
+      ) : null}
 
       <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-ink-faint">
         {r.cuisine ? <Tag>{r.cuisine}</Tag> : null}
@@ -847,7 +897,8 @@ function Card({
         </p>
       ) : null}
 
-      <div className="relative z-10 mt-3 flex flex-wrap items-center gap-1.5 border-t border-line pt-3">
+      {/* ★ mt-auto ดันแถวปุ่มไปชิดล่าง การ์ดทุกใบจึงมีเส้นฐานเดียวกัน */}
+      <div className="relative z-10 mt-auto flex flex-wrap items-center gap-1.5 border-t border-line pt-3">
         <button
           type="button"
           onClick={onVote}

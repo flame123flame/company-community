@@ -101,10 +101,24 @@ export function ShopPhotos({
          *    ★ รูปแรกคือหน้าปกที่คนเลือกไว้ มันควรได้พื้นที่ต่างจากใบอื่น
          *      ★★ ตารางเท่ากันหมดทำให้ทุกใบสำคัญเท่ากัน ซึ่งไม่จริง
          */
+        /*
+         * ★★★ รูปแบบตารางขึ้นกับ "มีกี่รูป" ไม่ใช่ตายตัวแบบเดียว
+         *
+         *     ★ ของเดิมให้รูปแรกกิน 2×2 เสมอ ★★ พอมีสองรูป ช่องที่เหลือ
+         *       ในแถวว่างสองช่อง แล้วแกลเลอรีดูเหมือนรูปหายไป
+         *       ★ ซึ่งเป็นสถานการณ์ปกติ — ร้านส่วนใหญ่มีรูปไม่กี่ใบ
+         *     ★★ รูปแรกใหญ่คุ้มก็ต่อเมื่อมีรูปพอเติมช่องข้าง ๆ ครบ (ตั้งแต่ 5 ใบ)
+         */
         <div
           className={cn(
             'grid gap-2',
-            compact ? 'grid-cols-4' : 'grid-cols-2 sm:grid-cols-4',
+            compact
+              ? 'grid-cols-4'
+              : photos.length === 1
+                ? 'grid-cols-1'
+                : photos.length < 5
+                  ? 'grid-cols-2 sm:grid-cols-3'
+                  : 'grid-cols-2 sm:grid-cols-4',
           )}
         >
           {photos.map((photo, i) => (
@@ -112,7 +126,7 @@ export function ShopPhotos({
               key={photo.id}
               className={cn(
                 'group relative overflow-hidden rounded-xl border border-line bg-surface',
-                !compact && i === 0 && 'col-span-2 row-span-2 sm:col-span-2 sm:row-span-2',
+                !compact && photos.length >= 5 && i === 0 && 'col-span-2 row-span-2',
               )}
             >
               <button
@@ -128,7 +142,15 @@ export function ShopPhotos({
                   loading="lazy"
                   className={cn(
                     'w-full object-cover transition-transform duration-300 group-hover:scale-105',
-                    compact ? 'h-20' : i === 0 ? 'h-full min-h-[11rem]' : 'h-[5.25rem] sm:h-[5.5rem]',
+                    compact
+                      ? 'h-20'
+                      : photos.length === 1
+                        ? 'aspect-[16/9] h-auto'
+                        : photos.length < 5
+                          ? 'aspect-[4/3] h-auto'
+                          : i === 0
+                            ? 'h-full min-h-[11rem]'
+                            : 'h-[5.25rem] sm:h-[5.5rem]',
                   )}
                 />
               </button>

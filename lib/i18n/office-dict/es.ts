@@ -131,6 +131,7 @@ export const es: OfficeDict = {
   "food.picks.count": "{n} sitios",
   "food.picks.add": "Añadir un sitio",
   "food.picks.empty": "Nadie ha recomendado nada todavía — ¿quieres ser la primera?",
+  "food.picks.moreDishes": "+ อีก {n} เมนู",
   "food.picks.edit": "แก้ไขร้าน",
   "food.picks.findTitle": "ค้นหาร้าน",
   "food.picks.listTitle": "ร้านทั้งหมด",
@@ -324,6 +325,10 @@ export const es: OfficeDict = {
 
   "food.form.name": "Nombre del sitio",
   "food.form.dish": "Plato estrella",
+  "food.form.addDish": "เพิ่มเมนู",
+  "food.form.priceOptional": "ราคาไม่บังคับ",
+  "food.form.dishPlaceholder": "เช่น ข้าวมันไก่ต้ม",
+  "food.form.dishPrice": "ราคา",
   "food.form.cuisine": "Tipo de cocina",
   "food.form.price": "Rango de precio",
   "food.form.distance": "Distancia",

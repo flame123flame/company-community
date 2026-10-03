@@ -115,6 +115,21 @@ export const GET = withErrorHandling(
       ratingCount = agg?.rating_count ?? 0
     }
 
+    const shopDishes: { name: string; price: number | null }[] = []
+    {
+      const { data: dishRows } = await admin
+        .from('restaurant_dishes')
+        .select('name, price_satang')
+        .eq('restaurant_id', id)
+        .order('sort', { ascending: true })
+      for (const row of dishRows ?? []) {
+        shopDishes.push({
+          name: row.name,
+          price: row.price_satang == null ? null : row.price_satang / 100,
+        })
+      }
+    }
+
     const shopPhotos: { id: string; url: string }[] = []
     {
       const { data: photoRows } = await admin
@@ -160,6 +175,8 @@ export const GET = withErrorHandling(
          *   ★★ หน้ารายละเอียดต้องไม่พังทั้งหน้าเพราะแกลเลอรีว่าง
          */
         photos: shopPhotos,
+        /* ── 0057 ── รายการเมนู (แปลงสตางค์เป็นบาทที่นี่ที่เดียว) */
+        dishes: shopDishes,
         /*
          * ── 0049 ── ดาวเฉลี่ยและจำนวนรีวิว
          * ★ ส่งทั้งคู่เสมอ ★★ ★4.0 จากรีวิวเดียว กับ ★4.0 จาก 40 รีวิว
@@ -225,6 +242,11 @@ const updateSchema = z.object({
   mapUrl: z.url().startsWith('https://').max(500).optional().nullable().or(z.literal('')),
   note: z.string().trim().max(300).optional().nullable(),
   clearClosed: z.boolean().optional(),
+  /* ── 0057 ── เมนูเด็ดหลายรายการ ราคาไม่บังคับ */
+  dishes: z
+    .array(z.object({ name: z.string().trim().min(1).max(120), price: z.number().min(0).max(100000).optional().nullable() }))
+    .max(20)
+    .optional(),
   /* ★ ชุดเดียวกับตอนสร้างร้าน — ส่งมาคู่กันเท่านั้นถึงจะถูกใช้ */
   lat: z.number().min(-90).max(90).optional().nullable(),
   lng: z.number().min(-180).max(180).optional().nullable(),
@@ -267,6 +289,15 @@ export const PATCH = withErrorHandling(async (request: NextRequest, context: Rou
    *       ★★ การโยน error ตรงนี้จะทำให้หน้าจอบอกว่า "บันทึกไม่สำเร็จ"
    *          ทั้งที่ชื่อร้านกับโน้ตถูกเปลี่ยนไปเรียบร้อยแล้ว
    */
+  if (body.dishes && body.dishes.length > 0) {
+    /* ★ ล้มแล้วไม่ล้มทั้งคำขอ — ข้อมูลอื่นถูกบันทึกไปแล้ว (เหตุผลเดียวกับพิกัด) */
+    await admin.rpc('set_restaurant_dishes', {
+      p_actor: actor.id,
+      p_shop: id,
+      p_dishes: body.dishes,
+    })
+  }
+
   if (body.lat != null && body.lng != null) {
     await admin.rpc('set_restaurant_latlng', {
       p_actor: actor.id,

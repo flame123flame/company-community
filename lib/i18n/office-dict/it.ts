@@ -131,6 +131,7 @@ export const it: OfficeDict = {
   "food.picks.count": "{n} locali",
   "food.picks.add": "Aggiungi un locale",
   "food.picks.empty": "Nessuno ha ancora consigliato niente — vuoi essere la prima?",
+  "food.picks.moreDishes": "+ อีก {n} เมนู",
   "food.picks.edit": "แก้ไขร้าน",
   "food.picks.findTitle": "ค้นหาร้าน",
   "food.picks.listTitle": "ร้านทั้งหมด",
@@ -324,6 +325,10 @@ export const it: OfficeDict = {
 
   "food.form.name": "Nome del locale",
   "food.form.dish": "Piatto forte",
+  "food.form.addDish": "เพิ่มเมนู",
+  "food.form.priceOptional": "ราคาไม่บังคับ",
+  "food.form.dishPlaceholder": "เช่น ข้าวมันไก่ต้ม",
+  "food.form.dishPrice": "ราคา",
   "food.form.cuisine": "Tipo di cucina",
   "food.form.price": "Fascia di prezzo",
   "food.form.distance": "Distanza",

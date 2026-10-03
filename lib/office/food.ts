@@ -42,6 +42,8 @@ export type Restaurant = {
   openHours: Record<string, [string, string] | null> | null
   /** ── 0056 ── รูปของร้าน (ต่างจากรูปที่แนบมากับรีวิว) */
   photos?: { id: string; url: string }[]
+  /** ── 0057 ── เมนูเด็ดหลายรายการ ราคาเป็นบาท (null = ไม่ได้กรอก) */
+  dishes?: { name: string; price: number | null }[]
 }
 
 export type RestaurantList = {

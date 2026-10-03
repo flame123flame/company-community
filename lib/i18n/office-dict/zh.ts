@@ -131,6 +131,7 @@ export const zh: OfficeDict = {
   "food.picks.count": "{n} 家店",
   "food.picks.add": "添加店家",
   "food.picks.empty": "还没有人推荐过，要不要当第一个？",
+  "food.picks.moreDishes": "+ อีก {n} เมนู",
   "food.picks.edit": "แก้ไขร้าน",
   "food.picks.findTitle": "ค้นหาร้าน",
   "food.picks.listTitle": "ร้านทั้งหมด",
@@ -324,6 +325,10 @@ export const zh: OfficeDict = {
 
   "food.form.name": "店名",
   "food.form.dish": "招牌菜",
+  "food.form.addDish": "เพิ่มเมนู",
+  "food.form.priceOptional": "ราคาไม่บังคับ",
+  "food.form.dishPlaceholder": "เช่น ข้าวมันไก่ต้ม",
+  "food.form.dishPrice": "ราคา",
   "food.form.cuisine": "菜系",
   "food.form.price": "价位",
   "food.form.distance": "距离",

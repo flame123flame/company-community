@@ -131,6 +131,7 @@ export const lo: OfficeDict = {
   "food.picks.count": "{n} ຮ້ານ",
   "food.picks.add": "ເພີ່ມຮ້ານ",
   "food.picks.empty": "ຍັງບໍ່ມີໃຜແນະນຳຮ້ານ — ເປັນຄົນທຳອິດເລີຍບໍ",
+  "food.picks.moreDishes": "+ อีก {n} เมนู",
   "food.picks.edit": "แก้ไขร้าน",
   "food.picks.findTitle": "ค้นหาร้าน",
   "food.picks.listTitle": "ร้านทั้งหมด",
@@ -324,6 +325,10 @@ export const lo: OfficeDict = {
 
   "food.form.name": "ຊື່ຮ້ານ",
   "food.form.dish": "ເມນູແນະນຳ",
+  "food.form.addDish": "เพิ่มเมนู",
+  "food.form.priceOptional": "ราคาไม่บังคับ",
+  "food.form.dishPlaceholder": "เช่น ข้าวมันไก่ต้ม",
+  "food.form.dishPrice": "ราคา",
   "food.form.cuisine": "ປະເພດອາຫານ",
   "food.form.price": "ຊ່ວງລາຄາ",
   "food.form.distance": "ໄລຍະທາງ",

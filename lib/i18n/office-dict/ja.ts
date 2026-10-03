@@ -131,6 +131,7 @@ export const ja: OfficeDict = {
   "food.picks.count": "{n} 店",
   "food.picks.add": "お店を追加",
   "food.picks.empty": "まだおすすめがありません。最初の一人になりませんか。",
+  "food.picks.moreDishes": "+ อีก {n} เมนู",
   "food.picks.edit": "แก้ไขร้าน",
   "food.picks.findTitle": "ค้นหาร้าน",
   "food.picks.listTitle": "ร้านทั้งหมด",
@@ -324,6 +325,10 @@ export const ja: OfficeDict = {
 
   "food.form.name": "店名",
   "food.form.dish": "おすすめメニュー",
+  "food.form.addDish": "เพิ่มเมนู",
+  "food.form.priceOptional": "ราคาไม่บังคับ",
+  "food.form.dishPlaceholder": "เช่น ข้าวมันไก่ต้ม",
+  "food.form.dishPrice": "ราคา",
   "food.form.cuisine": "ジャンル",
   "food.form.price": "価格帯",
   "food.form.distance": "距離",

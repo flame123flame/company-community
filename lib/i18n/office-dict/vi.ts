@@ -131,6 +131,7 @@ export const vi: OfficeDict = {
   "food.picks.count": "{n} quán",
   "food.picks.add": "Thêm quán",
   "food.picks.empty": "Chưa ai gợi ý quán nào — bạn làm người đầu tiên nhé?",
+  "food.picks.moreDishes": "+ อีก {n} เมนู",
   "food.picks.edit": "แก้ไขร้าน",
   "food.picks.findTitle": "ค้นหาร้าน",
   "food.picks.listTitle": "ร้านทั้งหมด",
@@ -324,6 +325,10 @@ export const vi: OfficeDict = {
 
   "food.form.name": "Tên quán",
   "food.form.dish": "Món đặc trưng",
+  "food.form.addDish": "เพิ่มเมนู",
+  "food.form.priceOptional": "ราคาไม่บังคับ",
+  "food.form.dishPlaceholder": "เช่น ข้าวมันไก่ต้ม",
+  "food.form.dishPrice": "ราคา",
   "food.form.cuisine": "Loại món",
   "food.form.price": "Mức giá",
   "food.form.distance": "Khoảng cách",

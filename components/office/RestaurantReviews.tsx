@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import { apiFetch } from '@/lib/api/client'
 import { Button } from '@/components/ui/Button'
+import { Stars, StarInput } from './Stars'
 import { cn } from '@/lib/cn'
 import { shrinkImage } from '@/lib/image/shrink'
 import { officeErrorText } from '@/lib/i18n/office-format'
@@ -245,14 +246,12 @@ export function RestaurantReviews({
  * ดาว
  * ═══════════════════════════════════════════════════════════════════ */
 
-function Stars({ value }: { value: number }) {
-  return (
-    <span className="text-sm text-warn" aria-label={`${value}/5`}>
-      {'★'.repeat(value)}
-      <span className="text-ink-faint">{'★'.repeat(5 - value)}</span>
-    </span>
-  )
-}
+/*
+ * ★ Stars ของไฟล์นี้ถูกถอดทิ้ง — ย้ายไปใช้ของกลางใน components/office/Stars.tsx
+ *   ★★ ของเดิมเป็นตัวอักษร "★" ซึ่งหน้าตาขึ้นกับฟอนต์ของเครื่อง และใช้
+ *      สี warn ร่วมกับคำเตือน — วันที่ใครเปลี่ยนสีคำเตือน ดาวจะเปลี่ยนตาม
+ *      ไปด้วยโดยไม่มีใครตั้งใจ
+ */
 
 /* ═══════════════════════════════════════════════════════════════════
  * กล่องเขียนรีวิว
@@ -413,23 +412,14 @@ function ReviewComposer({
   return (
     <div className="mt-4 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-4">
       {/* ── ดาว ─────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center gap-1">
-        {[1, 2, 3, 4, 5].map((n) => (
-          <button
-            key={n}
-            type="button"
-            onClick={() => setRating(n)}
-            aria-label={`${n}/5`}
-            aria-pressed={rating === n}
-            className={cn(
-              'grid size-11 place-items-center rounded-full text-2xl transition-colors',
-              n <= rating ? 'text-warn' : 'text-ink-faint hover:text-ink-soft',
-            )}
-          >
-            ★
-          </button>
-        ))}
-      </div>
+      {/* ★ ของกลางชุดเดียวกับหน้ารายการร้านและหัวหน้ารายละเอียด
+             ★★ ของเดิมเป็นตัวอักษร "★" ขนาด text-2xl ซึ่งใหญ่กว่าดาวที่อื่น
+                ในหน้าเดียวกัน และหน้าตาต่างกันตามฟอนต์ของเครื่อง */}
+      <StarInput
+        value={rating}
+        onChange={setRating}
+        label={(n) => ot('food.review.starsN', { n })}
+      />
 
       <textarea
         value={body}

@@ -198,6 +198,32 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
    *   ★★ หน้ารายการร้านต้องไม่พังถ้ายังไม่ได้รัน ซึ่งเป็นกฎเดียวกับ
    *      คอลัมน์พิกัดของ 0050 ที่ไฟล์นี้ทำอยู่แล้ว
    */
+  /*
+   * ── เมนูเด็ด (0057) ───────────────────────────────────────────
+   * ★ อ่านแบบล้มแล้วถอยได้ — ตารางมาจาก 0057 ซึ่งอาจยังไม่ได้รัน
+   *   ★★ ร้านยังขึ้นครบ แค่ไม่มีรายการเมนู ซึ่งเท่ากับสถานะก่อนมีฟีเจอร์นี้
+   */
+  const shopDishes = new Map<string, { name: string; price: number | null }[]>()
+  {
+    const ids = (rows ?? []).map((r) => r.id)
+    if (ids.length > 0) {
+      const { data: dishRows } = await admin
+        .from('restaurant_dishes')
+        .select('restaurant_id, name, price_satang')
+        .in('restaurant_id', ids)
+        .order('sort', { ascending: true })
+      for (const row of dishRows ?? []) {
+        const list = shopDishes.get(row.restaurant_id) ?? []
+        /* ★ แปลงสตางค์เป็นบาทที่นี่ที่เดียว — หน้าเว็บไม่ต้องรู้หน่วยในฐานข้อมูล */
+        list.push({
+          name: row.name,
+          price: row.price_satang == null ? null : row.price_satang / 100,
+        })
+        shopDishes.set(row.restaurant_id, list)
+      }
+    }
+  }
+
   const shopPhotos = new Map<string, { id: string; url: string }[]>()
   {
     const ids = (rows ?? []).map((r) => r.id)
@@ -222,6 +248,8 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
       id: r.id,
       name: r.name,
       signatureDish: r.signature_dish,
+      /* ★ รายการเมนูเต็ม — signatureDish ยังอยู่เพื่อโค้ดเก่าที่อ่านมันอยู่ */
+      dishes: shopDishes.get(r.id) ?? [],
       imagePath: r.image_path,
       cuisine: r.cuisine,
       priceRange: r.price_range,
@@ -370,9 +398,22 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
   })
 })
 
+/**
+ * เมนูเด็ด
+ *
+ * ★★ ราคาไม่บังคับ ★ ส่งเป็นบาท แล้ว RPC แปลงเป็นสตางค์ให้
+ *    ★★ ปัดที่ฐานข้อมูลที่เดียว — ปัดสองที่ด้วยวิธีต่างกันคือยอดที่ไม่ตรงกัน
+ */
+const dishSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  price: z.number().min(0).max(100000).optional().nullable(),
+})
+
 const createSchema = z.object({
   name: z.string().trim().min(1, 'common.required').max(80),
   signatureDish: z.string().trim().min(1, 'common.required').max(120),
+  /* ★ ไม่ส่งมาก็ได้ — ของเดิมส่งแค่ signatureDish ซึ่งยังทำงานเหมือนเดิม */
+  dishes: z.array(dishSchema).max(20).optional(),
   cuisine: z.string().trim().max(40).optional().nullable(),
   priceRange: z.enum(['฿', '฿฿', '฿฿฿']).optional().nullable(),
   distance: z.enum(['WALK', 'DRIVE', 'DELIVERY']).optional().nullable(),
@@ -428,6 +469,20 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
       p_id: data.id,
       p_lat: body.lat,
       p_lng: body.lng,
+    })
+  }
+
+  /*
+   * ★★ เมนูเด็ดเป็นขั้นที่สองเหมือนพิกัด ด้วยเหตุผลเดียวกัน
+   *    ★ ล้มแล้วร้านยังถูกสร้างสำเร็จ — เมนูรายการแรกมาจาก signatureDish
+   *      ที่ add_restaurant เขียนไว้แล้ว และ migration 0057 ก็เติมให้
+   *      ร้านเก่าทุกร้านด้วยวิธีเดียวกัน
+   */
+  if (data?.id && body.dishes && body.dishes.length > 0) {
+    await admin.rpc('set_restaurant_dishes', {
+      p_actor: actor.id,
+      p_shop: data.id,
+      p_dishes: body.dishes,
     })
   }
 

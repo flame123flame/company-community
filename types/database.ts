@@ -770,6 +770,26 @@ export type Database = {
         Relationships: []
       }
 
+      /* ── 0057 · เมนูเด็ดหลายรายการ ──────────────────────────────── */
+      restaurant_dishes: {
+        Row: {
+          id: string
+          restaurant_id: string
+          name: string
+          price_satang: number | null
+          sort: number
+          created_at: string
+        }
+        Insert: {
+          restaurant_id: string
+          name: string
+          price_satang?: number | null
+          sort?: number
+        }
+        Update: { name?: string; price_satang?: number | null; sort?: number }
+        Relationships: []
+      }
+
       /* ── 0056 · รูปของร้าน (ต่างจากรูปที่แนบมากับรีวิว) ─────────── */
       restaurant_photos: {
         Row: {
@@ -1548,6 +1568,14 @@ export type Database = {
         Returns: boolean
       }
       /* ── พิกัดและระยะทาง (0050) ─────────────────────────────────── */
+      /* ── 0057 ── */
+      set_restaurant_dishes: {
+        /** p_dishes: [{"name":"…","price":60}, …] — price เป็นบาท ไม่บังคับ */
+        Args: { p_actor: string; p_shop: string; p_dishes: unknown }
+        /** จำนวนเมนูหลังบันทึก */
+        Returns: number
+      }
+
       /* ── 0056 ── */
       add_restaurant_photos: {
         Args: { p_actor: string; p_shop: string; p_paths: string[] }

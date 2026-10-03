@@ -140,6 +140,7 @@ export const ar: OfficeDict = {
   "food.picks.count": "{n} مكانًا",
   "food.picks.add": "إضافة مكان",
   "food.picks.empty": "لم يوصِ أحد بشيء بعد — تحبّ أن تكون الأولى؟",
+  "food.picks.moreDishes": "+ อีก {n} เมนู",
   "food.picks.edit": "แก้ไขร้าน",
   "food.picks.findTitle": "ค้นหาร้าน",
   "food.picks.listTitle": "ร้านทั้งหมด",
@@ -333,6 +334,10 @@ export const ar: OfficeDict = {
 
   "food.form.name": "اسم المكان",
   "food.form.dish": "الطبق المميّز",
+  "food.form.addDish": "เพิ่มเมนู",
+  "food.form.priceOptional": "ราคาไม่บังคับ",
+  "food.form.dishPlaceholder": "เช่น ข้าวมันไก่ต้ม",
+  "food.form.dishPrice": "ราคา",
   "food.form.cuisine": "نوع المطبخ",
   "food.form.price": "مستوى السعر",
   "food.form.distance": "المسافة",

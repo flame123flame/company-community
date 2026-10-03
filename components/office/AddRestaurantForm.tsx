@@ -31,7 +31,10 @@ export type EditingShop = {
   lng?: number | null
   openHours?: OpenHours | null
   photos?: ShopPhoto[]
+  dishes?: { name: string; price: number | null }[]
 }
+
+type DishRow = { key: string; name: string; price: string }
 
 /** เพดานเดียวกับที่ add_restaurant_photos บังคับในฐานข้อมูล */
 const MAX_PHOTOS = 10
@@ -71,7 +74,26 @@ export function AddRestaurantForm({
 }) {
   const ot = useOt()
   const [name, setName] = useState(editing?.name ?? '')
-  const [dish, setDish] = useState(editing?.signatureDish ?? '')
+  /*
+   * ★★★ เมนูเด็ดเป็นหลายรายการ ไม่ใช่ช่องเดียว
+   *
+   *     ★ ร้านหนึ่งร้านมีของเด็ดมากกว่าหนึ่งอย่างเป็นเรื่องปกติ ★★ ของเดิม
+   *       บังคับให้เลือกมาอย่างเดียว คนจึงพิมพ์รวมกันในช่องเดียว
+   *       ("ข้าวมันไก่ + ต้มเลือดหมู") ซึ่งค้นหาแยกไม่ได้และใส่ราคาไม่ได้
+   *     ★ ราคาไม่บังคับ — คนที่ไม่รู้ราคาก็ยังเพิ่มร้านได้
+   */
+  const [dishes, setDishes] = useState<DishRow[]>(() => {
+    const from = editing?.dishes ?? []
+    if (from.length > 0) {
+      return from.map((d, i) => ({
+        key: `d${i}`,
+        name: d.name,
+        price: d.price == null ? '' : String(d.price),
+      }))
+    }
+    /* ★ ร้านเก่าที่ยังไม่มีรายการเมนู → ใช้ signature_dish เป็นแถวแรก */
+    return [{ key: 'd0', name: editing?.signatureDish ?? '', price: '' }]
+  })
   const [cuisine, setCuisine] = useState(editing?.cuisine ?? '')
   const [price, setPrice] = useState<PriceRange | null>(
     (editing?.priceRange as PriceRange | null) ?? null,
@@ -173,9 +195,18 @@ export function AddRestaurantForm({
     setBusy(true)
     setError(null)
     try {
+      /* ★ รายการที่มีชื่อจริงเท่านั้น — แถวว่างที่คนกดเพิ่มแล้วไม่กรอก ต้องไม่ถูกบันทึก */
+      const cleanDishes = dishes
+        .map((d) => ({ name: d.name.trim(), price: d.price.trim() }))
+        .filter((d) => d.name.length > 0)
+        .map((d) => ({ name: d.name, price: d.price === '' ? null : Number(d.price) }))
+
       const body = {
         name,
-        signatureDish: dish,
+        /* ★★ signatureDish ยังส่งอยู่ — คอลัมน์นั้นเป็น not null และมีโค้ดเก่าอ่าน
+             ★ ให้เป็นเมนูรายการแรกเสมอ ซึ่งตรงกับที่ RPC ซิงก์ให้ฝั่งฐานข้อมูล */
+        signatureDish: cleanDishes[0]?.name ?? '',
+        dishes: cleanDishes,
         cuisine: cuisine.trim() || null,
         priceRange: price,
         distance,
@@ -257,9 +288,97 @@ export function AddRestaurantForm({
           </div>
         ) : null}
 
-        <Field label={ot('food.form.dish')} required>
-          <Input radius="round" value={dish} onChange={(e) => setDish(e.target.value)} maxLength={120} required />
-        </Field>
+        {/*
+          * ── เมนูเด็ด ─────────────────────────────────────────
+          * ★★ ราคาอยู่ข้างชื่อในแถวเดียวกัน ไม่ใช่แยกเป็นอีกส่วน
+          *    ★ คนกรอกชื่อเมนูเสร็จแล้วนึกราคาออกทันที — แยกส่วนทำให้
+          *      ต้องกลับมากรอกอีกรอบ แล้วส่วนใหญ่ก็ไม่กลับมา
+          */}
+        <div>
+          <p className="mb-1.5 text-sm font-medium text-ink">
+            {ot('food.form.dish')}
+            <span className="ms-0.5 text-accent">*</span>
+            <span className="ms-1.5 text-xs font-normal text-ink-faint">
+              ({ot('food.form.priceOptional')})
+            </span>
+          </p>
+
+          <div className="flex flex-col gap-2">
+            {dishes.map((row, i) => (
+              <div key={row.key} className="flex items-center gap-2">
+                <Input
+                  radius="round"
+                  value={row.name}
+                  onChange={(e) =>
+                    setDishes((prev) =>
+                      prev.map((d, j) => (j === i ? { ...d, name: e.target.value } : d)),
+                    )
+                  }
+                  maxLength={120}
+                  placeholder={ot('food.form.dishPlaceholder')}
+                  required={i === 0}
+                  className="min-w-0 flex-1"
+                />
+                <div className="relative w-28 shrink-0">
+                  <span className="pointer-events-none absolute inset-y-0 start-3 grid place-items-center text-sm text-ink-faint">
+                    ฿
+                  </span>
+                  <Input
+                    radius="round"
+                    value={row.price}
+                    onChange={(e) =>
+                      setDishes((prev) =>
+                        prev.map((d, j) =>
+                          /* ★ รับเฉพาะตัวเลขกับจุด — คีย์บอร์ดบางตัวยังส่งอักษรมาได้ */
+                          j === i ? { ...d, price: e.target.value.replace(/[^\d.]/g, '') } : d,
+                        ),
+                      )
+                    }
+                    inputMode="decimal"
+                    placeholder="—"
+                    aria-label={ot('food.form.dishPrice')}
+                    className="ps-7 text-end tabular-nums"
+                  />
+                </div>
+                {/*
+                  * ★ ปุ่มลบขึ้นเฉพาะเมื่อมีมากกว่าหนึ่งแถว
+                  *   ★★ ลบแถวสุดท้ายทิ้งได้แปลว่าฟอร์มไม่มีเมนูเลย ซึ่งบันทึกไม่ผ่าน
+                  *      — ปุ่มที่กดแล้วทำให้ฟอร์มใช้ไม่ได้ ไม่ควรกดได้
+                  */}
+                {dishes.length > 1 ? (
+                  <button
+                    type="button"
+                    onClick={() => setDishes((prev) => prev.filter((_, j) => j !== i))}
+                    aria-label={ot('common.delete')}
+                    className="grid size-11 shrink-0 place-items-center rounded-full text-ink-faint transition-colors hover:bg-surface hover:text-danger"
+                  >
+                    <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+                      <path d="M6 6l12 12M18 6 6 18" />
+                    </svg>
+                  </button>
+                ) : (
+                  /* ★ ที่ว่างแทนปุ่ม — ไม่งั้นแถวแรกกับแถวอื่นกว้างไม่เท่ากัน */
+                  <span className="size-11 shrink-0" aria-hidden="true" />
+                )}
+              </div>
+            ))}
+          </div>
+
+          {dishes.length < 20 ? (
+            <button
+              type="button"
+              onClick={() =>
+                setDishes((prev) => [...prev, { key: `d${Date.now()}`, name: '', price: '' }])
+              }
+              className="mt-2 inline-flex min-h-11 items-center gap-1.5 rounded-full bg-surface px-4 text-[13px] text-ink transition-colors hover:bg-surface-hover"
+            >
+              <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              {ot('food.form.addDish')}
+            </button>
+          ) : null}
+        </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label={ot('food.form.cuisine')} hint={ot('link.optional')}>

@@ -10,6 +10,7 @@ import { officeErrorText } from '@/lib/i18n/office-format'
 import { Untranslated, useOt } from '@/lib/i18n/office'
 import { cuisineStyle } from '@/lib/office/cuisine'
 import { ShopPhotos } from './ShopPhotos'
+import { Stars, StarInput } from './Stars'
 import { distanceLabel } from '@/lib/office/food'
 import { RestaurantReviews } from './RestaurantReviews'
 import { directionsUrl, distanceParts, searchUrl } from '@/lib/office/geo'
@@ -42,6 +43,8 @@ type Restaurant = {
   /* ── 0049 ── ดาวเฉลี่ยและจำนวนรีวิว */
   rating?: number | null
   ratingCount?: number
+  /* ── 0057 ── เมนูเด็ดหลายรายการ */
+  dishes?: { name: string; price: number | null }[]
   travelMinutes?: number | null
   travelMode?: 'walking' | 'driving' | null
 }
@@ -209,7 +212,28 @@ export function FoodDetail({ id }: { id: string }) {
           </span>
           <span className="min-w-0">{r.name}</span>
         </h2>
-        {r.signatureDish ? (
+        {/*
+          * ── เมนูเด็ด ──────────────────────────────────────────
+          * ★★ หน้ารายละเอียดโชว์ครบทุกรายการ ต่างจากการ์ดที่โชว์สามรายการแรก
+          *    ★ คนกดเข้ามาเพราะอยากเห็นรายละเอียด — การตัดทิ้งที่นี่ด้วย
+          *      แปลว่าไม่มีที่ไหนในระบบที่ดูเมนูครบได้เลย
+          */}
+        {(r.dishes?.length ?? 0) > 0 ? (
+          <ul className="mt-2 flex flex-col divide-y divide-line rounded-xl border border-line bg-surface/40">
+            {r.dishes!.map((d) => (
+              <li key={d.name} className="flex items-baseline justify-between gap-3 px-3 py-2">
+                <span dir="auto" className="min-w-0 text-[13.5px] text-ink">
+                  {d.name}
+                </span>
+                {d.price != null ? (
+                  <span className="shrink-0 text-[13px] font-medium tabular-nums text-ink-soft">
+                    ฿{d.price.toLocaleString()}
+                  </span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        ) : r.signatureDish ? (
           <p dir="auto" className="mt-0.5 text-sm text-ink-soft">
             {r.signatureDish}
           </p>
@@ -225,45 +249,32 @@ export function FoodDetail({ id }: { id: string }) {
           *       ★★ ไม่ใช่กางกล่องเปล่าแล้วต้องกดดาวซ้ำอีกรอบ
           */}
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
-          <span className="flex items-center gap-0.5">
-            {[1, 2, 3, 4, 5].map((n) => (
-              <button
-                key={n}
-                type="button"
-                onClick={() => setSeedRating(n)}
-                aria-label={ot('food.review.starsN', { n })}
-                className="grid size-9 place-items-center rounded-full transition-colors hover:bg-surface"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  className={cn(
-                    'size-5 transition-colors',
-                    /* ★ ไล่สีตามคะแนนเฉลี่ยที่มีอยู่ ไม่ใช่ว่างเปล่าเสมอ
-                         ★★ คนเห็นว่าร้านนี้ได้กี่ดาวแล้ว ก่อนจะให้ของตัวเอง */
-                    (seedRating ?? Math.round(r.rating ?? 0)) >= n
-                      ? 'text-warn'
-                      : 'text-ink-faint/40',
-                  )}
-                  fill="currentColor"
-                  aria-hidden="true"
-                >
-                  <path d="m12 4 2.4 4.9 5.4.8-3.9 3.8.9 5.4-4.8-2.5-4.8 2.5.9-5.4L4.2 9.7l5.4-.8z" />
-                </svg>
-              </button>
-            ))}
-          </span>
+          {/*
+            * ★★ ค่าเฉลี่ยกับช่องให้คะแนนเป็นคนละอย่าง จึงเป็นคนละคอมโพเนนต์
+            *    ★ Stars เป็นรูป (role="img") ★★ StarInput เป็นปุ่มห้าปุ่ม
+            *       ปนกันแล้วโปรแกรมอ่านหน้าจอจะอ่านค่าเฉลี่ยเป็น "ปุ่ม 5 ปุ่ม"
+            */}
+          {r.ratingCount && r.ratingCount > 0 ? (
+            <span className="flex items-center gap-2">
+              <Stars value={r.rating ?? 0} size={20} />
+              <span className="text-[17px] font-bold tabular-nums text-ink">
+                {r.rating?.toFixed(1)}
+              </span>
+              <span className="text-[12.5px] text-ink-faint">
+                {ot('food.review.heading', { n: r.ratingCount })}
+              </span>
+            </span>
+          ) : null}
 
-          <span className="text-[13px] text-ink-soft">
-            {r.ratingCount && r.ratingCount > 0 ? (
-              <>
-                <span className="font-semibold text-ink">{r.rating?.toFixed(1)}</span>{' '}
-                <span className="text-ink-faint">
-                  {ot('food.review.heading', { n: r.ratingCount })}
-                </span>
-              </>
-            ) : (
+          <span className="flex flex-wrap items-center gap-x-2">
+            <StarInput
+              value={seedRating ?? 0}
+              onChange={setSeedRating}
+              label={(n) => ot('food.review.starsN', { n })}
+            />
+            <span className="text-[12.5px] text-ink-soft">
               <Untranslated>{ot('food.detail.rateHint')}</Untranslated>
-            )}
+            </span>
           </span>
         </div>
 

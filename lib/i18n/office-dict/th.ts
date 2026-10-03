@@ -157,6 +157,7 @@ export const th = {
   'food.picks.count': '{n} ร้าน',
   'food.picks.add': 'เพิ่มร้าน',
   'food.picks.empty': 'ยังไม่มีใครแนะนำร้าน — เป็นคนแรกเลยไหม',
+  'food.picks.moreDishes': '+ อีก {n} เมนู',
   'food.picks.edit': 'แก้ไขร้าน',
   'food.picks.findTitle': 'ค้นหาร้าน',
   'food.picks.listTitle': 'ร้านทั้งหมด',
@@ -350,6 +351,10 @@ export const th = {
 
   'food.form.name': 'ชื่อร้าน',
   'food.form.dish': 'เมนูเด็ด',
+  'food.form.addDish': 'เพิ่มเมนู',
+  'food.form.priceOptional': 'ราคาไม่บังคับ',
+  'food.form.dishPlaceholder': 'เช่น ข้าวมันไก่ต้ม',
+  'food.form.dishPrice': 'ราคา',
   'food.form.cuisine': 'ประเภทอาหาร',
   'food.form.price': 'ช่วงราคา',
   'food.form.distance': 'ระยะทาง',
