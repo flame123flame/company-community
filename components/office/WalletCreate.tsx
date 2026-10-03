@@ -6,6 +6,10 @@ import { apiFetch } from '@/lib/api/client'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Toast, useToast } from '@/components/ui/Toast'
+import { Toggle } from '@/components/ui/Toggle'
+import { DatePicker, todayIso } from '@/components/ui/DatePicker'
+import { Section } from '@/components/ui/Section'
+import { cuisineStyle } from '@/lib/office/cuisine'
 import { cn } from '@/lib/cn'
 import { useLocale } from '@/lib/i18n/client'
 import { officeErrorText } from '@/lib/i18n/office-format'
@@ -17,7 +21,18 @@ import { toBaht } from '@/lib/office/money'
 import { ChatAvatar } from './ChatAvatar'
 
 type Person = { id: string; name: string; avatarUrl: string | null; department: string | null }
-type Shop = { id: string; name: string; cuisine: string | null }
+type Shop = {
+  id: string
+  name: string
+  cuisine: string | null
+  /* ★ ทั้งสี่ตัวเป็น optional — API ถอยไปคอลัมน์พื้นฐานได้เมื่อ migration
+       ยังไม่ขึ้น หน้าเว็บจึงต้องรับกรณีที่ไม่มีค่าได้โดยไม่พัง */
+  rating?: number | null
+  ratingCount?: number
+  voteCount?: number
+  walkMin?: number | null
+  recent?: boolean
+}
 type Group = { id: string; name: string; memberIds: string[] }
 
 type Recent = {
@@ -60,7 +75,6 @@ export function WalletCreate() {
   const [prefs, setPrefs] = useState<BillPrefs>(() => loadPrefs())
 
   /* ── รายละเอียดเสริม ──────────────────────────────────────── */
-  const [open, setOpen] = useState(false)
   const [title, setTitle] = useState('')
   const [category, setCategory] = useState<'FOOD' | 'COFFEE' | 'OTHER'>('FOOD')
   const [billDate, setBillDate] = useState(() => todayIso())
@@ -75,9 +89,7 @@ export function WalletCreate() {
   const [fieldError, setFieldError] = useState<Record<string, string>>({})
   const [askGroup, setAskGroup] = useState(false)
   const [groupName, setGroupName] = useState('')
-  const [showAll, setShowAll] = useState(false)
   const [query, setQuery] = useState('')
-  const [shopSearch, setShopSearch] = useState(false)
   const [shopQuery, setShopQuery] = useState('')
   /** ร้านที่กำลังชวนให้โหวตหลังบันทึกบิล — null = ไม่ชวน */
   const [voteShop, setVoteShop] = useState<string | null>(null)
@@ -164,24 +176,6 @@ export function WalletCreate() {
 
   const others = useMemo(() => people.filter((p) => p.id !== meId), [people, meId])
   const byId = useMemo(() => new Map(others.map((p) => [p.id, p])), [others])
-
-  /*
-   * ★★ แถวบนสุดคือคนที่หารด้วยบ่อยที่สุด ตามด้วยคนที่เลือกแล้วแต่ไม่อยู่ในแถว
-   *    ★ คนที่เพิ่งเลือกจาก "ดูทุกคน" ต้องยังเห็นว่าถูกเลือกอยู่
-   *      ★★ ไม่งั้นเขาจะกดเลือกซ้ำแล้วกลายเป็นยกเลิก
-   */
-  const quickPeople = useMemo(() => {
-    const freq = recent?.frequentPeople ?? []
-    const extra = picked.filter((id) => !freq.some((p) => p.id === id)).map((id) => byId.get(id))
-    return [...freq, ...extra].filter((p): p is Person => Boolean(p))
-  }, [recent, picked, byId])
-
-  /* ★ ร้านจาก URL ขึ้นก่อนเสมอ — มันคือร้านที่ผู้ใช้เพิ่งเลือกมาจากอีกหน้า */
-  const shopChips = useMemo(() => {
-    const base = recent?.shops ?? []
-    if (!urlShop || base.some((s) => s.id === urlShop.id)) return base
-    return [urlShop, ...base].slice(0, 6)
-  }, [recent, urlShop])
 
   const split = useMemo(
     () =>
@@ -288,11 +282,9 @@ export function WalletCreate() {
        * ★★★ กาง "+ เพิ่มรายละเอียด" ให้เอง — ข้อความผิดพลาดอยู่ข้างใน
        *
        *     ★ ข้อกำหนดบอกว่า error ต้องแสดงใต้ช่องที่ผิด "ทันที"
-       *       ★★ แต่ช่องนั้นอยู่ในส่วนที่ยุบไว้เป็นค่าเริ่มต้น
-       *          ★ ผลที่วัดได้: กดบันทึกแล้วไม่มีอะไรเกิดขึ้นเลยสักอย่าง
-       *            ไม่มี error ไม่มีการเปลี่ยนหน้า — อ่านเป็น "ปุ่มเสีย"
+       *       ★★ เดิมช่องนั้นอยู่ในส่วนที่ยุบไว้ จึงต้องสั่งกางก่อน
+       *          ★ ตอนนี้รายละเอียดกางอยู่ตลอด — ข้อความจึงไปโผล่ที่ช่องเลย
        */
-      setOpen(true)
       setFieldError({
         custom:
           remainder > 0
@@ -409,19 +401,56 @@ export function WalletCreate() {
     finish()
   }
 
-  const shopList = useMemo(() => {
+  /*
+   * ร้านที่แสดงเป็นการ์ด
+   *
+   * ★ ร้านจาก URL ขึ้นก่อนเสมอ — มันคือร้านที่ผู้ใช้เพิ่งเลือกมาจากอีกหน้า
+   *   ★★ และร้านที่เลือกไว้แล้วต้องไม่หายไปตอนพิมพ์ค้นหาคำอื่น
+   *      ★ ไม่งั้นคนจะคิดว่าการเลือกถูกยกเลิก แล้วกดเลือกใหม่ซ้ำ
+   */
+  const shopCards = useMemo(() => {
+    const base = recent?.shops ?? []
+    const all = urlShop && !base.some((x) => x.id === urlShop.id) ? [urlShop, ...base] : base
     const q = shopQuery.trim().toLowerCase()
-    if (!q) return recent?.shops ?? []
-    return (recent?.shops ?? []).filter((s) => s.name.toLowerCase().includes(q))
-  }, [recent, shopQuery])
+    if (!q) return all.slice(0, 6)
+    const hit = all.filter((x) => `${x.name} ${x.cuisine ?? ''}`.toLowerCase().includes(q))
+    const chosen = all.find((x) => x.id === shopId)
+    return chosen && !hit.some((x) => x.id === chosen.id) ? [chosen, ...hit] : hit
+  }, [recent, urlShop, shopQuery, shopId])
 
-  const allList = useMemo(() => {
+  /*
+   * รายชื่อคน — คนที่เลือกแล้วลอยขึ้นต้นตาราง
+   *
+   * ★★ รายชื่อสามสิบคนที่คนเลือกไว้กระจัดกระจาย ทำให้ตรวจทานก่อนกดบันทึก
+   *    ไม่ได้เลย ★ ต้องเลื่อนขึ้นลงนับเองว่าครบไหม
+   *    ★★ การดันขึ้นมาข้างบนทำให้ "ใครอยู่ในบิลนี้" อ่านได้ในหน้าจอเดียว
+   */
+  /** หารกี่คนจริง ๆ — รวมตัวเองด้วยถ้าเปิดสวิตช์ไว้ */
+  const headcount = picked.length + (prefs.includeSelf ? 1 : 0)
+
+  const peopleList = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return q ? others.filter((p) => `${p.name} ${p.department ?? ''}`.toLowerCase().includes(q)) : others
-  }, [others, query])
+    const base = q
+      ? others.filter((x) => `${x.name} ${x.department ?? ''}`.toLowerCase().includes(q))
+      : others
+    const on = base.filter((x) => picked.includes(x.id))
+    const off = base.filter((x) => !picked.includes(x.id))
+    return [...on, ...off]
+  }, [others, query, picked])
 
   return (
-    <div className="max-w-xl pb-28">
+    /*
+     * ★★★ สองคอลัมน์บนจอกว้าง: ฟอร์มซ้าย · สรุปที่เกาะอยู่ขวา
+     *
+     *     ★ ของเดิมเป็นคอลัมน์เดียวกว้าง 576px ในหน้าที่กว้าง 1000px
+     *       แล้ว "สรุปยอดต่อคน" อยู่กลางฟอร์ม ★★ พอเลื่อนลงไปกรอก
+     *       รายละเอียด ตัวเลขที่กำลังปรับก็หลุดออกนอกจอไปแล้ว
+     *     ★★ สรุปที่เกาะอยู่ทำให้เห็นผลของทุกการกดทันที ซึ่งคือทั้งหมด
+     *        ของการหารเงิน — คนปรับตัวเลขจนกว่าจะพอใจกับผลลัพธ์
+     *     ★ บนมือถือยุบเป็นคอลัมน์เดียวเหมือนเดิม และปุ่มบันทึกยังติดขอบล่าง
+     */
+    <div className="w-full pb-28 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-6 lg:pb-10">
+      <div className="min-w-0">
       {/* ── 1 · หารแบบครั้งก่อน ──────────────────────────────── */}
       {recent?.lastBill && recent.lastBill.people.length > 0 ? (
         <button
@@ -492,300 +521,424 @@ export function WalletCreate() {
         )}
       </div>
 
-      {/* ── 3 · ร้าน ─────────────────────────────────────────── */}
-      <div className="mt-5">
-        <p className="text-sm font-medium text-ink">
-          <Untranslated>{ot('wallet.create.shop')}</Untranslated>
-        </p>
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {shopChips.map((s) => (
-            <Chip
-              key={s.id}
-              active={shopId === s.id}
-              onClick={() => {
-                const on = shopId === s.id
-                setShopId(on ? null : s.id)
-                setShopName(on ? null : s.name)
-                /* ★ ร้านกาแฟ → เดาประเภทเป็นกาแฟให้เลย (ข้อกำหนด 2.7) */
-                if (!on && /กาแฟ|coffee|cafe/i.test(`${s.name} ${s.cuisine ?? ''}`)) setCategory('COFFEE')
-              }}
-            >
-              <span dir="auto">{s.name}</span>
-            </Chip>
-          ))}
-          <Chip active={shopSearch} onClick={() => setShopSearch((v) => !v)}>
-            <Untranslated>{ot('wallet.create.shopSearch')}</Untranslated>
-          </Chip>
+      {/*
+        * ── 3 · ร้าน ───────────────────────────────────────────
+        *
+        * ★★★ จากชิปกลม ๆ เรียงกัน → การ์ดที่มีรูปและคำอธิบาย
+        *
+        *     ★ ชิปบอกได้แค่ชื่อ ★★ ร้านสองร้านที่ชื่อคล้ายกันจึงแยกไม่ออก
+        *       และคนที่ยังไม่เคยสั่งร้านนั้นไม่รู้ว่ามันขายอะไร
+        *     ★ การ์ดมีที่ให้ประเภทอาหาร ซึ่งเป็นสิ่งที่คนใช้ตัดสินใจจริง
+        *
+        * ★★ ช่องค้นหาเปิดอยู่เสมอ ไม่ใช่ชิป "ค้นหา" ที่ต้องกดก่อน
+        *    ★ ร้านในระบบมีหลายสิบ แต่ชิปลัดแสดงได้ไม่กี่ร้าน
+        *      ★★ การซ่อนช่องค้นหาไว้หลังปุ่ม แปลว่าร้านที่เหลือทั้งหมด
+        *         ต้องกดสองครั้งถึงจะหาเจอ
+        */}
+      <Section
+        collapsible
+        title={<Untranslated>{ot('wallet.create.shop')}</Untranslated>}
+        hint={<Untranslated>{ot('wallet.create.shopHint')}</Untranslated>}
+        /* ★ หุบแล้วยังเห็นว่าเลือกร้านไหนไว้ — ไม่ต้องกางออกมาตรวจ */
+        summary={shopName ? <span dir="auto">{shopName}</span> : undefined}
+      >
+        <div>
+          <Input
+            radius="round"
+            value={shopQuery}
+            onChange={(e) => setShopQuery(e.target.value)}
+            placeholder={ot('wallet.create.shopSearch')}
+            aria-label={ot('wallet.create.shopSearch')}
+          />
         </div>
 
-        {shopSearch ? (
-          <div className="mt-2">
-            <Input
-              radius="round"
-              value={shopQuery}
-              onChange={(e) => setShopQuery(e.target.value)}
-              placeholder={ot('wallet.create.shopSearch')}
-              aria-label={ot('wallet.create.shopSearch')}
-            />
-            <div className="mt-1.5 flex flex-wrap gap-1.5">
-              {shopList.map((s) => (
-                <Chip
-                  key={s.id}
-                  active={shopId === s.id}
-                  onClick={() => {
-                    setShopId(s.id)
-                    setShopName(s.name)
-                    setShopSearch(false)
-                  }}
-                >
-                  <span dir="auto">{s.name}</span>
-                </Chip>
-              ))}
-              {/* ★ ร้านที่ยังไม่มีในระบบ — ใช้เป็นชื่อบิลได้ แต่ไม่ผูก restaurant_id */}
-              {shopQuery.trim() && !shopList.some((s) => s.name === shopQuery.trim()) ? (
-                <Chip
-                  active={false}
-                  onClick={() => {
-                    setShopId(null)
-                    setShopName(shopQuery.trim())
-                    setShopSearch(false)
-                  }}
-                >
-                  <Untranslated>{ot('wallet.create.shopNew', { name: shopQuery.trim() })}</Untranslated>
-                </Chip>
-              ) : null}
-            </div>
-          </div>
-        ) : null}
-
-        {shopName && !shopId ? (
-          <p dir="auto" className="mt-1.5 text-xs text-ink-soft">
-            {shopName}
-          </p>
-        ) : null}
-      </div>
-
-      {/* ── 4 · คนที่หาร ─────────────────────────────────────── */}
-      <div className="mt-5">
-        <div className="flex items-baseline justify-between gap-2">
-          <p className="text-sm font-medium text-ink">
-            <Untranslated>{ot('wallet.create.people')}</Untranslated>
-          </p>
-          <button
-            type="button"
-            onClick={() => setShowAll((v) => !v)}
-            /* ★ สูง 44px ตามข้อกำหนด — ลิงก์ตัวเล็กที่สูง 16px กดพลาดตลอดบนมือถือ */
-            className="-my-2 min-h-11 px-2 text-xs text-link hover:underline"
-          >
-            <Untranslated>{ot('wallet.create.seeAll')}</Untranslated>
-          </button>
-        </div>
-
-        {/* กลุ่มที่บันทึกไว้ */}
-        {(recent?.groups ?? []).length > 0 ? (
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {recent!.groups.map((g) => (
-              <Chip
-                key={g.id}
-                active={g.memberIds.every((id) => picked.includes(id)) && g.memberIds.length === picked.length}
-                onClick={() => setPicked(g.memberIds)}
-              >
-                <span dir="auto">{g.name}</span>
-              </Chip>
-            ))}
-          </div>
-        ) : null}
-
-        {/*
-          * ★★ วงกลมใหญ่แตะเลือก ไม่ใช่ checkbox
-          *    ★ ข้อกำหนดระบุชัด และเหตุผลคือเป้ากด 56px กับ 16px ต่างกันมาก
-          *      เมื่อยืนกดด้วยนิ้วโป้งข้างเดียว
-          */}
-        <div className="mt-2 flex flex-wrap gap-2">
-          {quickPeople.map((p) => {
-            const on = picked.includes(p.id)
+        <div className="mt-2.5 grid gap-2 sm:grid-cols-2">
+          {shopCards.map((shop) => {
+            const on = shopId === shop.id
+            /* ★ ไอคอนและสีมาจากโมดูลกลาง หน้าร้านเด็ดจะได้ใช้ชุดเดียวกัน */
+            const style = cuisineStyle(shop.name, shop.cuisine)
             return (
               <button
-                key={p.id}
+                key={shop.id}
                 type="button"
-                onClick={() => toggle(p.id)}
                 aria-pressed={on}
-                className="flex w-16 flex-col items-center gap-1"
+                style={{ '--s': style.tint } as React.CSSProperties}
+                onClick={() => {
+                  const off = shopId === shop.id
+                  setShopId(off ? null : shop.id)
+                  setShopName(off ? null : shop.name)
+                  /* ★ ร้านกาแฟ → เดาประเภทเป็นกาแฟให้เลย (ข้อกำหนด 2.7) */
+                  if (!off && /กาแฟ|coffee|cafe/i.test(`${shop.name} ${shop.cuisine ?? ''}`)) {
+                    setCategory('COFFEE')
+                  }
+                }}
+                className={cn(
+                  'group relative flex min-h-11 items-start gap-3 overflow-hidden rounded-2xl border p-3 text-start',
+                  'transition-all duration-200',
+                  on
+                    ? 'border-[rgb(var(--s)/0.55)] bg-[rgb(var(--s)/0.08)]'
+                    : 'border-line bg-elevated/50 hover:-translate-y-0.5 hover:border-[rgb(var(--s)/0.4)] hover:bg-surface',
+                )}
               >
+                {/* ★ แสงจางสีประจำประเภท — ติดอยู่ตลอด ไม่ใช่โผล่ตอนชี้
+                    ★★ การ์ดที่มีสีเฉพาะตอนเอาเมาส์ไปชี้ คือการ์ดที่บนมือถือ
+                       ไม่มีสีเลยตลอดกาล */}
                 <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0"
+                  style={{
+                    background:
+                      'radial-gradient(120% 90% at 100% 0%, rgb(var(--s) / 0.10), transparent 60%)',
+                  }}
+                />
+
+                <span
+                  aria-hidden="true"
                   className={cn(
-                    'relative grid place-items-center rounded-full p-0.5 transition-colors',
-                    on ? 'bg-accent' : 'bg-transparent',
+                    'relative grid size-11 shrink-0 place-items-center rounded-xl',
+                    'text-[rgb(var(--s))] ring-1 ring-[rgb(var(--s)/0.3)]',
+                    'transition-transform duration-300 group-hover:scale-110',
                   )}
+                  style={{
+                    background:
+                      'linear-gradient(145deg, rgb(var(--s) / 0.22), rgb(var(--s) / 0.08))',
+                  }}
                 >
-                  <ChatAvatar name={p.name} url={p.avatarUrl} size={48} />
-                  {on ? (
-                    <span className="absolute -bottom-0.5 -inset-e-0.5 grid size-5 place-items-center rounded-full bg-accent text-accent-ink">
-                      <svg viewBox="0 0 24 24" className="size-3" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                        <path d="m5 13 4 4L19 7" />
-                      </svg>
+                  <svg viewBox="0 0 24 24" className="size-[22px]" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                    <path d={style.icon} />
+                  </svg>
+                </span>
+
+                <span className="relative min-w-0 flex-1">
+                  <span className="flex items-center gap-1.5">
+                    <span dir="auto" className="min-w-0 truncate text-[13.5px] font-semibold text-ink">
+                      {shop.name}
                     </span>
-                  ) : null}
+                    {/* ★ "เคยสั่ง" แยกร้านที่เรารู้จักออกจากร้านที่ระบบแนะนำ */}
+                    {shop.recent ? (
+                      <span className="shrink-0 rounded-full bg-[rgb(var(--s)/0.16)] px-1.5 py-0.5 text-[9.5px] font-bold uppercase text-[rgb(var(--s))]">
+                        <Untranslated>{ot('wallet.create.shopRecent')}</Untranslated>
+                      </span>
+                    ) : null}
+                  </span>
+
+                  {/*
+                    * ★★ บรรทัดรายละเอียด — ประเภท · เดินกี่นาที · คะแนน · หัวใจ
+                    *    ★ ของเดิมมีแค่ประเภท ซึ่งตอบไม่ได้ว่า "ไกลไหม" กับ
+                    *      "คนอื่นว่าดีไหม" ★★ สองข้อนั้นคือสิ่งที่คนใช้เลือกร้านจริง
+                    *    ★ ตัวที่ไม่มีข้อมูลก็หายไปเอง ไม่ใช่ขึ้นเป็นขีด
+                    */}
+                  <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-ink-faint">
+                    {shop.cuisine ? (
+                      <span dir="auto" className="min-w-0 truncate">
+                        {shop.cuisine}
+                      </span>
+                    ) : null}
+                    {shop.walkMin ? (
+                      <span className="inline-flex items-center gap-0.5">
+                        <svg viewBox="0 0 24 24" className="size-3" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <path d="M13 4.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM11 22l1.5-6-2.5-2.5V9l4 2 2 3M9 22l2-5" />
+                        </svg>
+                        {ot('wallet.create.walkMin', { n: shop.walkMin })}
+                      </span>
+                    ) : null}
+                    {shop.rating ? (
+                      <span className="inline-flex items-center gap-0.5 text-warn">
+                        <svg viewBox="0 0 24 24" className="size-3" fill="currentColor" aria-hidden="true">
+                          <path d="m12 4 2.4 4.9 5.4.8-3.9 3.8.9 5.4-4.8-2.5-4.8 2.5.9-5.4L4.2 9.7l5.4-.8z" />
+                        </svg>
+                        <span className="tabular-nums">{shop.rating.toFixed(1)}</span>
+                      </span>
+                    ) : null}
+                    {shop.voteCount ? (
+                      <span className="inline-flex items-center gap-0.5">
+                        <svg viewBox="0 0 24 24" className="size-3" fill="currentColor" aria-hidden="true">
+                          <path d="M12 20s-7-4.4-7-9a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 4.6-7 9-7 9z" />
+                        </svg>
+                        <span className="tabular-nums">{shop.voteCount}</span>
+                      </span>
+                    ) : null}
+                  </span>
                 </span>
-                <span dir="auto" className={cn('w-full truncate text-center text-[11px]', on ? 'font-semibold text-ink' : 'text-ink-soft')}>
-                  {p.name}
-                </span>
+
+                {on ? (
+                  <span aria-hidden="true" className="relative mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-[rgb(var(--s))] text-white">
+                    <svg viewBox="0 0 24 24" className="size-3" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="m5 13 4 4L19 7" />
+                    </svg>
+                  </span>
+                ) : null}
               </button>
             )
           })}
+
+          {/*
+            * ★ ร้านที่ยังไม่มีในระบบ — ใช้เป็นชื่อบิลได้ แต่ไม่ผูก restaurant_id
+            *   ★★ เส้นประบอกว่ามันคนละชนิดกับการ์ดร้านจริงข้าง ๆ
+            */}
+          {shopQuery.trim() && !shopCards.some((x) => x.name === shopQuery.trim()) ? (
+            <button
+              type="button"
+              onClick={() => {
+                setShopId(null)
+                setShopName(shopQuery.trim())
+              }}
+              className={cn(
+                'flex min-h-11 items-center gap-3 rounded-2xl border border-dashed p-3 text-start transition-colors',
+                shopName === shopQuery.trim() && !shopId
+                  ? 'border-accent/50 bg-accent/8'
+                  : 'border-line hover:border-line-strong hover:bg-surface',
+              )}
+            >
+              <span aria-hidden="true" className="grid size-10 shrink-0 place-items-center rounded-xl bg-surface text-ink-soft">
+                <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+              </span>
+              <span dir="auto" className="min-w-0 flex-1 truncate text-[13px] text-ink-soft">
+                <Untranslated>{ot('wallet.create.shopNew', { name: shopQuery.trim() })}</Untranslated>
+              </span>
+            </button>
+          ) : null}
         </div>
 
-        {showAll ? (
-          <div className="mt-2 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-3">
-            <Input
-              radius="round"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={ot('wallet.create.search')}
-              aria-label={ot('wallet.create.search')}
-            />
-            <div className="mt-2 max-h-56 overflow-y-auto">
-              {allList.length === 0 ? (
-                <p className="py-4 text-center text-xs text-ink-faint">{ot('wallet.create.noMatch')}</p>
-              ) : (
-                <div className="grid grid-cols-2 gap-1">
-                  {allList.map((p) => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => toggle(p.id)}
-                      aria-pressed={picked.includes(p.id)}
-                      className={cn(
-                        'flex min-h-11 items-center gap-2 rounded-xl px-2 py-1.5 text-start transition-colors',
-                        picked.includes(p.id) ? 'bg-accent/15' : 'hover:bg-surface',
-                      )}
-                    >
-                      <ChatAvatar name={p.name} url={p.avatarUrl} size={28} />
-                      <span dir="auto" className="min-w-0 flex-1 truncate text-[13px] text-ink">
-                        {p.name}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+        {shopName && !shopId ? (
+          <p dir="auto" className="mt-2 text-xs text-ink-soft">
+            {shopName}
+          </p>
+        ) : null}
+      </Section>
+
+      {/*
+        * ── 4 · ผู้ร่วมจ่าย ────────────────────────────────────
+        *
+        * ★★★ รื้อทั้งส่วน — ของเดิมแยกเป็นสี่ก้อนที่ไม่รู้จักกัน
+        *
+        *     ชิปกลุ่ม · วงกลมคนที่คุยบ่อย · ลิงก์ "ดูทั้งหมด" ที่เปิดกล่อง
+        *     ค้นหาอีกชั้น · และช่องติ๊ก "ฉันร่วมจ่ายด้วย" ลอยอยู่ล่างสุด
+        *     ★ คนที่หาคนที่ไม่อยู่ในวงกลมสิบคนแรก ต้องกด "ดูทั้งหมด"
+        *       แล้วพิมพ์ในกล่องที่เพิ่งโผล่ ★★ สองจังหวะเพื่อทำสิ่งเดียว
+        *     ★★ และ "ฉันร่วมจ่ายด้วย" เป็นช่องติ๊ก 16px ทั้งที่มันเปลี่ยน
+        *        ยอดต่อหัวของทุกคน — ซึ่งเป็นผลที่ใหญ่ที่สุดในหน้านี้
+        *
+        * ★ ตอนนี้: ตัวฉันเป็นการ์ดใบแรกที่มีสวิตช์ · ช่องค้นหาเปิดอยู่เสมอ ·
+        *   ทุกคนอยู่ในตารางเดียวกัน · กลุ่มที่บันทึกไว้เป็นทางลัดข้างบน
+        */}
+      <Section
+        collapsible
+        title={<Untranslated>{ot('wallet.create.people')}</Untranslated>}
+        hint={<Untranslated>{ot('wallet.create.peopleHint')}</Untranslated>}
+        badge={
+          headcount > 0 ? (
+            <span className="rounded-full bg-surface px-2 py-0.5 text-[11px] font-normal tabular-nums text-ink-soft">
+              {ot('wallet.owed.peopleN', { n: headcount })}
+            </span>
+          ) : undefined
+        }
+        /* ★ หุบแล้วยังเห็นชื่อคนที่เลือกไว้ ไม่ใช่แค่จำนวน */
+        summary={
+          picked.length > 0 ? (
+            <span dir="auto">
+              {picked
+                .slice(0, 4)
+                .map((id) => byId.get(id)?.name ?? '')
+                .filter(Boolean)
+                .join(', ')}
+              {picked.length > 4 ? ` +${picked.length - 4}` : ''}
+            </span>
+          ) : undefined
+        }
+        action={
+          picked.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => setPicked([])}
+              className="min-h-11 px-2 text-xs text-link hover:underline"
+            >
+              <Untranslated>{ot('wallet.create.clearPicked')}</Untranslated>
+            </button>
+          ) : undefined
+        }
+      >
+        {/*
+          * ★★★ ตัวฉันแยกออกมาเป็นการ์ดของตัวเองพร้อมสวิตช์
+          *     ★ มันไม่ใช่ "คนหนึ่งในรายชื่อ" — มันคือคำถามว่าหารกี่ทาง
+          *       ★★ และคำตอบเปลี่ยนยอดของทุกคนในบิล จึงต้องอยู่บนสุด
+          *          ไม่ใช่ช่องติ๊กเล็ก ๆ ที่ก้นส่วน
+          */}
+        <Toggle
+          checked={prefs.includeSelf}
+          onChange={(v) => setPref('includeSelf', v)}
+          icon="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20a8 8 0 0 1 16 0"
+          label={<Untranslated>{ot('wallet.create.includeSelf')}</Untranslated>}
+          hint={
+            prefs.includeSelf && split.mineSatang > 0 ? (
+              <Untranslated>
+                {`${ot('wallet.create.myShare')} ฿${formatBaht(locale, toBaht(split.mineSatang))}`}
+              </Untranslated>
+            ) : undefined
+          }
+        />
+
+        {/* ── กลุ่มที่บันทึกไว้ ─────────────────────────────── */}
+        {(recent?.groups ?? []).length > 0 ? (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {recent!.groups.map((g) => {
+              const on =
+                g.memberIds.length === picked.length &&
+                g.memberIds.every((id) => picked.includes(id))
+              return (
+                <button
+                  key={g.id}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => setPicked(g.memberIds)}
+                  className={cn(
+                    'inline-flex min-h-11 items-center gap-1.5 rounded-full px-3.5 text-[13px] transition-colors',
+                    on ? 'bg-ink text-page' : 'bg-surface text-ink-soft hover:text-ink',
+                  )}
+                >
+                  <svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm8 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM2 20a7 7 0 0 1 14 0M16 20a6 6 0 0 1 6-6" />
+                  </svg>
+                  <span dir="auto">{g.name}</span>
+                  <span className="text-[11px] tabular-nums opacity-60">{g.memberIds.length}</span>
+                </button>
+              )
+            })}
           </div>
         ) : null}
 
-        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-          <p className="text-xs text-ink-soft">{ot('wallet.create.picked', { n: picked.length })}</p>
-
-          {/* ★ "ฉันร่วมจ่ายด้วย" อยู่ในส่วนนี้ และจำค่าล่าสุด */}
-          <label className="flex min-h-11 cursor-pointer items-center gap-2 text-xs text-ink">
-            <input
-              type="checkbox"
-              checked={prefs.includeSelf}
-              onChange={(e) => setPref('includeSelf', e.target.checked)}
-              className="size-4 accent-(--color-accent)"
-            />
-            {ot('wallet.create.includeSelf')}
-          </label>
+        {/* ── ค้นหา — เปิดอยู่เสมอ ───────────────────────────── */}
+        <div className="mt-3">
+          <Input
+            radius="round"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={ot('wallet.create.search')}
+            aria-label={ot('wallet.create.search')}
+          />
         </div>
 
-        {fieldError.people ? <p className="mt-1 text-xs text-danger">{fieldError.people}</p> : null}
-      </div>
-
-      {/* ── 5 · สรุปยอดต่อคน ─────────────────────────────────── */}
-      {picked.length > 0 && Number(amount) > 0 ? (
-        <div className="mt-4 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-4">
-          <p className="text-[22px] font-bold text-ink">
-            <Untranslated>
-              {ot('wallet.create.summaryHead', {
-                n: picked.length + (prefs.includeSelf ? 1 : 0),
-                each: `฿${formatBaht(locale, toBaht(split.perHeadSatang))}`,
-              })}
-            </Untranslated>
-          </p>
-          {prefs.includeSelf ? (
-            <p className="mt-0.5 text-xs text-ink-soft">
-              {ot('wallet.create.myShare')} ฿{formatBaht(locale, toBaht(split.mineSatang))}
+        {/*
+          * ── ตารางคน ────────────────────────────────────────
+          * ★ รูปใหญ่ 48px พร้อมชื่อและแผนก ★★ แผนกคือสิ่งที่แยก "พิม" สองคน
+          *   ออกจากกันได้ ซึ่งชื่ออย่างเดียวทำไม่ได้
+          * ★★ คนที่เลือกแล้วลอยขึ้นมาอยู่ต้นตาราง — รายชื่อยาวสามสิบคน
+          *    ที่คนเลือกไว้กระจัดกระจาย ทำให้ตรวจทานก่อนกดบันทึกไม่ได้
+          */}
+        {/* ★ ขอบล่างจางลงบอกว่า "เลื่อนลงต่อได้" ★★ แถวที่ถูกตัดกลางคันตรง ๆ
+            อ่านเป็น "แสดงไม่หมด" ซึ่งเป็นคนละความหมาย (วิธีเดียวกับกล่องแจ้งเตือน) */}
+        <div className="notify-scroll mt-3 grid max-h-[22rem] grid-cols-2 gap-1.5 overflow-y-auto sm:grid-cols-3">
+          {peopleList.length === 0 ? (
+            <p className="col-span-full py-8 text-center text-xs text-ink-faint">
+              {ot('wallet.create.noMatch')}
             </p>
-          ) : null}
+          ) : (
+            peopleList.map((person) => {
+              const on = picked.includes(person.id)
+              return (
+                <button
+                  key={person.id}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => toggle(person.id)}
+                  className={cn(
+                    'flex min-h-11 items-center gap-2.5 rounded-2xl border p-2 text-start transition-all duration-200',
+                    on
+                      ? 'border-accent/50 bg-accent/8'
+                      : 'border-transparent hover:border-line hover:bg-surface',
+                  )}
+                >
+                  <span className="relative shrink-0">
+                    <ChatAvatar name={person.name} url={person.avatarUrl} size={40} />
+                    {on ? (
+                      <span
+                        aria-hidden="true"
+                        className="absolute -bottom-0.5 -inset-e-0.5 grid size-5 place-items-center rounded-full bg-accent text-accent-ink ring-2 ring-page"
+                      >
+                        <svg viewBox="0 0 24 24" className="size-3" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="m5 13 4 4L19 7" />
+                        </svg>
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span
+                      dir="auto"
+                      className={cn(
+                        'block truncate text-[13px]',
+                        on ? 'font-semibold text-ink' : 'text-ink',
+                      )}
+                    >
+                      {person.name}
+                    </span>
+                    {person.department ? (
+                      <span dir="auto" className="block truncate text-[11px] text-ink-faint">
+                        {person.department}
+                      </span>
+                    ) : null}
+                  </span>
+                </button>
+              )
+            })
+          )}
         </div>
-      ) : null}
 
-      {/* ── 6 · เพิ่มรายละเอียด ──────────────────────────────── */}
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        className="mt-4 flex min-h-11 w-full items-center justify-between gap-2 rounded-xl px-1 text-start"
+        {fieldError.people ? <p className="mt-2 text-xs text-danger">{fieldError.people}</p> : null}
+      </Section>
+
+      {/*
+        * ══ 5 · ค่าส่ง ส่วนลด และวิธีหาร ═══════════════════════
+        *
+        * ★★★ ชื่อเดิมคือ "เพิ่มรายละเอียด" ซึ่งไม่ได้บอกว่าใช้ตอนไหน
+        *
+        *     ★ คนที่ไม่เคยเปิดจะไม่มีวันรู้ว่าข้างในมีช่องค่าส่ง
+        *       ★★ แล้วบิลที่มีค่าส่งแต่ไม่ได้กรอก คือบิลที่คนออกเงิน
+        *          ขาดทุนเงียบ ๆ ทุกครั้ง
+        *     ★★ แยกเป็นสองกองตามว่า "เปลี่ยนตัวเลข" หรือ "แค่บันทึกไว้"
+        *        ★ กองแรกมีผลกับเงินของทุกคน กองหลังมีผลกับการค้นหาย้อนหลัง
+        *          ★★ ซึ่งเป็นสองเหตุผลที่ต่างกันมากในการเปิดมันขึ้นมา
+        */}
+      <Section
+        collapsible
+        defaultOpen={Number(delivery) > 0 || Number(discount) > 0 || prefs.splitMode === 'CUSTOM'}
+        title={<Untranslated>{ot('wallet.create.adjustTitle')}</Untranslated>}
+        hint={<Untranslated>{ot('wallet.create.adjustHint')}</Untranslated>}
+        summary={
+          [
+            Number(delivery) ? `${ot('wallet.create.delivery')} ฿${delivery}` : '',
+            Number(discount) ? `${ot('wallet.create.discount')} ฿${discount}` : '',
+            prefs.splitMode === 'CUSTOM' ? ot('wallet.create.splitCustom') : '',
+            prefs.rounded ? ot('wallet.create.roundUp') : '',
+          ]
+            .filter(Boolean)
+            .join(' · ') || undefined
+        }
       >
-        <span className="text-sm font-medium text-link">
-          + <Untranslated>{ot('wallet.create.more')}</Untranslated>
-        </span>
-        {/* ★ สรุปสั้น ๆ ตอนยุบ ถ้ากรอกอะไรไปแล้ว (ข้อกำหนด 2.7) */}
-        {!open ? (
-          <span dir="auto" className="truncate text-xs text-ink-faint">
-            {[
-              billDate !== todayIso() ? billDate : '',
-              Number(delivery) ? `${ot('wallet.create.delivery')} ฿${delivery}` : '',
-              Number(discount) ? `${ot('wallet.create.discount')} ฿${discount}` : '',
-              receiptPath ? ot('wallet.create.receiptDone') : '',
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-          </span>
-        ) : null}
-      </button>
-
-      {open ? (
-        <div className="mt-2 flex flex-col gap-4 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-4">
-          <Field label={ot('wallet.create.billTitle')}>
-            <Input
-              radius="round"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              maxLength={100}
-              dir="auto"
-              placeholder={shopName ?? ot('wallet.create.titleAuto', { date: billDate })}
-            />
-          </Field>
-
-          <Field label={ot('wallet.create.category')}>
-            <div className="flex flex-wrap gap-1.5">
-              {(['FOOD', 'COFFEE', 'OTHER'] as const).map((c) => (
-                <Chip key={c} active={category === c} onClick={() => setCategory(c)}>
-                  {/* ★ ใช้ categoryLabel ของโมดูล ไม่ประกอบชื่อกุญแจเอง
-                        ★★ ผมเดาว่าเป็น wallet.cat.* แต่ของจริงคือ wallet.category.*
-                           แล้วชิปโชว์คำว่า "wallet.cat.FOOD" ออกจอ
-                           ★ ตัวประกอบชื่อกุญแจเองไม่มีอะไรมาจับผิดให้ตอนคอมไพล์ */}
-                  {categoryLabel(ot, c)}
-                </Chip>
-              ))}
-            </div>
-          </Field>
-
-          <Field label={ot('wallet.create.date')} error={fieldError.date}>
-            <div className="flex flex-wrap items-center gap-1.5">
-              <Chip active={billDate === todayIso()} onClick={() => setBillDate(todayIso())}>
-                <Untranslated>{ot('wallet.create.today')}</Untranslated>
-              </Chip>
-              <Chip active={billDate === yesterdayIso()} onClick={() => setBillDate(yesterdayIso())}>
-                <Untranslated>{ot('wallet.create.yesterday')}</Untranslated>
-              </Chip>
+        <div className="flex flex-col gap-4 rounded-2xl border border-line bg-elevated/50 p-4 backdrop-blur-md">
+          <div className="grid grid-cols-2 gap-3">
+            <Field label={ot('wallet.create.delivery')}>
               <input
-                type="date"
-                value={billDate}
-                /* ★ ห้ามเลือกวันในอนาคต — บังคับที่ input ด้วย ไม่ใช่เช็กตอนกดบันทึก */
-                max={todayIso()}
-                onChange={(e) => {
-                  if (e.target.value > todayIso()) {
-                    setFieldError((f) => ({ ...f, date: ot('wallet.create.noFuture') }))
-                    return
-                  }
-                  setFieldError((f) => ({ ...f, date: '' }))
-                  setBillDate(e.target.value)
-                }}
-                className="h-11 rounded-xl border border-line bg-surface px-3 text-sm text-ink"
+                value={delivery}
+                onChange={(e) => setDelivery(e.target.value.replace(/[^\d.]/g, ''))}
+                inputMode="decimal"
+                placeholder="0"
+                aria-label={ot('wallet.create.delivery')}
+                className="h-11 w-full rounded-xl border border-line bg-surface px-3 text-sm tabular-nums text-ink"
               />
-            </div>
-          </Field>
+            </Field>
+            <Field label={ot('wallet.create.discount')}>
+              <input
+                value={discount}
+                onChange={(e) => setDiscount(e.target.value.replace(/[^\d.]/g, ''))}
+                inputMode="decimal"
+                placeholder="0"
+                aria-label={ot('wallet.create.discount')}
+                className="h-11 w-full rounded-xl border border-line bg-surface px-3 text-sm tabular-nums text-ink"
+              />
+            </Field>
+          </div>
 
           <Field label={ot('wallet.create.splitLabel')}>
             <div className="flex flex-wrap gap-1.5">
@@ -834,38 +987,75 @@ export function WalletCreate() {
             </div>
           ) : null}
 
-          <div className="grid grid-cols-2 gap-3">
-            <Field label={ot('wallet.create.delivery')}>
-              <input
-                value={delivery}
-                onChange={(e) => setDelivery(e.target.value.replace(/[^\d.]/g, ''))}
-                inputMode="decimal"
-                placeholder="0"
-                aria-label={ot('wallet.create.delivery')}
-                className="h-11 w-full rounded-xl border border-line bg-surface px-3 text-sm tabular-nums text-ink"
-              />
-            </Field>
-            <Field label={ot('wallet.create.discount')}>
-              <input
-                value={discount}
-                onChange={(e) => setDiscount(e.target.value.replace(/[^\d.]/g, ''))}
-                inputMode="decimal"
-                placeholder="0"
-                aria-label={ot('wallet.create.discount')}
-                className="h-11 w-full rounded-xl border border-line bg-surface px-3 text-sm tabular-nums text-ink"
-              />
-            </Field>
-          </div>
+          <Toggle
+            checked={prefs.rounded}
+            onChange={(v) => setPref('rounded', v)}
+            icon="M4 12h16M7 8l-3 4 3 4M17 8l3 4-3 4"
+            label={<Untranslated>{ot('wallet.create.roundUp')}</Untranslated>}
+            hint={<Untranslated>{ot('wallet.create.roundUpHint')}</Untranslated>}
+          />
+        </div>
+      </Section>
 
-          <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm text-ink">
-            <input
-              type="checkbox"
-              checked={prefs.rounded}
-              onChange={(e) => setPref('rounded', e.target.checked)}
-              className="size-4 accent-(--color-accent)"
+      {/*
+        * ══ 6 · บันทึกไว้ว่าเป็นค่าอะไร ════════════════════════
+        * ★ กองนี้ไม่เปลี่ยนตัวเลขสักบาท — มันคือสิ่งที่ทำให้ค้นเจอในวันหลัง
+        *   ★★ จึงหุบไว้เป็นค่าเริ่มต้น ต่างจากกองบนที่กางเองเมื่อมีค่าอยู่แล้ว
+        */}
+      <Section
+        collapsible
+        defaultOpen={false}
+        title={<Untranslated>{ot('wallet.create.recordTitle')}</Untranslated>}
+        hint={<Untranslated>{ot('wallet.create.recordHint')}</Untranslated>}
+        summary={
+          [title, billDate !== todayIso() ? billDate : '', receiptPath ? ot('wallet.create.receiptDone') : '']
+            .filter(Boolean)
+            .join(' · ') || undefined
+        }
+      >
+        <div className="flex flex-col gap-4 rounded-2xl border border-line bg-elevated/50 p-4 backdrop-blur-md">
+          <Field label={ot('wallet.create.billTitle')}>
+            <Input
+              radius="round"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              maxLength={100}
+              dir="auto"
+              placeholder={shopName ?? ot('wallet.create.titleAuto', { date: billDate })}
             />
-            <Untranslated>{ot('wallet.create.roundUp')}</Untranslated>
-          </label>
+          </Field>
+
+          <Field label={ot('wallet.create.category')}>
+            <div className="flex flex-wrap gap-1.5">
+              {(['FOOD', 'COFFEE', 'OTHER'] as const).map((c) => (
+                <Chip key={c} active={category === c} onClick={() => setCategory(c)}>
+                  {/* ★ ใช้ categoryLabel ของโมดูล ไม่ประกอบชื่อกุญแจเอง
+                        ★★ ผมเดาว่าเป็น wallet.cat.* แต่ของจริงคือ wallet.category.*
+                           แล้วชิปโชว์คำว่า "wallet.cat.FOOD" ออกจอ */}
+                  {categoryLabel(ot, c)}
+                </Chip>
+              ))}
+            </div>
+          </Field>
+
+          <Field label={ot('wallet.create.date')} error={fieldError.date}>
+            {/*
+              * ★★ ปฏิทินของเราเอง ไม่ใช่ <input type="date"> ของเบราว์เซอร์
+              *    ★ ของเดิมหน้าตาต่างกันทุกเบราว์เซอร์ และใส่ปุ่ม "วันนี้/เมื่อวาน"
+              *      เข้าไปข้างในไม่ได้ จึงต้องมีชิปสองอันลอยอยู่ข้าง ๆ
+              *      ★★ ตอนนี้ทางลัดอยู่ในปฏิทินเอง — ที่เดียว ไม่ใช่สามจุด
+              */}
+            <DatePicker
+              value={billDate}
+              onChange={(iso) => {
+                setFieldError((f) => ({ ...f, date: '' }))
+                setBillDate(iso)
+              }}
+              /* ★ ห้ามเลือกวันในอนาคต — บังคับที่ตัวเลือก ไม่ใช่เช็กตอนกดบันทึก */
+              max={todayIso()}
+              aria-label={ot('wallet.create.date')}
+            />
+          </Field>
 
           <div>
             {/* ★ capture="environment" เปิดกล้องหลังเลย — แต่ยังเลือกจากคลังได้
@@ -894,35 +1084,129 @@ export function WalletCreate() {
             </Button>
           </div>
         </div>
-      ) : null}
+      </Section>
+      </div>
 
-      {error ? (
-        <p role="alert" className="mt-3 text-sm text-danger">
-          {error}
-        </p>
-      ) : null}
-
-      {/* ── 7 · ปุ่มบันทึก (ติดล่างจอ) ───────────────────────── */}
       {/*
-        * ★★ sticky ไม่ใช่ fixed — fixed จะลอยทับเนื้อหาตอนเลื่อนสุดล่าง
-        *    ★ sticky bottom-0 หยุดอยู่ท้ายฟอร์มพอดีเมื่อเลื่อนถึง
-        *    ★★ pb-28 ที่ตัวหน้าเผื่อที่ให้ปุ่มไม่ทับช่องสุดท้าย
+        * ══ คอลัมน์ขวา · สรุปและปุ่มบันทึก ═══════════════════
+        *
+        * ★★★ เกาะอยู่กับที่เมื่อเลื่อน (sticky) บนจอกว้าง
+        *     ★ ยอดต่อหัวคือผลของทุกการกดในหน้านี้ ★★ มันต้องอยู่ในสายตา
+        *       ตลอดเวลาที่คนกำลังปรับ ไม่ใช่ต้องเลื่อนกลับไปดู
+        *
+        * ★ บนมือถือไหลลงมาอยู่ท้ายฟอร์ม และปุ่มบันทึกยังติดขอบล่างเหมือนเดิม
         */}
-      <div className="sticky bottom-0 z-30 -mx-4 mt-5 border-t border-line bg-page/95 px-4 py-3 backdrop-blur-md">
-        <Button
-          variant="primary"
-          loading={busy}
-          onClick={submit}
-          className="h-12 w-full text-base"
-        >
-          <Untranslated>
-            {missing === 'amount'
-              ? ot('wallet.create.needAmount')
-              : missing === 'people'
-                ? ot('wallet.create.needPeople')
-                : ot('wallet.create.submit')}
-          </Untranslated>
-        </Button>
+      <aside className="mt-6 lg:sticky lg:top-24 lg:mt-0">
+        <div className="rounded-2xl border border-line bg-elevated/50 p-5 backdrop-blur-md">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
+            <Untranslated>{ot('wallet.create.summaryTitle')}</Untranslated>
+          </p>
+
+          {Number(amount) > 0 && (picked.length > 0 || prefs.includeSelf) ? (
+            <>
+              <p className="mt-2 flex items-baseline gap-2">
+                <span className="text-[32px] font-bold leading-none tabular-nums text-ink">
+                  ฿{formatBaht(locale, toBaht(split.perHeadSatang))}
+                </span>
+                <span className="text-[12px] text-ink-soft">
+                  <Untranslated>{ot('wallet.create.perHead')}</Untranslated>
+                </span>
+              </p>
+
+              {/* ★ แถวตัวเลขย่อย — ตอบว่ายอดต่อหัวนั้นมาจากไหน */}
+              <dl className="mt-4 space-y-2 border-t border-line pt-3 text-[12.5px]">
+                <SumRow label={ot('wallet.create.total')} value={`฿${formatBaht(locale, Number(amount) || 0)}`} />
+                {Number(delivery) > 0 ? (
+                  <SumRow label={ot('wallet.create.delivery')} value={`+฿${formatBaht(locale, Number(delivery))}`} />
+                ) : null}
+                {Number(discount) > 0 ? (
+                  <SumRow label={ot('wallet.create.discount')} value={`−฿${formatBaht(locale, Number(discount))}`} />
+                ) : null}
+                <SumRow
+                  label={ot('wallet.create.headcount')}
+                  value={ot('wallet.owed.peopleN', {
+                    n: picked.length + (prefs.includeSelf ? 1 : 0),
+                  })}
+                />
+                {prefs.includeSelf ? (
+                  <SumRow
+                    label={ot('wallet.create.myShare')}
+                    value={`฿${formatBaht(locale, toBaht(split.mineSatang))}`}
+                    strong
+                  />
+                ) : null}
+              </dl>
+
+              {/* ★ รูปคนที่อยู่ในบิล — ตรวจทานด้วยตาได้โดยไม่ต้องเลื่อนกลับขึ้นไป */}
+              {picked.length > 0 ? (
+                <div className="mt-4 flex flex-wrap gap-1">
+                  {picked.slice(0, 12).map((id) => (
+                    <ChatAvatar
+                      key={id}
+                      name={byId.get(id)?.name ?? '—'}
+                      url={byId.get(id)?.avatarUrl ?? null}
+                      size={26}
+                    />
+                  ))}
+                  {picked.length > 12 ? (
+                    <span className="grid size-[26px] place-items-center rounded-full bg-surface text-[10px] font-medium text-ink-soft">
+                      +{picked.length - 12}
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
+            </>
+          ) : (
+            /* ★ ที่ว่างที่ตั้งใจ — บอกว่ายังขาดอะไร ไม่ใช่กล่องเปล่า */
+            <p className="mt-2 text-[13px] leading-relaxed text-ink-faint">
+              <Untranslated>{ot('wallet.create.summaryEmpty')}</Untranslated>
+            </p>
+          )}
+
+          {error ? (
+            <p role="alert" className="mt-3 text-sm text-danger">
+              {error}
+            </p>
+          ) : null}
+        </div>
+
+        {/*
+          * ★★ sticky ไม่ใช่ fixed — fixed จะลอยทับเนื้อหาตอนเลื่อนสุดล่าง
+          *    ★ บนจอกว้างปุ่มอยู่ในคอลัมน์ขวาซึ่งเกาะอยู่แล้ว จึงไม่ต้อง sticky ซ้ำ
+          */}
+        {/* ★ บนจอกว้างปุ่มอยู่ในคอลัมน์ขวาซึ่งเกาะอยู่แล้ว
+             ★★ บนมือถือใช้แถบล่างแทน (อยู่นอก aside เพื่อให้ sticky มีที่เกาะ) */}
+        <div className="mt-4 hidden lg:block">
+          <SaveButton ot={ot} busy={busy} missing={missing} onClick={submit} />
+        </div>
+      </aside>
+
+      {/*
+        * ══ แถบล่างบนมือถือ · สรุป + ปุ่มบันทึก ═══════════════
+        *
+        * ★★★ ข้อกำหนดบอกว่า "ยอดต่อคนต้องเห็นโดยไม่ต้องเลื่อน"
+        *
+        *     ★ พอย้ายสรุปไปคอลัมน์ขวา บนมือถือมันไหลไปอยู่ท้ายฟอร์ม
+        *       ★★ ซึ่งแปลว่าต้องเลื่อนผ่านรายชื่อคนทั้งหมดถึงจะเห็นผลของ
+        *          สิ่งที่เพิ่งกด — สคริปต์ทดสอบจับได้ทันที (top=-1)
+        *     ★ แถบนี้แก้ทั้งสองอย่างในที่เดียว: ยอดอยู่เหนือปุ่มที่ต้องกดอยู่แล้ว
+        *
+        * ★★ อยู่นอก <aside> เพราะ sticky เกาะกับกล่องแม่
+        *    ★ ใส่ไว้ใน aside ที่สูงแค่ไม่กี่ร้อย px แล้วมันจะไม่มีที่ให้เกาะ
+        *      ★★ วัดได้จริง: ปุ่มไปโผล่ที่ y=1975 บนจอสูง 812
+        */}
+      <div className="sticky bottom-0 z-30 -mx-4 mt-4 border-t border-line bg-page/95 px-4 py-3 backdrop-blur-md lg:hidden">
+        {Number(amount) > 0 && headcount > 0 ? (
+          <p className="mb-2 text-[13px] font-medium text-ink">
+            <Untranslated>
+              {ot('wallet.create.summaryHead', {
+                n: headcount,
+                each: `฿${formatBaht(locale, toBaht(split.perHeadSatang))}`,
+              })}
+            </Untranslated>
+          </p>
+        ) : null}
+        <SaveButton ot={ot} busy={busy} missing={missing} onClick={submit} />
       </div>
 
       {/* ── ถามว่าบันทึกเป็นกลุ่มไหม ─────────────────────────── */}
@@ -1016,14 +1300,64 @@ function markAsked(shopId: string): void {
   }
 }
 
-function todayIso(): string {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+/*
+ * ★ todayIso/yesterdayIso ย้ายไปอยู่กับ DatePicker แล้ว
+ *   ★★ สองที่ที่คำนวณ "วันนี้" เองคือสองที่ที่เลื่อนวันไม่ตรงกันได้
+ *      เมื่อวันหนึ่งมีใครเปลี่ยนวิธีคิดเขตเวลาของที่หนึ่ง
+ */
+
+/**
+ * ปุ่มบันทึก
+ *
+ * ★ แยกออกมาเพราะมีสองที่: คอลัมน์ขวาบนจอกว้าง และแถบล่างบนมือถือ
+ *   ★★ เขียนซ้ำสองรอบคือการเปิดช่องให้ข้อความบนปุ่มสองที่ค่อย ๆ ต่างกัน
+ */
+function SaveButton({
+  ot,
+  busy,
+  missing,
+  onClick,
+}: {
+  ot: ReturnType<typeof useOt>
+  busy: boolean
+  missing: 'amount' | 'people' | null
+  onClick: () => void
+}) {
+  return (
+    <Button variant="primary" loading={busy} onClick={onClick} className="h-12 w-full text-base">
+      <Untranslated>
+        {missing === 'amount'
+          ? ot('wallet.create.needAmount')
+          : missing === 'people'
+            ? ot('wallet.create.needPeople')
+            : ot('wallet.create.submit')}
+      </Untranslated>
+    </Button>
+  )
 }
 
-function yesterdayIso(): string {
-  const d = new Date(Date.now() - 86_400_000)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+/** แถวตัวเลขในกล่องสรุป */
+function SumRow({
+  label,
+  value,
+  strong,
+}: {
+  label: string
+  value: string
+  strong?: boolean
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <dt className="text-ink-soft">
+        <Untranslated>{label}</Untranslated>
+      </dt>
+      <dd
+        className={cn('shrink-0 tabular-nums', strong ? 'font-semibold text-ink' : 'text-ink-soft')}
+      >
+        {value}
+      </dd>
+    </div>
+  )
 }
 
 function Field({

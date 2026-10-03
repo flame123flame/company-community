@@ -46,7 +46,13 @@ export function Input({
     <input
       aria-invalid={invalid || undefined}
       className={cn(
-        'h-10 w-full bg-input px-4',
+        /*
+         * ★★ สูง 44px ตามเกณฑ์จุดแตะของโปรเจกต์ ไม่ใช่ 40px
+         *    ★ ของเดิมเตี้ยกว่าเกณฑ์ 4px ทุกช่องทั้งเว็บ ★★ ซึ่งไม่เคยถูกจับได้
+         *       เพราะสคริปต์ตรวจจุดแตะวัดเฉพาะปุ่ม·ลิงก์·select·checkbox
+         *       — ช่องพิมพ์ไม่เคยอยู่ในรายการที่ตรวจ
+         */
+        'h-11 w-full bg-input px-4',
         radius === 'round' ? 'rounded-xl' : 'rounded-[2px]',
         'border border-line placeholder:text-ink-faint',
         'transition-colors focus:outline-none',

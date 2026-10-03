@@ -139,9 +139,23 @@ async function main() {
   await p.goto(`${APP}/office/wallet/create`, { waitUntil: 'networkidle' })
   await p.waitForTimeout(3500)
   await p.locator('#amt').fill('300')
-  const avatars = p.locator('button.w-16')
-  const n = Math.min(3, await avatars.count())
-  for (let i = 0; i < n; i++) await avatars.nth(i).click()
+  /*
+   * ★ รายชื่อคนเปลี่ยนจากวงกลมแถวเดียว (button.w-16) เป็นตารางการ์ด
+   *   ★★ จับจาก aria-pressed ในเซกชันผู้ร่วมจ่ายแทนคลาสของเลย์เอาต์
+   *      ★ คลาสความกว้างเป็นรายละเอียดการจัดวาง ซึ่งเปลี่ยนได้ทุกครั้งที่รีดีไซน์
+   *        ส่วน aria-pressed คือ "ปุ่มเลือกได้" ซึ่งเป็นความหมาย ไม่ใช่รูปร่าง
+   */
+  const avatars = p.locator('button[aria-pressed]').filter({ has: p.locator('img, span') })
+  const total = await avatars.count()
+  let chosen = 0
+  for (let i = 0; i < total && chosen < 3; i++) {
+    const el = avatars.nth(i)
+    /* ★ ข้ามสวิตช์ "ฉันร่วมจ่ายด้วย" กับชิปกลุ่ม — นับเฉพาะการ์ดคน */
+    const txt = (await el.innerText().catch(() => '')) ?? ''
+    if (/ร่วมจ่าย|Count me in|แก๊ง/.test(txt)) continue
+    await el.click()
+    chosen++
+  }
   await p.waitForTimeout(800)
 
   const noScroll = await p.evaluate(() => {
@@ -149,8 +163,11 @@ async function main() {
          ★★ วัดจากตำแหน่งของสรุปยอด ไม่ใช่จากความสูงทั้งหน้า
             เพราะปุ่มบันทึกเป็น sticky จึงอยู่ในจอเสมออยู่แล้ว */
     const sum = [...document.querySelectorAll('p')].find((x) => /คนละ/.test(x.textContent ?? ''))
+    /* ★ "เพิ่มรายละเอียด" ถูกแยกเป็นสองเซกชันที่ชื่อบอกว่าใช้ตอนไหน
+         ★★ ด่านเดิมคือ "ไม่ต้องเปิดอะไรเพิ่ม" — ตัวที่บอกเรื่องนั้นคือ
+            เซกชันที่บันทึกข้อมูลบิล ซึ่งยังหุบไว้เป็นค่าเริ่มต้น */
     const detailsBtn = [...document.querySelectorAll('button[aria-expanded]')].find((x) =>
-      /เพิ่มรายละเอียด/.test(x.textContent ?? ''),
+      /เป็นค่าอะไร|What it was/.test(x.textContent ?? ''),
     )
     return {
       summaryTop: sum ? Math.round(sum.getBoundingClientRect().top) : -1,
@@ -386,7 +403,8 @@ async function main() {
   head('ใบเสร็จ: เลือกจากคลังได้เมื่อไม่อนุญาตกล้อง')
   await p.goto(`${APP}/office/wallet/create`, { waitUntil: 'networkidle' })
   await p.waitForTimeout(3000)
-  await p.locator('button[aria-expanded]').filter({ hasText: /เพิ่มรายละเอียด/ }).click()
+  /* ★ ช่องแนบใบเสร็จย้ายไปอยู่เซกชัน "บันทึกไว้ว่าเป็นค่าอะไร" ซึ่งหุบไว้ */
+  await p.locator('button[aria-expanded]').filter({ hasText: /เป็นค่าอะไร|What it was/ }).first().click()
   await p.waitForTimeout(500)
   const fileInput = await p.evaluate(() => {
     const el = document.querySelector('input[type="file"]') as HTMLInputElement | null

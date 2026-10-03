@@ -98,22 +98,63 @@ export const GET = withErrorHandling(async () => {
           .limit(8)
       : { data: [] as { id: string; name: string; cuisine: string | null; vote_count: number }[] }
 
-  const needIds = [...new Set([...recentShopIds, ...(topShops ?? []).map((s) => s.id)])]
-  const { data: shopRows } = needIds.length
-    ? await admin.from('restaurants').select('id, name, cuisine').in('id', needIds)
-    : { data: [] as { id: string; name: string; cuisine: string | null }[] }
-  const shopOf = new Map((shopRows ?? []).map((s) => [s.id, s]))
+  /*
+   * ★★★ ดึงคอลัมน์เสริมแบบล้มแล้วถอยได้
+   *
+   *     ★ vote_count มาจาก 0048 · rating_* จาก 0049 · travel_* จาก 0050
+   *       ★★ หน้าสร้างบิลเป็นหน้าที่คนใช้ทุกวัน — มันต้องไม่พังเพราะ
+   *          migration ตัวใดตัวหนึ่งยังไม่ได้รัน
+   *     ★ บทเรียนเดิมของโปรเจกต์: โค้ดที่อ่านของใหม่ก่อน migration ขึ้น
+   *       ทำให้ทั้งหน้าพัง ไม่ใช่แค่ฟีเจอร์นั้นหาย
+   */
+  type ShopRow = {
+    id: string
+    name: string
+    cuisine: string | null
+    vote_count?: number | null
+    rating_sum?: number | null
+    rating_count?: number | null
+    travel_minutes?: number | null
+  }
+
+  let shopRows: ShopRow[] = []
+  if (needIdsReady(recentShopIds, topShops)) {
+    const needIds = [...new Set([...recentShopIds, ...(topShops ?? []).map((s) => s.id)])]
+    const full = await admin
+      .from('restaurants')
+      .select('id, name, cuisine, vote_count, rating_sum, rating_count, travel_minutes')
+      .in('id', needIds)
+    if (full.error) {
+      const base = await admin.from('restaurants').select('id, name, cuisine').in('id', needIds)
+      shopRows = (base.data ?? []) as ShopRow[]
+    } else {
+      shopRows = (full.data ?? []) as ShopRow[]
+    }
+  }
+  const shopOf = new Map(shopRows.map((s) => [s.id, s]))
 
   const shops = [
     ...recentShopIds,
     ...(topShops ?? []).map((s) => s.id).filter((id) => !recentShopIds.includes(id)),
   ]
-    .slice(0, 5)
-    .map((id) => ({
-      id,
-      name: shopOf.get(id)?.name ?? '',
-      cuisine: shopOf.get(id)?.cuisine ?? null,
-    }))
+    .slice(0, 6)
+    .map((id) => {
+      const row = shopOf.get(id)
+      const count = row?.rating_count ?? 0
+      return {
+        id,
+        name: row?.name ?? '',
+        cuisine: row?.cuisine ?? null,
+        /* ★ ส่งคะแนนเฉลี่ยที่คิดแล้ว ไม่ใช่ sum กับ count ให้หน้าเว็บหารเอง
+             ★★ สองที่ที่หารเองคือสองที่ที่ปัดเศษไม่ตรงกันได้ */
+        rating: count > 0 ? Math.round(((row?.rating_sum ?? 0) / count) * 10) / 10 : null,
+        ratingCount: count,
+        voteCount: row?.vote_count ?? 0,
+        walkMin: row?.travel_minutes ?? null,
+        /* ★ บอกว่าร้านนี้มาจาก "เคยสั่ง" หรือ "ออฟฟิศนิยม" — คนละน้ำหนัก */
+        recent: recentShopIds.includes(id),
+      }
+    })
     .filter((s) => s.name)
 
   /* ── รายชื่อคน (เฉพาะที่ต้องใช้) ───────────────────────────── */
@@ -188,3 +229,8 @@ export const GET = withErrorHandling(async () => {
     suggestGroup: suggestKey ? suggestKey.split(',') : null,
   })
 })
+
+/** มีอะไรให้ดึงไหม — แยกออกมาเพื่อไม่ให้เงื่อนไขยาวปนอยู่กลางฟังก์ชัน */
+function needIdsReady(recent: string[], top: { id: string }[] | null): boolean {
+  return recent.length > 0 || (top ?? []).length > 0
+}
