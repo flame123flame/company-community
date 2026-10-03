@@ -1,12 +1,15 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import Link from 'next/link'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { apiFetch } from '@/lib/api/client'
 import { cn } from '@/lib/cn'
-import { useOt, type OfficeKey, type Ot } from '@/lib/i18n/office'
+import { useLocale } from '@/lib/i18n/client'
+import { formatBaht } from '@/lib/office/wallet'
+import { toBaht } from '@/lib/office/money'
+import { Untranslated, useOt, type OfficeKey, type Ot } from '@/lib/i18n/office'
 
 /**
  * กระดิ่งแจ้งเตือน (FR-X04)
@@ -33,12 +36,15 @@ type Item = {
 
 type Payload = { items: Item[]; unread: number }
 
+type Bucket = 'today' | 'yesterday' | 'earlier'
+
 export function NotificationBell({ userId }: { userId: string }) {
   const ot = useOt()
   const [open, setOpen] = useState(false)
   const [items, setItems] = useState<Item[]>([])
   const [unread, setUnread] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [onlyUnread, setOnlyUnread] = useState(false)
   const boxRef = useRef<HTMLDivElement | null>(null)
 
   const load = useCallback(async () => {
@@ -120,6 +126,34 @@ export function NotificationBell({ userId }: { userId: string }) {
     }
   }
 
+  /**
+   * กดอ่านทีละใบ
+   *
+   * ★★★ ของเดิมกดแล้วไปหน้าปลายทาง แต่ใบนั้นยังนับเป็น "ยังไม่อ่าน" อยู่
+   *     ★ คนจึงต้องกด "อ่านทั้งหมด" เพื่อล้างตัวเลข ซึ่งกลืนใบที่เขายังไม่ได้ดู
+   *       ไปด้วยทั้งหมด ★★ แล้วตัวเลขบนกระดิ่งก็เลิกมีความหมาย
+   */
+  const markOne = useCallback((id: string) => {
+    setItems((prev) =>
+      prev.map((i) => (i.id === id ? { ...i, readAt: i.readAt ?? new Date().toISOString() } : i)),
+    )
+    setUnread((n) => Math.max(0, n - 1))
+    void apiFetch('/api/office/notifications', { method: 'POST', body: { ids: [id] } }).catch(
+      () => {},
+    )
+  }, [])
+
+  const shown = onlyUnread ? items.filter((i) => !i.readAt) : items
+
+  /*
+   * ★★★ จัดกองตามวัน ไม่ใช่กองเดียวยาว 30 บรรทัด
+   *
+   *     ★ "1 วันที่แล้ว" ซ้ำกันแปดบรรทัดติดไม่ได้บอกอะไร — มันบอกว่า
+   *       ทั้งแปดใบเกิดในช่วงเดียวกัน ซึ่งหัวข้อบรรทัดเดียวพูดได้ดีกว่า
+   *       ★★ และทำให้ตากวาดหาของใหม่ได้โดยไม่ต้องอ่านเวลาทีละใบ
+   */
+  const groups = useMemo(() => groupByDay(shown), [shown])
+
   return (
     <div ref={boxRef} className="relative">
       <button
@@ -136,7 +170,7 @@ export function NotificationBell({ userId }: { userId: string }) {
           strokeWidth="1.8"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className="size-5"
+          className={cn('size-5', unread > 0 && 'bell-swing')}
           aria-hidden="true"
         >
           <path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10.3 21a2 2 0 0 0 3.4 0" />
@@ -155,51 +189,172 @@ export function NotificationBell({ userId }: { userId: string }) {
       </button>
 
       {open ? (
-        <div
-          className={cn(
-            'absolute end-0 z-50 mt-2 w-[min(88vw,22rem)]',
-            'overflow-hidden rounded-[var(--radius-card)] border border-line bg-elevated shadow-xl',
-          )}
-        >
-          <div className="notify-head flex items-center justify-between gap-3 border-b border-line px-4 py-3">
-            <span className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-ink">{ot('notify.title')}</span>
-              {unread > 0 ? (
-                <span className="rounded-full bg-accent px-1.5 text-[10px] font-bold leading-[17px] text-accent-ink">
-                  {unread > 99 ? '99+' : unread}
-                </span>
-              ) : null}
-            </span>
+        <>
+          {/*
+            * ★★★ บนมือถือเป็นแผ่นเลื่อนขึ้นจากขอบล่าง ไม่ใช่เมนูหล่นลงมา
+            *
+            *     ★ เมนูที่หล่นลงจากกระดิ่งซึ่งอยู่มุมบนขวา ต้องใช้ความสูง
+            *       เกือบทั้งจอ แล้วก้นกล่องจะเลยขอบล่างออกไป
+            *       ★★ ซึ่งเป็นสิ่งที่เกิดขึ้นจริง — รายการล่าง ๆ ถูกตัดหายไป
+            *          โดยไม่มีอะไรบอกว่ามันยังมีอยู่
+            *     ★ แผ่นจากขอบล่างยังอยู่ใกล้นิ้วโป้งด้วย ต่างจากมุมบนขวา
+            */}
+          <button
+            type="button"
+            aria-label={ot('common.close')}
+            onClick={() => setOpen(false)}
+            className="fixed inset-0 z-40 bg-ink/25 backdrop-blur-[2px] sm:hidden"
+          />
 
-            {unread > 0 ? (
-              /* ★ ทำเป็นปุ่มจริง ไม่ใช่ลิงก์ข้อความ — มันเปลี่ยนสถานะของข้อมูล
-                 ไม่ได้พาไปหน้าอื่น ★★ ลิงก์สีฟ้าเล็ก ๆ อ่านเป็น "ไปที่อื่น" */
-              <button
-                type="button"
-                onClick={markAll}
-                className={cn(
-                  'shrink-0 rounded-full bg-surface px-3 py-1 text-[11px] font-medium text-ink-soft',
-                  'transition-colors hover:bg-accent hover:text-accent-ink',
-                )}
-              >
-                {ot('notify.markAll')}
-              </button>
-            ) : null}
-          </div>
-
-          {/* ★ ขอบล่างจางลง — รายการที่ถูกตัดกลางคันตรง ๆ อ่านเป็น "แสดงไม่หมด"
-              ★★ ส่วนขอบที่จางบอกว่า "เลื่อนลงต่อได้" ซึ่งเป็นคนละความหมาย */}
-          <div className="notify-scroll max-h-[60vh] overflow-y-auto">
-            {loading && items.length === 0 ? (
-              <p className="px-4 py-8 text-center text-sm text-ink-faint">{ot('common.loading')}</p>
-            ) : items.length === 0 ? (
-              <p className="px-4 py-8 text-center text-sm text-ink-faint">{ot('notify.empty')}</p>
-            ) : (
-              items.map((item) => <Row key={item.id} item={item} onGo={() => setOpen(false)} />)
+          <div
+            className={cn(
+              'notify-panel fixed inset-x-2 bottom-2 z-50 flex max-h-[82vh] flex-col',
+              'sm:absolute sm:inset-x-auto sm:bottom-auto sm:end-0 sm:mt-2 sm:max-h-[min(34rem,80vh)] sm:w-[24rem]',
+              'overflow-hidden rounded-[var(--radius-card)] border border-line bg-elevated shadow-2xl',
             )}
+          >
+            {/* ── หัวกล่อง ──────────────────────────────────────── */}
+            <div className="notify-head shrink-0 border-b border-line px-4 pb-2.5 pt-3">
+              <div className="flex items-center justify-between gap-3">
+                <span className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-ink">{ot('notify.title')}</span>
+                  {unread > 0 ? (
+                    <span className="rounded-full bg-accent px-1.5 text-[10px] font-bold leading-[17px] text-accent-ink">
+                      {unread > 99 ? '99+' : unread}
+                    </span>
+                  ) : null}
+                </span>
+
+                {unread > 0 ? (
+                  /* ★ ทำเป็นปุ่มจริง ไม่ใช่ลิงก์ข้อความ — มันเปลี่ยนสถานะของข้อมูล
+                     ไม่ได้พาไปหน้าอื่น ★★ ลิงก์สีฟ้าเล็ก ๆ อ่านเป็น "ไปที่อื่น" */
+                  <button
+                    type="button"
+                    onClick={markAll}
+                    className={cn(
+                      'shrink-0 rounded-full bg-surface px-3 py-1 text-[11px] font-medium text-ink-soft',
+                      'transition-colors hover:bg-accent hover:text-accent-ink',
+                    )}
+                  >
+                    {ot('notify.markAll')}
+                  </button>
+                ) : null}
+              </div>
+
+              {/*
+                * ★★ ตัวกรอง "ยังไม่อ่าน" มาแทนการต้องกวาดตาหาจุดแดงเอง
+                *    ★ ขึ้นเฉพาะเมื่อมีของให้กรองจริง — ปุ่มที่กดแล้วได้
+                *      รายการว่างเปล่าคือปุ่มที่ไม่ควรมีอยู่
+                */}
+              {unread > 0 ? (
+                <div className="mt-2.5 flex gap-1.5">
+                  <Tab on={!onlyUnread} onClick={() => setOnlyUnread(false)}>
+                    <Untranslated>{ot('notify.filterAll')}</Untranslated>
+                    <Count>{items.length}</Count>
+                  </Tab>
+                  <Tab on={onlyUnread} onClick={() => setOnlyUnread(true)}>
+                    <Untranslated>{ot('notify.filterUnread')}</Untranslated>
+                    <Count>{unread}</Count>
+                  </Tab>
+                </div>
+              ) : null}
+            </div>
+
+            {/* ★ ขอบล่างจางลง — รายการที่ถูกตัดกลางคันตรง ๆ อ่านเป็น "แสดงไม่หมด"
+                ★★ ส่วนขอบที่จางบอกว่า "เลื่อนลงต่อได้" ซึ่งเป็นคนละความหมาย */}
+            <div className="notify-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain">
+              {loading && items.length === 0 ? (
+                <p className="px-4 py-10 text-center text-sm text-ink-faint">
+                  {ot('common.loading')}
+                </p>
+              ) : shown.length === 0 ? (
+                <Empty text={onlyUnread ? ot('notify.emptyUnread') : ot('notify.empty')} />
+              ) : (
+                groups.map(([bucket, rows]) => (
+                  <section key={bucket}>
+                    {/*
+                      * ★ หัวข้อวันเกาะอยู่บนสุดตอนเลื่อน — พอเลื่อนลงไปลึก ๆ
+                      *   ยังรู้ว่ากำลังอ่านของวันไหนอยู่
+                      */}
+                    <h3
+                      className={cn(
+                        'sticky top-0 z-10 bg-elevated/95 px-4 py-1.5 backdrop-blur-sm',
+                        'text-[10.5px] font-semibold uppercase tracking-wide text-ink-faint',
+                      )}
+                    >
+                      <Untranslated>{ot(`notify.${bucket}` as OfficeKey)}</Untranslated>
+                    </h3>
+                    {rows.map((item) => (
+                      <Row
+                        key={item.id}
+                        item={item}
+                        onGo={() => {
+                          markOne(item.id)
+                          setOpen(false)
+                        }}
+                      />
+                    ))}
+                  </section>
+                ))
+              )}
+            </div>
           </div>
-        </div>
+        </>
       ) : null}
+    </div>
+  )
+}
+
+function Tab({
+  on,
+  onClick,
+  children,
+}: {
+  on: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={on}
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11.5px] transition-colors',
+        on ? 'bg-ink font-medium text-page' : 'bg-surface text-ink-soft hover:text-ink',
+      )}
+    >
+      {children}
+    </button>
+  )
+}
+
+function Count({ children }: { children: React.ReactNode }) {
+  return <span className="text-[10px] tabular-nums opacity-60">{children}</span>
+}
+
+function Empty({ text }: { text: string }) {
+  return (
+    <div className="px-4 py-12 text-center">
+      <span
+        aria-hidden="true"
+        className="mx-auto grid size-12 place-items-center rounded-2xl bg-surface text-ink-faint"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          className="size-6"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10.3 21a2 2 0 0 0 3.4 0" />
+        </svg>
+      </span>
+      <p className="mt-3 text-sm text-ink-faint">
+        <Untranslated>{text}</Untranslated>
+      </p>
     </div>
   )
 }
@@ -214,6 +369,10 @@ export function NotificationBell({ userId }: { userId: string }) {
  *   ต้องไม่ทำให้ทั้งกล่องพัง — กฎเดียวกับที่ใช้กับข้อความด้านล่าง
  */
 const KINDS = {
+  /* ★ เงินที่ "ต้องจ่าย" เป็นสีแดงเหมือนการ์ดสรุปบนหน้าแรก ไม่ใช่เขียว
+       ★★ ถูกทวงเงินกับได้เงินคืน ไม่ควรหน้าตาเหมือนกัน */
+  moneyOut: { tint: '255 59 48', icon: 'M12 19V5M5 12l7-7 7 7' },
+  moneyIn: { tint: '52 199 123', icon: 'M12 5v14M5 12l7 7 7-7' },
   money: { tint: '52 199 123', icon: 'M12 2v20M17 6.5C17 4.6 14.8 4 12 4S7 4.8 7 7s2.6 2.8 5 3.3 5 1.3 5 3.7-2.2 3-5 3-5-.9-5-2.8' },
   chat: { tint: '48 209 176', icon: 'M20 4H4a1 1 0 0 0-1 1v12l4-3h13a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1z' },
   market: { tint: '10 132 255', icon: 'M4 7h16l-1 12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2zM9 7V5a3 3 0 0 1 6 0v2' },
@@ -223,10 +382,12 @@ const KINDS = {
 } as const
 
 const KIND_OF: Record<string, (typeof KINDS)[keyof typeof KINDS]> = {
-  'notify.type.debtCreated': KINDS.money,
-  'notify.type.debtReminder': KINDS.money,
-  'notify.type.debtPaidPending': KINDS.money,
+  'notify.type.debtCreated': KINDS.moneyOut,
+  'notify.type.debtReminder': KINDS.moneyOut,
+  'notify.type.debtRejected': KINDS.warn,
+  'notify.type.debtPaidPending': KINDS.moneyIn,
   'notify.type.debtNetted': KINDS.money,
+  'notify.type.setUpQr': KINDS.money,
   'notify.type.chatMessage': KINDS.chat,
   'notify.type.chatMention': KINDS.chat,
   'notify.type.marketMessage': KINDS.chat,
@@ -237,8 +398,46 @@ const KIND_OF: Record<string, (typeof KINDS)[keyof typeof KINDS]> = {
   'notify.type.contentHidden': KINDS.warn,
 }
 
+/**
+ * ข้อมูลที่ params มีอยู่แล้ว แต่ข้อความไม่ได้พูดถึง
+ *
+ * ★★★ ห้าชนิดเก็บของมีค่าไว้ใน params แล้วทิ้งไปเฉย ๆ
+ *
+ *     notify.type.debtReminder     เก็บ amount แต่ข้อความคือ "ถูกทวงเงิน"
+ *     notify.type.debtPaidPending  เก็บ amount แต่ข้อความไม่บอกยอด
+ *     notify.type.debtCreated      เก็บชื่อบิล แต่ข้อความไม่บอกว่าบิลอะไร
+ *     notify.type.marketReserved   เก็บชื่อของ แต่ข้อความไม่บอกว่าชิ้นไหน
+ *     notify.type.marketQueueTurn  เหมือนกัน
+ *
+ *     ★ "ถูกทวงเงิน" สามบรรทัดติดกันจึงแยกไม่ออกว่าเรื่องเดียวกันหรือคนละเรื่อง
+ *       ★★ ยอดเงินตอบคำถามนั้นได้ทันทีโดยไม่ต้องกดเข้าไปดูทีละใบ
+ *
+ * ★★ ทำเป็นบรรทัดสองแทนการแก้ข้อความใน 16 ไฟล์
+ *    ★ แจ้งเตือนเก่าที่ params ว่างยังอ่านได้เหมือนเดิม ไม่กลายเป็น "{amount}"
+ *      โผล่กลางจอ ★★ ซึ่งเป็นสิ่งที่จะเกิดถ้าไปเติมตัวแปรลงในข้อความแทน
+ */
+function detailOf(item: Item, locale: string): string | null {
+  const p = item.params
+  const amount = typeof p.amount === 'number' ? p.amount : null
+  const title = typeof p.title === 'string' && p.title.trim() ? p.title.trim() : null
+
+  switch (item.titleKey) {
+    case 'notify.type.debtReminder':
+    case 'notify.type.debtPaidPending':
+      /* ★ amount เก็บเป็นสตางค์ในฐานข้อมูล — แปลงก่อนเสมอ */
+      return amount === null ? null : `฿${formatBaht(locale, toBaht(amount))}`
+    case 'notify.type.debtCreated':
+    case 'notify.type.marketReserved':
+    case 'notify.type.marketQueueTurn':
+      return title
+    default:
+      return null
+  }
+}
+
 function Row({ item, onGo }: { item: Item; onGo: () => void }) {
   const ot = useOt()
+  const locale = useLocale()
   /*
    * ★ title_key ที่เก็บในฐานข้อมูลอาจเป็นคีย์ที่โค้ดรุ่นนี้ไม่รู้จัก
    *   (แจ้งเตือนเก่าจากฟีเจอร์ที่ถูกถอดออก) — ต้องไม่ทำให้ทั้งกล่องพัง
@@ -253,6 +452,7 @@ function Row({ item, onGo }: { item: Item; onGo: () => void }) {
    *        ซึ่งเป็นผลเดียวกันเป๊ะกับที่โค้ดเดิมเขียนไว้สองทาง
    */
   const text = ot(item.titleKey as OfficeKey, item.params as Record<string, string | number>)
+  const detail = detailOf(item, locale)
 
   const kind = KIND_OF[item.titleKey] ?? KINDS.other
 
@@ -297,10 +497,33 @@ function Row({ item, onGo }: { item: Item; onGo: () => void }) {
       </span>
 
       <div className="min-w-0 flex-1">
-        <p className={cn('text-sm leading-snug', item.readAt ? 'text-ink-soft' : 'font-medium text-ink')}>
+        <p
+          className={cn(
+            'text-sm leading-snug',
+            item.readAt ? 'text-ink-soft' : 'font-medium text-ink',
+          )}
+        >
           {text}
         </p>
-        <time dateTime={item.createdAt} className="mt-0.5 block text-[11px] text-ink-faint">
+
+        {/* ★ ยอดเงิน/ชื่อบิล — ของที่ params มีอยู่แล้วแต่ไม่เคยขึ้นจอ
+            ★★ dir="auto" เพราะชื่อบิลและชื่อของเป็นข้อความที่ผู้ใช้พิมพ์เอง */}
+        {detail ? (
+          <p
+            dir="auto"
+            className="mt-0.5 truncate text-[12.5px] font-semibold tabular-nums text-[rgb(var(--tint))]"
+          >
+            {detail}
+          </p>
+        ) : null}
+
+        <time
+          dateTime={item.createdAt}
+          /* ★ เวลาเต็มอยู่ใน title — "3 วันที่แล้ว" ตอบไม่ได้ว่าวันไหน
+               ★★ ชี้ค้างไว้แล้วได้คำตอบ โดยไม่กินที่บนบรรทัด */
+          title={new Date(item.createdAt).toLocaleString(locale)}
+          className="mt-0.5 block text-[11px] text-ink-faint"
+        >
           {formatWhen(ot, item.createdAt)}
         </time>
       </div>
@@ -320,6 +543,32 @@ function Row({ item, onGo }: { item: Item; onGo: () => void }) {
       {body}
     </Link>
   )
+}
+
+/**
+ * แบ่งกองตามวัน
+ *
+ * ★ เทียบที่ "วันบนปฏิทิน" ไม่ใช่ "ผ่านมากี่ชั่วโมง"
+ *   ★★ ของที่เกิดตอน 23:50 เมื่อคืน ต้องอยู่กอง "เมื่อวาน" ตอนเช้านี้
+ *      ไม่ใช่กอง "วันนี้" เพราะเพิ่งผ่านมา 8 ชั่วโมง
+ */
+function groupByDay(items: Item[]): [Bucket, Item[]][] {
+  const start = new Date()
+  start.setHours(0, 0, 0, 0)
+  const today = start.getTime()
+  const yesterday = today - 86_400_000
+
+  const buckets: Record<Bucket, Item[]> = { today: [], yesterday: [], earlier: [] }
+  for (const item of items) {
+    const at = Date.parse(item.createdAt)
+    if (at >= today) buckets.today.push(item)
+    else if (at >= yesterday) buckets.yesterday.push(item)
+    else buckets.earlier.push(item)
+  }
+
+  return (['today', 'yesterday', 'earlier'] as const)
+    .filter((b) => buckets[b].length > 0)
+    .map((b) => [b, buckets[b]])
 }
 
 /**

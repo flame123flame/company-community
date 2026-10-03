@@ -100,6 +100,12 @@ export const th = {
   'notify.title': 'การแจ้งเตือน',
   'notify.empty': 'ยังไม่มีการแจ้งเตือน',
   'notify.markAll': 'อ่านทั้งหมด',
+  'notify.filterAll': 'ทั้งหมด',
+  'notify.filterUnread': 'ยังไม่อ่าน',
+  'notify.today': 'วันนี้',
+  'notify.yesterday': 'เมื่อวาน',
+  'notify.earlier': 'ก่อนหน้านี้',
+  'notify.emptyUnread': 'อ่านครบแล้ว',
   'notify.unreadCount': 'ยังไม่อ่าน {count} รายการ',
   // ชนิดแจ้งเตือน — ตรงกับ notifications.type ในฐานข้อมูล
   'notify.type.debtCreated': 'มีคนสร้างรายการค้างจ่ายถึงคุณ',
@@ -786,6 +792,11 @@ export const th = {
   'home.topRestaurant': 'ร้านยอดนิยมสัปดาห์นี้',
   'home.newListings': 'ประกาศใหม่',
   'home.lastWeek': 'ใน 7 วันที่ผ่านมา',
+  'home.flowOut': 'เงินออก',
+  'home.flowIn': 'เงินเข้า',
+  'home.ctaPay': 'ไปจ่าย',
+  'home.ctaCollect': 'ไปทวง',
+  'home.ctaOpen': 'เปิดดู',
 
   /* ── โปรไฟล์ + ตั้งค่าแจ้งเตือน (หัวข้อ 8.1) ─────────────────── */
   'profile.title': 'โปรไฟล์และการแจ้งเตือน',

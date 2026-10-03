@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useMemo, type ReactNode } from 'react'
 import { useLocale } from './client'
+import { markThai } from './untranslated'
 import { makeOt, type OfficeDict, type Ot } from './office-format'
 
 /*
@@ -91,9 +92,8 @@ export function useOt(): Ot {
  *   ต้องใส่ lang ที่ตัว element ที่ถือแอตทริบิวต์นั้นแทน
  */
 export function Untranslated({ children }: { children: string }) {
-  const locale = useLocale()
-  /* ★ ช่วงอักษรไทยในยูนิโคด — ชุดเดียวกับที่ scripts/i18n-test.ts ใช้ */
-  const isThai = /[฀-๿]/.test(children)
-  if (locale === 'th' || !isThai) return <>{children}</>
-  return <span lang="th">{children}</span>
+  /* ★ ตรรกะอยู่ใน lib/i18n/untranslated.tsx ซึ่งไม่ใช่ 'use client'
+       ★★ หน้าที่เป็น server component จึงใช้ของชิ้นเดียวกันได้ แทนการ
+          เขียนช่วงอักษรไทยซ้ำแล้วปล่อยให้สองที่ค่อย ๆ ต่างกัน */
+  return <>{markThai(useLocale(), children)}</>
 }
