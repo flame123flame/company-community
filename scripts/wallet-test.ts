@@ -231,7 +231,14 @@ async function main() {
 
   /* จ่าย 2 แตะ */
   let payTaps = 0
-  await row.locator('button').filter({ hasText: /^(จ่าย|Pay)$/ }).first().click(); payTaps++
+  /*
+   * ★ ปุ่มจ่ายมียอดอยู่บนตัวมันเองแล้ว ("จ่าย ฿123.45")
+   *   ★★ จึงผูกกับ "ขึ้นต้นด้วยคำว่าจ่าย" ไม่ใช่ "เท่ากับคำว่าจ่าย"
+   *      ★ ยังแยกจากปุ่มอื่นในการ์ดได้ เพราะไม่มีปุ่มไหนขึ้นต้นด้วยคำนี้
+   *   ★★ ห้ามใช้ \b ปิดท้าย — อักษรไทยไม่ใช่ \w ในนิพจน์ปกติของ JS
+   *      ขอบคำจึงไม่มีทางเกิดหลัง "จ่าย" เลยสักครั้ง
+   */
+  await row.locator('button').filter({ hasText: /^(จ่าย|Pay)/ }).first().click(); payTaps++
   await p.waitForTimeout(1500)
   const sheetAmount = await p.evaluate(
     () => document.querySelector('[role="dialog"] .text-2xl')?.textContent?.replace(/[⁦-⁩]/g, '') ?? null,
