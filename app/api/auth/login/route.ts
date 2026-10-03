@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
+import { USERNAME_RE } from '@/lib/office/username'
 import { getSupabaseAdminClient } from '@/lib/supabase/admin'
 import { AppError } from '@/lib/http/errors'
 import { assertSameOrigin, parseJsonBody } from '@/lib/http/guard'
@@ -25,7 +26,8 @@ const bodySchema = z.object({
     .string()
     .trim()
     .toLowerCase()
-    .regex(/^[a-z0-9._]{3,20}$/, 'valid.usernameRule'),
+    /* ★ กติกาเดียวกับตอนสมัคร — มาจากโมดูลเดียว ไม่ใช่คัดลอกนิพจน์มาวาง */
+    .regex(USERNAME_RE, 'valid.usernameRule'),
   /* ★ บังคับทุกคน ★★ ไม่มี optional อีกแล้ว — เหตุผลเต็มอยู่ใต้ POST */
   password: z.string().min(1, 'valid.passwordRequired').max(72),
 })

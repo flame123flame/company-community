@@ -39,7 +39,8 @@
     "test:typing": "tsx scripts/typing-test.ts",
     "test:typing-ui": "tsx scripts/typing-ui-test.mts",
     "test:checkers-online": "tsx scripts/checkers-online-test.mts",
-    "test:typing-race": "tsx scripts/typing-race-test.mts"
+    "test:typing-race": "tsx scripts/typing-race-test.mts",
+    "test:register": "tsx scripts/register-test.mts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

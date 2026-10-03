@@ -725,7 +725,11 @@ export const th = {
   "hair.layered": "ซอย",
   "hair.bob": "บ๊อบ",
   "hair.bald": "ล้าน",
-  "valid.usernameRule": "ใช้ a-z 0-9 . _ ยาว 3–20 ตัว",
+  "valid.usernameRule": "ใช้ a-z A-Z 0-9 จุด ขีดล่าง ขีดกลาง · 3–20 ตัว",
+  "valid.nicknameLong": "ชื่อเล่นยาวได้ไม่เกิน 30 ตัว",
+  "valid.deptLong": "ชื่อแผนกยาวได้ไม่เกิน 60 ตัว",
+  "valid.passwordLong": "รหัสผ่านยาวได้ไม่เกิน 72 ตัว",
+  "valid.phoneDigits": "เบอร์โทรต้องเป็นตัวเลข 8–15 หลัก",
 
 
   /* ── กล่องเปิดห้อง · เข้าด้วยรหัส ─ */

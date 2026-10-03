@@ -1,5 +1,6 @@
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
+import { USERNAME_RE } from '@/lib/office/username'
 import { getSupabaseAdminClient } from '@/lib/supabase/admin'
 import { AppError, fromPostgresError } from '@/lib/http/errors'
 import { assertSameOrigin, parseJsonBody } from '@/lib/http/guard'
@@ -27,17 +28,42 @@ const bodySchema = z
       .string()
       .trim()
       .toLowerCase()
-      .regex(/^[a-z0-9._]{3,20}$/, 'valid.usernameRule'),
-    password: z.string().min(8, 'valid.passwordShort').max(72),
+      /*
+       * ★ กติกาเดียวกับหน้าเว็บและ CHECK ในฐานข้อมูล — มาจากโมดูลเดียว
+       *   ★★ ของเดิมเขียนนิพจน์เดียวกันไว้สามที่ (ที่นี่ · login · RegisterForm)
+       *      แล้วยังมีอีกชุดใน migration — สี่ที่ที่ต้องแก้พร้อมกันเป๊ะ ๆ
+       */
+      .regex(USERNAME_RE, 'valid.usernameRule'),
+    /* ★ ใส่ข้อความให้ด้านบนด้วย — ของเดิมมีแต่ min ทำให้รหัสยาวเกิน
+       ตกไปที่ "ข้อมูลไม่ถูกต้อง" ลอย ๆ */
+  password: z.string().min(8, 'valid.passwordShort').max(72, 'valid.passwordLong'),
     confirm: z.string(),
 
     /* ── ข้อมูลพนักงาน ── */
     /* ★ ชื่อเล่นอย่างเดียว ★★ ไม่มีรหัสพนักงาน ไม่มีชื่อ-นามสกุลจริง
        — ใครก็สมัครได้ ดูเหตุผลเต็มใน 0043 */
-    nickname: z.string().trim().min(1, 'common.required').max(40),
-    phone: z.string().trim().max(30).optional().default(''),
+    /* ★ 30 ตามที่ profiles_nickname_len บังคับ ไม่ใช่ 40
+       ★★ ของเดิมยอมถึง 40 แล้วไปตายที่ CHECK พร้อมข้อความที่ไม่บอกช่อง
+          และบัญชีที่เพิ่งสร้างถูกลบย้อนกลับ */
+  nickname: z.string().trim().min(1, 'common.required').max(30, 'valid.nicknameLong'),
+    /*
+     * ★ เบอร์โทร: ไม่บังคับ แต่ถ้ากรอกต้องเป็นตัวเลข 8–15 หลัก
+     *   ★★ ฐานข้อมูลบังคับ ^[0-9]{8,15}$ หลังตัดอักขระที่ไม่ใช่ตัวเลขออก
+     *      ★ ของเดิมรับ 0–30 ตัวอักษรอะไรก็ได้ แล้ว "0812" ไปตายที่ CHECK
+     *        พร้อมข้อความที่ไม่บอกว่าช่องไหน และบัญชีถูกลบย้อนกลับ
+     */
+    phone: z
+      .string()
+      .trim()
+      .max(30)
+      .optional()
+      .default('')
+      .refine((v) => v === '' || /^[0-9]{8,15}$/.test(v.replace(/\D/g, '')), {
+        message: 'valid.phoneDigits',
+      }),
     company: z.string().trim().max(80).optional().default(''),
-    department: z.string().trim().min(1, 'common.required').max(80),
+    /* ★ 60 ตามที่ profiles_department_len บังคับ ไม่ใช่ 80 */
+  department: z.string().trim().min(1, 'common.required').max(60, 'valid.deptLong'),
     position: z.string().trim().max(80).optional().default(''),
 
     /* ── ข้อมูลการสมัคร ── */

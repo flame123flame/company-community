@@ -10,6 +10,11 @@ import { Input } from '@/components/ui/Input'
 import { cn } from '@/lib/cn'
 import { COMPANY_VALUE } from '@/lib/office/company'
 import {
+  USERNAME_MAX,
+  isValidUsername,
+  normalizeUsername,
+} from '@/lib/office/username'
+import {
   DEPARTMENTS,
   DEPT_OTHER,
   resolveDepartment,
@@ -71,18 +76,82 @@ export function RegisterForm() {
 
   const realDept = resolveDepartment(department, customDept)
 
-  /* ★ ตรวจครบทุกช่องที่บังคับ ปุ่มจึงบอกได้ว่า "ยังกรอกไม่ครบ" ก่อนกด */
-  const ready =
-    /^[a-z0-9._]{3,20}$/.test(username.trim().toLowerCase()) &&
-    password.length >= 8 &&
-    confirm === password &&
-    nickname.trim().length > 0 &&
-    realDept.length > 0 &&
-    terms
+  /*
+   * ── ตรวจทีละช่อง ───────────────────────────────────────────────
+   *
+   * ★★★ ของเดิมรวมทุกเงื่อนไขเป็น boolean เดียวแล้วปิดปุ่ม
+   *
+   *     ★ คนที่พิมพ์ชื่อผู้ใช้ผิดกติกาจะเจอ "ปุ่มตาย" โดยไม่มีข้อความสักตัว
+   *       ★★ และไม่มีทางรู้ว่าช่องไหนผิด เพราะฟอร์มมีเก้าช่อง
+   *          ★ ข้อความ valid.usernameRule มีอยู่ในดิกชันนารี แต่ถูกสร้าง
+   *            ฝั่ง server เท่านั้น ซึ่งหน้าเว็บไม่มีวันเรียกถึง
+   *            เพราะปุ่มถูกปิดไปก่อนแล้ว
+   *
+   * ★★ ขึ้นเฉพาะช่องที่ "แตะแล้ว" — ฟอร์มเปล่าที่แดงทั้งหน้าตั้งแต่เปิด
+   *    คือฟอร์มที่สอนให้คนเลิกอ่านข้อความเตือน
+   */
+  const [touched, setTouched] = useState<Record<string, boolean>>({})
+  const touch = (k: string) => setTouched((t) => ({ ...t, [k]: true }))
+
+  /** ★ เบอร์โทรถูกตัดเหลือตัวเลขก่อนตรวจ — ฐานข้อมูลก็ทำแบบเดียวกัน */
+  const phoneDigits = phone.replace(/\D/g, '')
+
+  const fieldError: Record<string, string | null> = {
+    username: isValidUsername(username) ? null : ot('reg.errUsername'),
+    password: password.length >= 8 ? null : ot('reg.errPassword'),
+    confirm: confirm === password ? null : ot('reg.passwordMismatch'),
+    /*
+     * ★★★ 30 ไม่ใช่ 40
+     *
+     *     ★ ของเดิมหน้าเว็บกับ zod ยอมถึง 40 แต่ CHECK ในฐานข้อมูลคือ 30
+     *       ★★ ชื่อเล่น 35 ตัวจึงผ่านสองชั้นแรก แล้วไปตายที่ชั้นสุดท้าย
+     *          ★ ผู้ใช้เห็นแค่ "ข้อมูลไม่ถูกต้อง" โดยไม่รู้ว่าช่องไหน
+     *            และบัญชีที่เพิ่งถูกสร้างก็ถูกลบย้อนกลับไปแล้ว
+     */
+    nickname: nickname.trim().length === 0
+      ? ot('common.required')
+      : nickname.trim().length > 30
+        ? ot('reg.errNicknameLong')
+        : null,
+    /*
+     * ★ เบอร์โทรไม่บังคับ แต่ถ้ากรอกต้องเป็น 8–15 หลัก ตามที่ฐานข้อมูลบังคับ
+     *   ★★ ของเดิมรับ 0–30 ตัวอักษรอะไรก็ได้ แล้วพิมพ์ "0812" ก็ไปตาย
+     *      ที่ CHECK เหมือนกัน — และป้ายเขียนแค่ "ไม่บังคับ" ไม่เคยบอกรูปแบบ
+     */
+    phone: phone.trim() === '' || (phoneDigits.length >= 8 && phoneDigits.length <= 15)
+      ? null
+      : ot('reg.errPhone'),
+    /* ★ แผนกที่พิมพ์เองยาวได้ 60 ตามฐานข้อมูล ไม่ใช่ 80 */
+    department: realDept.length === 0
+      ? ot('common.required')
+      : realDept.length > 60
+        ? ot('reg.errDeptLong')
+        : null,
+    terms: terms ? null : ot('reg.errTerms'),
+  }
+
+  const ready = Object.values(fieldError).every((v) => v === null)
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
-    if (!ready || busy) return
+    if (busy) return
+
+    /*
+     * ★★ กรอกไม่ครบ → ทำให้ทุกช่องเป็น "แตะแล้ว" เพื่อให้ข้อความแดงขึ้นพร้อมกัน
+     *    ★ แล้วเลื่อนไปที่ช่องแรกที่ผิด — ฟอร์มเก้าช่องบนมือถือยาวเกินหนึ่งจอ
+     *      ★★ ขึ้นแดงอย่างเดียวโดยไม่เลื่อนไปหา ก็ยังไม่ต่างจากปุ่มที่กดไม่ได้
+     *         สำหรับคนที่อยู่ท้ายฟอร์ม
+     */
+    if (!ready) {
+      setTouched(Object.fromEntries(Object.keys(fieldError).map((k) => [k, true])))
+      const firstBad = Object.keys(fieldError).find((k) => fieldError[k])
+      if (firstBad) {
+        document
+          .querySelector<HTMLElement>(`[data-field="${firstBad}"]`)
+          ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }
+      return
+    }
 
     setBusy(true)
     setError(null)
@@ -94,7 +163,7 @@ export function RegisterForm() {
       }>('/api/auth/register', {
         method: 'POST',
         body: {
-          username: username.trim().toLowerCase(),
+          username: normalizeUsername(username),
           password,
           confirm,
           nickname: nickname.trim(),
@@ -109,7 +178,10 @@ export function RegisterForm() {
           department: realDept,
           position: position.trim(),
           purpose: purpose.trim(),
-          terms: true,
+          /* ★ ส่งค่าจริงจากช่อง ไม่ใช่ true ตายตัว
+               ★★ ของเดิมฮาร์ดโค้ด true ทำให้ด่าน z.literal(true) ฝั่ง server
+                  ไม่มีทางทำงาน — ด่านที่เป็นจริงเสมอคือด่านที่ไม่มีอยู่ */
+          terms,
         },
         /* ★ เพดานเวลาเหมือนทางเข้าเดิม — คำขอนี้คุยกับ Supabase หลายจังหวะ
            ★★ ถ้าไม่มี ปุ่มจะค้างอยู่ "กำลังสมัคร…" ตลอดกาลเมื่อฐานข้อมูลหลับ */
@@ -139,36 +211,73 @@ export function RegisterForm() {
   }
 
   return (
-    <form onSubmit={submit} className="mx-auto w-full max-w-[640px] px-4 pb-16 pt-8">
+    <form
+      onSubmit={submit}
+      /*
+       * ★★★ ปิดการตรวจของเบราว์เซอร์ ให้ตัวตรวจของเราเป็นคนตอบ
+       *
+       *     ★ ช่องที่มี required ทำให้เบราว์เซอร์บล็อกการส่งฟอร์มก่อน
+       *       แล้ว onSubmit ของเราไม่เคยทำงานเลย ★★ ข้อความแดงที่เขียนไว้
+       *       จึงไม่มีวันขึ้น — วัดได้จริงในเบราว์เซอร์: alerts = 0
+       *       ★ เป็นสาเหตุที่หน้านี้ "เหมือนกดแล้วไม่มีอะไรเกิดขึ้น"
+       *     ★★ และฟองของเบราว์เซอร์บอกได้ทีละช่อง เป็นภาษาของเบราว์เซอร์
+       *        ซึ่งพูดกฎของเราไม่ได้เลย (เบอร์ 8–15 หลัก · ชื่อเล่น 30 ตัว)
+       *     ★ required ยังอยู่บนช่อง เพราะมันคือความหมายสำหรับโปรแกรมอ่านหน้าจอ
+       *       ไม่ใช่แค่ตัวบังคับ
+       */
+      noValidate
+      className="mx-auto w-full max-w-[640px] px-4 pb-16 pt-8"
+    >
       <h1 className="text-[30px] font-bold tracking-tight text-ink">{ot('reg.title')}</h1>
       <p className="mt-1.5 text-sm text-ink-soft">{ot('reg.lead')}</p>
 
       {/* ═══ 1 · ข้อมูลบัญชี ═══════════════════════════════════════ */}
       <Section n={1} title={ot('reg.secAccount')}>
-        <Field label={ot('reg.username')} required hint={ot('reg.usernameHint')}>
+        <Field
+          label={ot('reg.username')}
+          required
+          hint={ot('reg.usernameHint')}
+          error={touched.username ? fieldError.username : null}
+          anchor="username"
+        >
           <Input
             radius="round"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
+            onBlur={() => touch('username')}
+            invalid={Boolean(touched.username && fieldError.username)}
             autoComplete="username"
-            maxLength={20}
+            maxLength={USERNAME_MAX}
             required
           />
         </Field>
 
-        <Field label={ot('reg.password')} required hint={ot('reg.passwordHint')}>
+        <Field
+          label={ot('reg.password')}
+          required
+          hint={ot('reg.passwordHint')}
+          error={touched.password ? fieldError.password : null}
+          anchor="password"
+        >
           <Input
             radius="round"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            onBlur={() => touch('password')}
+            invalid={Boolean(touched.password && fieldError.password)}
             autoComplete="new-password"
             maxLength={72}
             required
           />
         </Field>
 
-        <Field label={ot('reg.confirm')} required>
+        <Field
+          label={ot('reg.confirm')}
+          required
+          error={touched.confirm ? fieldError.confirm : null}
+          anchor="confirm"
+        >
           <Input
             radius="round"
             type="password"
@@ -195,23 +304,40 @@ export function RegisterForm() {
           *     ★ รหัสพนักงานเคยเป็นด่านของทั้งโมดูล ตอนนี้ถอดออกแล้ว (0043)
           *       ★★ ใครมีรหัสก็ยังไปผูกเองได้ที่ /office/link แต่ไม่บังคับ
           */}
-        <Field label={ot('reg.nickname')} required hint={ot('reg.nicknameHint')}>
+        <Field
+          label={ot('reg.nickname')}
+          required
+          hint={ot('reg.nicknameHint')}
+          error={touched.nickname ? fieldError.nickname : null}
+          anchor="nickname"
+        >
           <Input
             radius="round"
             value={nickname}
             onChange={(e) => setNickname(e.target.value)}
-            maxLength={40}
+            onBlur={() => touch('nickname')}
+            invalid={Boolean(touched.nickname && fieldError.nickname)}
+            /* ★ 30 ตามที่ฐานข้อมูลบังคับ ไม่ใช่ 40 — ของเดิมปล่อยให้พิมพ์เกิน
+                 แล้วไปตายที่ CHECK พร้อมข้อความที่ไม่บอกว่าช่องไหน */
+            maxLength={30}
             required
           />
         </Field>
 
-        <Field label={ot('reg.phone')} hint={ot('reg.optional')}>
+        <Field
+          label={ot('reg.phone')}
+          hint={ot('reg.phoneHint')}
+          error={touched.phone ? fieldError.phone : null}
+          anchor="phone"
+        >
           <Input
             radius="round"
             type="tel"
             inputMode="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
+            onBlur={() => touch('phone')}
+            invalid={Boolean(touched.phone && fieldError.phone)}
             maxLength={30}
             className="tabular-nums"
           />
@@ -236,7 +362,12 @@ export function RegisterForm() {
           </p>
         </div>
 
-        <Field label={ot('reg.department')} required>
+        <Field
+          label={ot('reg.department')}
+          required
+          error={touched.department ? fieldError.department : null}
+          anchor="department"
+        >
           <select
             value={department}
             onChange={(e) => setDepartment(e.target.value)}
@@ -265,7 +396,10 @@ export function RegisterForm() {
               radius="round"
               value={customDept}
               onChange={(e) => setCustomDept(e.target.value)}
-              maxLength={80}
+              onBlur={() => touch('department')}
+              invalid={Boolean(touched.department && fieldError.department)}
+              /* ★ 60 ตามที่ฐานข้อมูลบังคับ ไม่ใช่ 80 — เหตุผลเดียวกับชื่อเล่น */
+              maxLength={60}
               className="mt-2"
               placeholder={ot('reg.deptOther')}
               required
@@ -299,11 +433,22 @@ export function RegisterForm() {
           />
         </Field>
 
-        <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-line bg-surface/50 p-4">
+        <label
+          data-field="terms"
+          className={cn(
+            'flex cursor-pointer items-start gap-3 rounded-2xl border bg-surface/50 p-4 transition-colors',
+            /* ★ ช่องนี้ไม่มีกรอบ Field จึงต้องทำขอบแดงเอง
+                 ★★ ไม่งั้นมันเป็นช่องเดียวในฟอร์มที่กดส่งแล้วไม่มีอะไรเปลี่ยน */
+            touched.terms && fieldError.terms ? 'border-danger' : 'border-line',
+          )}
+        >
           <input
             type="checkbox"
             checked={terms}
-            onChange={(e) => setTerms(e.target.checked)}
+            onChange={(e) => {
+              setTerms(e.target.checked)
+              touch('terms')
+            }}
             className="mt-0.5 size-4 shrink-0 accent-[var(--color-accent)]"
             required
           />
@@ -315,6 +460,11 @@ export function RegisterForm() {
             <span className="mt-0.5 block text-xs leading-relaxed text-ink-faint">
               {ot('reg.termsBody')}
             </span>
+            {touched.terms && fieldError.terms ? (
+              <span role="alert" className="mt-1 block text-xs text-danger">
+                {fieldError.terms}
+              </span>
+            ) : null}
 
             {/*
               * ★★★ เป็น <span role="button"> ไม่ใช่ <button>
@@ -353,15 +503,16 @@ export function RegisterForm() {
         </p>
       ) : null}
 
-      <Button
-        type="submit"
-        variant="primary"
-        size="lg"
-        block
-        loading={busy}
-        disabled={!ready}
-        className="mt-5"
-      >
+      {/*
+        * ★★★ ปุ่มกดได้เสมอ ไม่ปิดเมื่อกรอกไม่ครบ
+        *
+        *     ★ ปุ่มที่ปิดอยู่ไม่บอกว่าทำไมถึงกดไม่ได้ ★★ คนจึงไล่แก้ทีละช่อง
+        *       แบบเดา หรือคิดว่าเว็บเสีย — ซึ่งเป็นอาการที่เจ้าของระบบเจอเอง
+        *     ★ กดแล้วค่อยขึ้นแดงทุกช่องที่ยังไม่ผ่าน คือการตอบว่า
+        *       "ยังขาดตรงนี้" ไม่ใช่การเงียบ
+        *     ★★ และ onBlur ยังทำให้ช่องที่ผ่านไปแล้วเตือนทันทีโดยไม่ต้องรอกด
+        */}
+      <Button type="submit" variant="primary" size="lg" block loading={busy} className="mt-5">
         {busy ? ot('reg.working') : ot('reg.submit')}
       </Button>
 
@@ -489,21 +640,38 @@ function Field({
   label,
   hint,
   required,
+  error,
+  anchor,
   children,
 }: {
   label: string
   hint?: string
   required?: boolean
+  /** ข้อความผิด — ขึ้นแทนคำใบ้เมื่อมี */
+  error?: string | null
+  /** ชื่อช่อง — ใช้เลื่อนมาหาเมื่อกดส่งแล้วยังไม่ผ่าน */
+  anchor?: string
   children: ReactNode
 }) {
   return (
-    <label className="flex flex-col gap-1.5">
+    <label data-field={anchor} className="flex flex-col gap-1.5">
       <span className="text-sm font-medium text-ink">
         {label}
         {required ? <span className="ms-0.5 text-accent">*</span> : null}
         {hint ? <span className="ms-1.5 text-xs font-normal text-ink-faint">({hint})</span> : null}
       </span>
       {children}
+      {/*
+        * ★★ ข้อความผิดอยู่ใต้ช่องของตัวเอง ไม่ใช่รวมกันบนสุดของฟอร์ม
+        *    ★ ฟอร์มนี้มีเก้าช่อง — รายการข้อผิดพลาดรวมบนสุดแปลว่าคนต้อง
+        *      เลื่อนหาเองว่าช่องไหน
+        *    ★★ role="alert" ให้โปรแกรมอ่านหน้าจอประกาศทันทีที่โผล่
+        */}
+      {error ? (
+        <span role="alert" className="text-xs text-danger">
+          {error}
+        </span>
+      ) : null}
     </label>
   )
 }
