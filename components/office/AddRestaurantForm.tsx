@@ -15,7 +15,35 @@ import type { DistanceBand, PriceRange } from '@/types/database'
 
 type Similar = { id: string; name: string; signatureDish: string; similarity: number }
 
-/** ฟอร์มเพิ่มร้าน (FR-A01 + FR-A02) */
+/** ร้านที่กำลังแก้ไข — ส่งมาเมื่อเป็นโหมดแก้ไข */
+export type EditingShop = {
+  id: string
+  name: string
+  signatureDish: string
+  cuisine: string | null
+  priceRange: string | null
+  distance: string | null
+  mapUrl: string | null
+  note: string | null
+  lat?: number | null
+  lng?: number | null
+  openHours?: OpenHours | null
+}
+
+/**
+ * ฟอร์มเพิ่ม/แก้ไขร้าน (FR-A01 + FR-A02 + FR-A06)
+ *
+ * ★★★ ฟอร์มเดียวสองโหมด ไม่ใช่สองไฟล์
+ *
+ *     ★ ช่องทุกช่องเหมือนกันเป๊ะ ต่างแค่ค่าเริ่มต้นกับ method ที่ยิง
+ *       ★★ แยกเป็นสองไฟล์คือการเปิดช่องให้ "ฟอร์มเพิ่ม" กับ "ฟอร์มแก้ไข"
+ *          ค่อย ๆ ต่างกันทีละช่อง จนวันหนึ่งแก้ไขแล้วบางค่าหายไปเฉย ๆ
+ *
+ * ★★★ โหมดแก้ไขเป็นทางเดียวที่ปักหมุดร้านเก่าได้
+ *
+ *     ★ set_restaurant_latlng มีมาตั้งแต่ 0050 แต่ถูกเรียกที่เดียวคือตอนสร้าง
+ *       ★★ ร้านที่สร้างก่อนมีแผนที่ หรือปักผิด จึงไม่มีระยะทางตลอดกาล
+ */
 /*
  * ★★★ ssr: false จำเป็นจริง ๆ ไม่ใช่กันไว้ก่อน
  *
@@ -28,19 +56,49 @@ const MapPicker = dynamic(() => import('./MapPicker').then((m) => m.MapPicker), 
   ssr: false,
 })
 
-export function AddRestaurantForm({ onDone }: { onDone: () => void }) {
+export function AddRestaurantForm({
+  onDone,
+  editing,
+}: {
+  onDone: () => void
+  editing?: EditingShop
+}) {
   const ot = useOt()
-  const [name, setName] = useState('')
-  const [dish, setDish] = useState('')
-  const [cuisine, setCuisine] = useState('')
-  const [price, setPrice] = useState<PriceRange | null>(null)
-  const [distance, setDistance] = useState<DistanceBand | null>(null)
-  const [mapUrl, setMapUrl] = useState('')
-  const [note, setNote] = useState('')
+  const [name, setName] = useState(editing?.name ?? '')
+  const [dish, setDish] = useState(editing?.signatureDish ?? '')
+  const [cuisine, setCuisine] = useState(editing?.cuisine ?? '')
+  const [price, setPrice] = useState<PriceRange | null>(
+    (editing?.priceRange as PriceRange | null) ?? null,
+  )
+  const [distance, setDistance] = useState<DistanceBand | null>(
+    (editing?.distance as DistanceBand | null) ?? null,
+  )
+  const [mapUrl, setMapUrl] = useState(editing?.mapUrl ?? '')
+  const [note, setNote] = useState(editing?.note ?? '')
   /* ★ พิกัดไม่บังคับ — เพิ่มร้านตอนหิวไม่ควรต้องเปิดแผนที่ก่อน */
-  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null)
-  const [mapOpen, setMapOpen] = useState(false)
-  const [hours, setHours] = useState<OpenHours | null>(null)
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
+    editing?.lat != null && editing?.lng != null ? { lat: editing.lat, lng: editing.lng } : null,
+  )
+  /* ★ ร้านที่ปักหมุดแล้วกางแผนที่ให้เลย — คนกดแก้ไขเพราะอยากเห็นว่าหมุดอยู่ไหน */
+  const [mapOpen, setMapOpen] = useState(editing?.lat != null)
+  const [hours, setHours] = useState<OpenHours | null>(editing?.openHours ?? null)
+
+  /*
+   * ★★ พิกัดออฟฟิศเป็นจุดเริ่มต้นของแผนที่เมื่อร้านยังไม่มีหมุด
+   *    ★ MapPicker รองรับมาตั้งแต่แรก แต่ไม่เคยมีใครส่งค่าให้
+   *      ★★ แผนที่จึงเปิดมาที่กลางกรุงเทพทุกครั้ง แล้วคนต้องซูมหาออฟฟิศเอง
+   *         ก่อนจะเริ่มหาร้าน
+   */
+  const [office, setOffice] = useState<{ lat: number; lng: number } | null>(null)
+  useEffect(() => {
+    void apiFetch<{ office: { lat: number; lng: number } | null }>(
+      '/api/office/food/office-location',
+    )
+      .then((r) => setOffice(r.office))
+      .catch(() => {
+        /* ★ ไม่มีพิกัดออฟฟิศไม่ใช่เรื่องที่ต้องบอก — แผนที่ยังใช้ได้ */
+      })
+  }, [])
   const [similar, setSimilar] = useState<Similar[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -71,14 +129,15 @@ export function AddRestaurantForm({ onDone }: { onDone: () => void }) {
           `/api/office/food/similar?q=${encodeURIComponent(trimmed)}`,
           { signal: controller.signal },
         )
-        setSimilar(data.items)
+        /* ★ ตอนแก้ไข ต้องไม่เตือนว่า "ซ้ำกับตัวเอง" */
+        setSimilar(data.items.filter((x) => x.id !== editing?.id))
       } catch {
         /* ★ คำเตือนเป็นของเสริม — ยิงไม่ผ่านก็ยังเพิ่มร้านได้ตามปกติ */
       }
     }, 500)
 
     return () => window.clearTimeout(timer)
-  }, [name])
+  }, [name, editing?.id])
 
   async function submit(event: React.FormEvent) {
     event.preventDefault()
@@ -87,21 +146,24 @@ export function AddRestaurantForm({ onDone }: { onDone: () => void }) {
     setBusy(true)
     setError(null)
     try {
-      await apiFetch('/api/office/food/restaurants', {
-        method: 'POST',
-        body: {
-          name,
-          signatureDish: dish,
-          cuisine: cuisine.trim() || null,
-          priceRange: price,
-          distance,
-          mapUrl: mapUrl.trim() || null,
-          note: note.trim() || null,
-          lat: coords?.lat ?? null,
-          lng: coords?.lng ?? null,
-          openHours: hours,
-        },
-      })
+      const body = {
+        name,
+        signatureDish: dish,
+        cuisine: cuisine.trim() || null,
+        priceRange: price,
+        distance,
+        mapUrl: mapUrl.trim() || null,
+        note: note.trim() || null,
+        lat: coords?.lat ?? null,
+        lng: coords?.lng ?? null,
+        openHours: hours,
+      }
+
+      if (editing) {
+        await apiFetch(`/api/office/food/restaurants/${editing.id}`, { method: 'PATCH', body })
+      } else {
+        await apiFetch('/api/office/food/restaurants', { method: 'POST', body })
+      }
       onDone()
     } catch (e) {
       setError(officeErrorText(e, ot))
@@ -111,120 +173,165 @@ export function AddRestaurantForm({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-4">
-      <Field label={ot('food.form.name')} required>
-        <Input radius="round" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} required />
-      </Field>
-
-      {/* ★ คำเตือนอยู่ติดใต้ช่องชื่อ ไม่ใช่บนสุดของฟอร์ม —
-          คนต้องเห็นมันตอนสายตายังอยู่ที่ช่องที่เพิ่งพิมพ์ */}
-      {similar.length > 0 ? (
-        <div className="-mt-2 rounded-xl border border-warn/40 bg-warn/10 p-3">
-          <p className="text-xs font-medium text-ink">{ot('food.form.similarWarning')}</p>
-          <ul className="mt-1.5 flex flex-col gap-0.5">
-            {similar.map((s) => (
-              <li key={s.id} className="text-xs text-ink-soft">
-                • {s.name} — {s.signatureDish}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-
-      <Field label={ot('food.form.dish')} required>
-        <Input radius="round" value={dish} onChange={(e) => setDish(e.target.value)} maxLength={120} required />
-      </Field>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label={ot('food.form.cuisine')} hint={ot('link.optional')}>
-          <Input radius="round"
-            value={cuisine}
-            onChange={(e) => setCuisine(e.target.value)}
-            maxLength={40}
-            placeholder={ot('food.kindPlaceholder')}
-          />
+    /*
+     * ★★★ สองคอลัมน์บนจอกว้าง: ช่องกรอกซ้าย · แผนที่กับเวลาทำการขวา
+     *
+     *     ★ ของเดิมเป็นคอลัมน์เดียวกว้าง 512px ในหน้าที่กว้าง 1000px
+     *       แล้วแผนที่สูง 256px ไปอยู่ท้ายฟอร์ม ★★ คนที่ปักหมุดจึงมองไม่เห็น
+     *       ชื่อร้านที่เพิ่งพิมพ์ ทั้งที่สองอย่างนั้นต้องตรงกัน
+     *     ★★ แผนที่เป็นของที่ "ยิ่งใหญ่ยิ่งปักแม่น" — มันควรได้ความกว้างจริง
+     *        ไม่ใช่ถูกบีบให้เท่าช่องพิมพ์ชื่อ
+     */
+    <form
+      onSubmit={submit}
+      className="lg:grid lg:grid-cols-[minmax(0,1fr)_23rem] lg:items-start lg:gap-6"
+    >
+      <div className="flex min-w-0 flex-col gap-4">
+        <Field label={ot('food.form.name')} required>
+          <Input radius="round" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} required />
         </Field>
 
-        <Field label={ot('food.form.price')} hint={ot('link.optional')}>
-          <ChipRow
-            options={PRICE_OPTIONS}
-            value={price}
-            onChange={setPrice}
-            render={(p) => p}
-          />
-        </Field>
-      </div>
-
-      <Field label={ot('food.form.distance')} hint={ot('link.optional')}>
-        <ChipRow
-          options={DISTANCE_OPTIONS}
-          value={distance}
-          onChange={setDistance}
-          render={(v) => distanceLabel(ot, v)}
-        />
-      </Field>
-
-      <Field label={ot('food.form.mapUrl')} hint={ot('link.optional')}>
-        <Input radius="round"
-          value={mapUrl}
-          onChange={(e) => setMapUrl(e.target.value)}
-          placeholder="https://maps.app.goo.gl/…"
-          inputMode="url"
-        />
-      </Field>
-
-      <Field label={ot('food.form.note')} hint={ot('link.optional')}>
-        <textarea
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          maxLength={300}
-          rows={2}
-          className={cn(
-            'w-full rounded-[2px] bg-input px-4 py-2',
-            'border border-line text-[16px] placeholder:text-ink-faint sm:text-sm',
-            'transition-colors focus:border-link focus:outline-none',
-          )}
-        />
-      </Field>
-
-      {/*
-        * ── ตำแหน่งร้าน ─────────────────────────────────────────────
-        * ★★ ยุบไว้ default แผนที่โหลด tile จากอินเทอร์เน็ตเมื่อถูกกางเท่านั้น
-        *    ★ กางทิ้งไว้ตลอดแปลว่าทุกคนที่เพิ่มร้านต้องจ่ายค่าโหลดแผนที่
-        *      ทั้งที่ส่วนใหญ่ไม่ได้ปักหมุด
-        */}
-      <div>
-        <button
-          type="button"
-          onClick={() => setMapOpen((v) => !v)}
-          aria-expanded={mapOpen}
-          className="flex h-11 w-full items-center justify-between rounded-xl bg-surface px-4 text-sm text-ink transition-colors hover:bg-surface-hover"
-        >
-          <span>{ot('food.geo.section')}</span>
-          <span className="text-ink-faint">{coords ? '📍' : mapOpen ? '▲' : '▼'}</span>
-        </button>
-        {mapOpen ? (
-          <div className="mt-3">
-            <MapPicker
-              lat={coords?.lat ?? null}
-              lng={coords?.lng ?? null}
-              onChange={(lat, lng) => setCoords({ lat, lng })}
-            />
+        {/* ★ คำเตือนอยู่ติดใต้ช่องชื่อ ไม่ใช่บนสุดของฟอร์ม —
+            คนต้องเห็นมันตอนสายตายังอยู่ที่ช่องที่เพิ่งพิมพ์ */}
+        {similar.length > 0 ? (
+          <div className="-mt-2 rounded-xl border border-warn/40 bg-warn/10 p-3">
+            <p className="text-xs font-medium text-ink">{ot('food.form.similarWarning')}</p>
+            <ul className="mt-1.5 flex flex-col gap-0.5">
+              {similar.map((s) => (
+                <li key={s.id} className="text-xs text-ink-soft">
+                  • {s.name} — {s.signatureDish}
+                </li>
+              ))}
+            </ul>
           </div>
         ) : null}
+
+        <Field label={ot('food.form.dish')} required>
+          <Input radius="round" value={dish} onChange={(e) => setDish(e.target.value)} maxLength={120} required />
+        </Field>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label={ot('food.form.cuisine')} hint={ot('link.optional')}>
+            <Input radius="round"
+              value={cuisine}
+              onChange={(e) => setCuisine(e.target.value)}
+              maxLength={40}
+              placeholder={ot('food.kindPlaceholder')}
+            />
+          </Field>
+
+          <Field label={ot('food.form.price')} hint={ot('link.optional')}>
+            <ChipRow
+              options={PRICE_OPTIONS}
+              value={price}
+              onChange={setPrice}
+              render={(p) => p}
+            />
+          </Field>
+        </div>
+
+        <Field label={ot('food.form.distance')} hint={ot('link.optional')}>
+          <ChipRow
+            options={DISTANCE_OPTIONS}
+            value={distance}
+            onChange={setDistance}
+            render={(v) => distanceLabel(ot, v)}
+          />
+        </Field>
+
+        <Field label={ot('food.form.mapUrl')} hint={ot('link.optional')}>
+          <Input radius="round"
+            value={mapUrl}
+            onChange={(e) => setMapUrl(e.target.value)}
+            placeholder="https://maps.app.goo.gl/…"
+            inputMode="url"
+          />
+        </Field>
+
+        <Field label={ot('food.form.note')} hint={ot('link.optional')}>
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            maxLength={300}
+            rows={2}
+            className={cn(
+              'w-full rounded-[2px] bg-input px-4 py-2',
+              'border border-line text-[16px] placeholder:text-ink-faint sm:text-sm',
+              'transition-colors focus:border-link focus:outline-none',
+            )}
+          />
+        </Field>
+
+        {error ? (
+          <p role="alert" className="text-sm text-danger">
+            {error}
+          </p>
+        ) : null}
+
+        <Button type="submit" variant="primary" size="lg" loading={busy} block>
+          {editing ? ot('common.save') : ot('food.form.submit')}
+        </Button>
       </div>
 
-      <OpenHoursField value={hours} onChange={setHours} />
+      {/* ══ คอลัมน์ขวา · แผนที่และเวลาทำการ ═══════════════════ */}
+      <aside className="mt-4 flex flex-col gap-4 lg:mt-0">
+        {/*
+          * ── ตำแหน่งร้าน ───────────────────────────────────────
+          * ★★ ยุบไว้ default แผนที่โหลด tile จากอินเทอร์เน็ตเมื่อถูกกางเท่านั้น
+          *    ★ กางทิ้งไว้ตลอดแปลว่าทุกคนที่เพิ่มร้านต้องจ่ายค่าโหลดแผนที่
+          *      ทั้งที่ส่วนใหญ่ไม่ได้ปักหมุด
+          *    ★★ แต่ร้านที่ปักหมุดไว้แล้วกางให้เลย (ดูค่าเริ่มต้นของ mapOpen)
+          */}
+        <div className="rounded-2xl border border-line bg-elevated/50 p-4 backdrop-blur-md">
+          <button
+            type="button"
+            onClick={() => setMapOpen((v) => !v)}
+            aria-expanded={mapOpen}
+            className="flex min-h-11 w-full items-center justify-between gap-2 text-start"
+          >
+            <span className="min-w-0">
+              <span className="block text-[14px] font-semibold text-ink">
+                {ot('food.geo.section')}
+              </span>
+              {/* ★ หุบอยู่แล้วยังเห็นว่าปักไว้หรือยัง — ไม่ต้องกางออกมาตรวจ */}
+              <span className="mt-0.5 block font-mono text-[11px] text-ink-faint">
+                {coords ? `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}` : '—'}
+              </span>
+            </span>
+            <svg
+              viewBox="0 0 24 24"
+              className={cn(
+                'size-4 shrink-0 text-ink-faint transition-transform duration-200',
+                mapOpen && 'rotate-180',
+              )}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </button>
 
-      {error ? (
-        <p role="alert" className="text-sm text-danger">
-          {error}
-        </p>
-      ) : null}
+          {mapOpen ? (
+            <div className="mt-3">
+              <MapPicker
+                lat={coords?.lat ?? null}
+                lng={coords?.lng ?? null}
+                onChange={(lat, lng) => setCoords({ lat, lng })}
+                fallbackLat={office?.lat}
+                fallbackLng={office?.lng}
+              />
+            </div>
+          ) : null}
+        </div>
 
-      <Button type="submit" variant="primary" size="lg" loading={busy} block>
-        {ot('food.form.submit')}
-      </Button>
+        <div className="rounded-2xl border border-line bg-elevated/50 p-4 backdrop-blur-md">
+          <OpenHoursField value={hours} onChange={setHours} />
+        </div>
+      </aside>
     </form>
   )
 }

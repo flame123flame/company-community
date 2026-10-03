@@ -24,7 +24,7 @@ import { distanceParts, isOpenNow } from '@/lib/office/geo'
 import { cuisineStyle } from '@/lib/office/cuisine'
 import { Section } from '@/components/ui/Section'
 import { ShopPhotos } from './ShopPhotos'
-import { AddRestaurantForm } from './AddRestaurantForm'
+import { AddRestaurantForm, type EditingShop } from './AddRestaurantForm'
 import { FilterSheet, FilterGroup, FilterChip } from './FilterSheet'
 
 export type PicksSort = 'new' | 'votes' | 'rating' | 'near'
@@ -42,6 +42,8 @@ export function FoodPicks() {
   const [sort, setSort] = useState<PicksSort>('new')
   const [filterOpen, setFilterOpen] = useState(false)
   const [adding, setAdding] = useState(false)
+  /* ★ ร้านที่กำลังแก้ไข — ฟอร์มเดียวกับตอนเพิ่ม ต่างแค่ค่าเริ่มต้นกับ method */
+  const [editing, setEditing] = useState<EditingShop | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   /*
@@ -175,19 +177,44 @@ export function FoodPicks() {
     }
   }
 
-  if (adding) {
+  /*
+   * ★★★ ต้องอยู่เหนือ early return ของฟอร์ม
+   *
+   *     ★ React นับจำนวน hook ต่อการ render ★★ วางไว้ใต้ `if (adding) return`
+   *       แล้วพอเปิดฟอร์ม hook ตัวนี้จะไม่ถูกเรียก — "Rendered fewer hooks
+   *       than expected" แล้วทั้งหน้าตกไปที่ error boundary
+   *     ★ บทเรียนเดียวกับ useState ใน OfficePageChrome
+   */
+  useEffect(() => {
+    setPage(0)
+  }, [filters.query, filters.cuisine, filters.price, filters.distance, sort])
+
+  if (adding || editing) {
     return (
-      <div className="max-w-lg py-2">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-ink">{ot('food.picks.add')}</h2>
-          <Button variant="ghost" onClick={() => setAdding(false)}>
+      /* ★★ กว้างเต็มคอลัมน์ ★ ฟอร์มที่บีบอยู่ 512px ในหน้ากว้าง 1000px
+           ทำให้แผนที่เล็กเท่าช่องพิมพ์ชื่อ ซึ่งปักหมุดแม่นไม่ได้ */
+      <div className="w-full pb-10">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold text-ink">
+            <Untranslated>{editing ? ot('food.picks.edit') : ot('food.picks.add')}</Untranslated>
+          </h2>
+          <Button
+            variant="ghost"
+            className="min-h-11"
+            onClick={() => {
+              setAdding(false)
+              setEditing(null)
+            }}
+          >
             {ot('common.cancel')}
           </Button>
         </div>
-        <div className="mt-5 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-5">
+        <div className="mt-4">
           <AddRestaurantForm
+            editing={editing ?? undefined}
             onDone={() => {
               setAdding(false)
+              setEditing(null)
               void load()
             }}
           />
@@ -195,12 +222,6 @@ export function FoodPicks() {
       </div>
     )
   }
-
-  /* ★ เปลี่ยนตัวกรองหรือการเรียงแล้วต้องกลับหน้าแรก
-       ★★ ไม่งั้นผลลัพธ์ 4 ร้านที่ดูอยู่หน้า 3 จะกลายเป็นหน้าว่าง */
-  useEffect(() => {
-    setPage(0)
-  }, [filters.query, filters.cuisine, filters.price, filters.distance, sort])
 
   const pageCount = Math.max(1, Math.ceil(shown.length / PER_PAGE))
   const safePage = Math.min(page, pageCount - 1)
@@ -406,6 +427,7 @@ export function FoodPicks() {
                 onRemove={() => void remove(r.id)}
                 onMarkOpen={() => void markOpen(r)}
                 onPhotos={() => void load()}
+                onEdit={() => setEditing(r)}
               />
             ))
           )}
@@ -522,6 +544,7 @@ function Card({
   onRemove,
   onMarkOpen,
   onPhotos,
+  onEdit,
 }: {
   r: Restaurant
   note?: string
@@ -530,6 +553,7 @@ function Card({
   onRemove: () => void
   onMarkOpen: () => void
   onPhotos: () => void
+  onEdit: () => void
 }) {
   const ot = useOt()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -698,16 +722,33 @@ function Card({
                 )}
 
                 {r.canManage ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMenuOpen(false)
-                      onRemove()
-                    }}
-                    className="flex min-h-11 w-full items-center border-t border-line px-3 text-start text-[13px] text-danger hover:bg-surface"
-                  >
-                    {ot('common.delete')}
-                  </button>
+                  <>
+                    {/*
+                      * ★★ "แก้ไข" คือทางเดียวที่ปักหมุดร้านเก่าได้
+                      *    ★ ร้านที่สร้างก่อนมีแผนที่ หรือปักผิด ไม่มีระยะทาง
+                      *      ตลอดกาลจนกว่าจะมีที่ให้แก้
+                      */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuOpen(false)
+                        onEdit()
+                      }}
+                      className="flex min-h-11 w-full items-center border-t border-line px-3 text-start text-[13px] text-ink hover:bg-surface"
+                    >
+                      <Untranslated>{ot('food.picks.edit')}</Untranslated>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuOpen(false)
+                        onRemove()
+                      }}
+                      className="flex min-h-11 w-full items-center border-t border-line px-3 text-start text-[13px] text-danger hover:bg-surface"
+                    >
+                      {ot('common.delete')}
+                    </button>
+                  </>
                 ) : null}
               </span>
             ) : null}

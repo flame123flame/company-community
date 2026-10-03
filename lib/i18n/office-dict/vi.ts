@@ -131,6 +131,7 @@ export const vi: OfficeDict = {
   "food.picks.count": "{n} quán",
   "food.picks.add": "Thêm quán",
   "food.picks.empty": "Chưa ai gợi ý quán nào — bạn làm người đầu tiên nhé?",
+  "food.picks.edit": "แก้ไขร้าน",
   "food.picks.findTitle": "ค้นหาร้าน",
   "food.picks.listTitle": "ร้านทั้งหมด",
   "food.picks.mine": "Quán của tôi",

@@ -131,6 +131,7 @@ export const lo: OfficeDict = {
   "food.picks.count": "{n} ຮ້ານ",
   "food.picks.add": "ເພີ່ມຮ້ານ",
   "food.picks.empty": "ຍັງບໍ່ມີໃຜແນະນຳຮ້ານ — ເປັນຄົນທຳອິດເລີຍບໍ",
+  "food.picks.edit": "แก้ไขร้าน",
   "food.picks.findTitle": "ค้นหาร้าน",
   "food.picks.listTitle": "ร้านทั้งหมด",
   "food.picks.mine": "ຮ້ານຂອງຂ້ອຍ",

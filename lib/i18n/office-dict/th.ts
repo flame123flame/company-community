@@ -157,6 +157,7 @@ export const th = {
   'food.picks.count': '{n} ร้าน',
   'food.picks.add': 'เพิ่มร้าน',
   'food.picks.empty': 'ยังไม่มีใครแนะนำร้าน — เป็นคนแรกเลยไหม',
+  'food.picks.edit': 'แก้ไขร้าน',
   'food.picks.findTitle': 'ค้นหาร้าน',
   'food.picks.listTitle': 'ร้านทั้งหมด',
   'food.picks.mine': 'ร้านของฉัน',

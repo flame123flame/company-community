@@ -140,6 +140,7 @@ export const ar: OfficeDict = {
   "food.picks.count": "{n} مكانًا",
   "food.picks.add": "إضافة مكان",
   "food.picks.empty": "لم يوصِ أحد بشيء بعد — تحبّ أن تكون الأولى؟",
+  "food.picks.edit": "แก้ไขร้าน",
   "food.picks.findTitle": "ค้นหาร้าน",
   "food.picks.listTitle": "ร้านทั้งหมด",
   "food.picks.mine": "أماكني",

@@ -131,6 +131,7 @@ export const ko: OfficeDict = {
   "food.picks.count": "{n}곳",
   "food.picks.add": "식당 추가",
   "food.picks.empty": "아직 추천한 사람이 없어요. 첫 번째가 되어 보실래요?",
+  "food.picks.edit": "แก้ไขร้าน",
   "food.picks.findTitle": "ค้นหาร้าน",
   "food.picks.listTitle": "ร้านทั้งหมด",
   "food.picks.mine": "내가 올린 곳",

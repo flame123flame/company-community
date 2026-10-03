@@ -131,6 +131,7 @@ export const it: OfficeDict = {
   "food.picks.count": "{n} locali",
   "food.picks.add": "Aggiungi un locale",
   "food.picks.empty": "Nessuno ha ancora consigliato niente — vuoi essere la prima?",
+  "food.picks.edit": "แก้ไขร้าน",
   "food.picks.findTitle": "ค้นหาร้าน",
   "food.picks.listTitle": "ร้านทั้งหมด",
   "food.picks.mine": "I miei locali",

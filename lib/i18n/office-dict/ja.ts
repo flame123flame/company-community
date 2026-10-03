@@ -131,6 +131,7 @@ export const ja: OfficeDict = {
   "food.picks.count": "{n} 店",
   "food.picks.add": "お店を追加",
   "food.picks.empty": "まだおすすめがありません。最初の一人になりませんか。",
+  "food.picks.edit": "แก้ไขร้าน",
   "food.picks.findTitle": "ค้นหาร้าน",
   "food.picks.listTitle": "ร้านทั้งหมด",
   "food.picks.mine": "自分の投稿",
