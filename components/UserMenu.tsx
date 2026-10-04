@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { signOutCompletely } from '@/lib/auth/session'
 import { useT } from '@/lib/i18n/client'
+import { useConfirm } from '@/components/ConfirmProvider'
 import { cn } from '@/lib/cn'
 
 /**
@@ -35,6 +36,7 @@ export function UserMenu({
   profileHref?: string
 }) {
   const t = useT()
+  const confirm = useConfirm()
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const boxRef = useRef<HTMLDivElement | null>(null)
@@ -73,7 +75,7 @@ export function UserMenu({
         aria-haspopup="menu"
         aria-label={t('menu.open')}
         className={cn(
-          'flex items-center gap-2 rounded-full py-1 pe-1 ps-1 transition-colors sm:pe-3',
+          'hdr-user flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-full py-1 pe-1 ps-1 transition-colors sm:min-h-0 sm:min-w-0 sm:pe-2.5',
           open ? 'bg-surface' : 'hover:bg-surface',
         )}
       >
@@ -85,12 +87,12 @@ export function UserMenu({
           <img
             src={avatarUrl}
             alt=""
-            className="size-8 shrink-0 rounded-full object-cover"
+            className="hdr-ava size-8 shrink-0 rounded-full object-cover"
           />
         ) : (
           <span
             aria-hidden="true"
-            className="grid size-8 shrink-0 place-items-center rounded-full bg-accent text-sm font-bold text-accent-ink"
+            className="hdr-ava grid size-8 shrink-0 place-items-center rounded-full bg-accent text-sm font-bold text-accent-ink"
           >
             <span dir="auto">{initial}</span>
           </span>
@@ -101,82 +103,100 @@ export function UserMenu({
           <span dir="auto">{displayName}</span>
           {isAdmin ? <span className="ms-1 text-accent">·&nbsp;Admin</span> : null}
         </span>
+        <svg viewBox="0 0 24 24" className={cn('hidden size-3.5 shrink-0 text-ink-faint transition-transform sm:block', open && 'rotate-180')} fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="m6 9 6 6 6-6" />
+        </svg>
       </button>
 
       {open ? (
         <div
           role="menu"
           className={cn(
-            'absolute end-0 z-50 mt-2 w-60 overflow-hidden rounded-2xl border border-line',
-            'bg-elevated shadow-xl',
+            'absolute end-0 z-50 mt-2 w-[min(calc(100vw-24px),320px)] overflow-hidden',
+            /* ★ มือถือ: ลอยเต็มความกว้างใต้แถบหัว เหมือนเมนูภาษา/โทนสี */
+            'max-sm:fixed max-sm:left-3 max-sm:right-3 max-sm:top-[calc(var(--spacing-header)+8px)] max-sm:mt-0 max-sm:w-auto',
+            'pop-wow rounded-[26px]',
           )}
+          style={{ '--pc': '255 0 51', '--pc2': '10 132 255' } as React.CSSProperties}
         >
           {/*
-            * ★★ บอกชื่อเต็มในเมนูด้วย ไม่ใช่แค่บนปุ่ม
-            *    ★ ปุ่มตัดชื่อยาวด้วย truncate และบนมือถือไม่โชว์ชื่อเลย
-            *      ★★ ที่นี่คือที่เดียวที่อ่านชื่อเต็มได้ทุกขนาดจอ
+            * ★★ บอกชื่อเต็มในเมนูด้วย ไม่ใช่แค่บนปุ่ม — ปุ่มตัดชื่อยาว และบนมือถือไม่โชว์ชื่อเลย
+            *    ที่นี่คือที่เดียวที่อ่านชื่อเต็มได้ทุกขนาดจอ
             */}
-          <div className="border-b border-line px-4 py-3">
-            <p className="text-[11px] text-ink-faint">{t('menu.signedInAs')}</p>
-            <p className="mt-0.5 truncate text-sm font-medium text-ink">
-              <span dir="auto">{displayName}</span>
-              {isAdmin ? <span className="ms-1 text-accent">·&nbsp;Admin</span> : null}
-            </p>
+          <div className="pop-hero relative overflow-hidden px-4 pb-4 pt-4">
+            <span aria-hidden="true" className="pop-blob pop-blob-a" />
+            <span aria-hidden="true" className="pop-blob pop-blob-b" />
+            <div className="relative flex items-center gap-3">
+              {avatarUrl ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img src={avatarUrl} alt="" className="size-14 shrink-0 rounded-full object-cover ring-[3px] ring-[var(--ck-shine)]" />
+              ) : (
+                <span aria-hidden="true" className="grid size-14 shrink-0 place-items-center rounded-full bg-[var(--ck-shine)] text-2xl font-black text-accent">
+                  <span dir="auto">{initial}</span>
+                </span>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-medium text-[color-mix(in_srgb,var(--ck-shine)_80%,transparent)]">{t('menu.signedInAs')}</p>
+                <p dir="auto" className="truncate text-lg font-black leading-tight text-[var(--ck-shine)]">{displayName}</p>
+                {isAdmin ? (
+                  <span className="pop-pill mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-bold">🛡️ Admin</span>
+                ) : null}
+              </div>
+            </div>
+          </div>
+
+          {/* ── ทางลัด: ของที่คนเปิดเมนูนี้มาหาบ่อยที่สุด ── */}
+          <div className="grid grid-cols-2 gap-2 p-3">
+            {(
+              [
+                [profileHref, '🪪', t('menu.profile')],
+                ['/office/wallet/qr', '📱', t('menu.qr')],
+                ['/office/wallet/owed', '💸', t('menu.owed')],
+                ['/office/profile#prof-notify', '🔔', t('menu.notifySettings')],
+              ] as const
+            ).map(([href, emoji, label], i) => (
+              <Link
+                key={href}
+                href={href}
+                role="menuitem"
+                onClick={() => setOpen(false)}
+                style={{ '--i': i } as React.CSSProperties}
+                className="user-tile flex min-h-[4.25rem] flex-col items-start justify-center gap-1 rounded-2xl px-3 py-2.5"
+              >
+                <span aria-hidden="true" className="text-xl leading-none">{emoji}</span>
+                <span className="text-[12.5px] font-bold leading-tight text-ink">{label}</span>
+              </Link>
+            ))}
           </div>
 
           {/*
-            * ★★ ทางเข้าหน้าผู้ดูแลระบบอยู่ในเมนูด้วย ไม่ใช่แค่ปุ่มบนแถบ
-            *    ★ ปุ่มบนแถบมีเฉพาะในโมดูลออฟฟิศ ★★ แต่เมนูนี้อยู่ทุกหน้า
-            *       รวมหน้าแรก — Admin จึงไม่ต้องกลับไปหน้ารวมก่อนทุกครั้ง
+            * ★★ ทางเข้าหน้าผู้ดูแลระบบอยู่ในเมนูด้วย — เมนูนี้อยู่ทุกหน้า รวมหน้าแรก
             */}
           {isAdmin ? (
-            <Link
-              href="/office/admin/users"
-              role="menuitem"
-              onClick={() => setOpen(false)}
-              className="flex items-center gap-2.5 border-b border-line px-4 py-3 text-sm font-medium text-accent transition-colors hover:bg-accent/10"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                className="size-4"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
+            <div className="px-3 pb-2">
+              <Link
+                href="/office/admin/users"
+                role="menuitem"
+                onClick={() => setOpen(false)}
+                className="flex min-h-11 items-center gap-2.5 rounded-2xl bg-accent/10 px-3.5 text-sm font-bold text-accent transition-colors hover:bg-accent/15"
               >
-                <path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6zM9.5 12l2 2 3.5-3.5" />
-              </svg>
-              {t('menu.admin')}
-            </Link>
+                <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6zM9.5 12l2 2 3.5-3.5" />
+                </svg>
+                {t('menu.admin')}
+              </Link>
+            </div>
           ) : null}
 
-          <Link
-            href={profileHref}
-            role="menuitem"
-            onClick={() => setOpen(false)}
-            className="flex items-center gap-2.5 px-4 py-3 text-sm text-ink transition-colors hover:bg-surface"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              className="size-4 text-ink-soft"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              aria-hidden="true"
-            >
-              <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-7 8a7 7 0 0 1 14 0" />
-            </svg>
-            {t('menu.profile')}
-          </Link>
-
+          <div className="border-t border-line p-2.5">
           <button
             type="button"
             role="menuitem"
             disabled={busy}
-            onClick={() => {
+            onClick={async () => {
+              /* ★ ถามก่อนด้วยกล่อง "ยื้อ" — ปิดเมนูก่อนเพื่อไม่ให้ซ้อนกันสองชั้น */
+              setOpen(false)
+              if (!(await confirm({ kind: 'logout' }))) return
               setBusy(true)
               /*
                * ★★ รีโหลดทั้งหน้าหลังออก ไม่ใช่ router.push
@@ -188,7 +208,7 @@ export function UserMenu({
                 window.location.href = '/'
               })
             }}
-            className="flex w-full items-center gap-2.5 px-4 py-3 text-start text-sm text-danger transition-colors hover:bg-danger/10 disabled:opacity-50"
+            className="flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl text-sm font-bold text-danger transition-colors hover:bg-danger/10 disabled:opacity-50"
           >
             <svg
               viewBox="0 0 24 24"
@@ -204,6 +224,7 @@ export function UserMenu({
             </svg>
             {t('menu.signOut')}
           </button>
+          </div>
         </div>
       ) : null}
     </div>

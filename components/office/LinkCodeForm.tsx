@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
+import { useConfirm } from '@/components/ConfirmProvider'
 import { Input } from '@/components/ui/Input'
 import { useOt } from '@/lib/i18n/office'
 
@@ -28,6 +29,7 @@ type Props = {
 export function LinkCodeForm({ defaultDisplayName, defaultNickname, defaultDepartment }: Props) {
   const ot = useOt()
   const router = useRouter()
+  const confirm = useConfirm()
   const [code, setCode] = useState('')
   const [displayName, setDisplayName] = useState(defaultDisplayName)
   const [nickname, setNickname] = useState(defaultNickname ?? '')
@@ -38,6 +40,8 @@ export function LinkCodeForm({ defaultDisplayName, defaultNickname, defaultDepar
   async function submit(event: React.FormEvent) {
     event.preventDefault()
     if (busy) return
+    /* ★ ผูกรหัสพนักงานกับบัญชี — ถามก่อน (ช่องว่างถูกเบราว์เซอร์กันไว้แล้วด้วย required) */
+    if (!(await confirm({ kind: 'create', subject: code.trim() || undefined }))) return
 
     setBusy(true)
     setError(null)

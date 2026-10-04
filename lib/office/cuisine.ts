@@ -31,6 +31,14 @@ export type CuisineStyle = {
  */
 const RULES: { test: RegExp; style: CuisineStyle }[] = [
   {
+    /* คาราโอเกะ (0061) — ไมโครโฟน · มาก่อนทุกกฎ ชื่อร้านคาราโอเกะมักมีคำว่าเหล้า/ชา */
+    test: /คาราโอเกะ|karaoke|ktv/i,
+    style: {
+      tint: '175 82 222',
+      icon: 'M12 3a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM6 11a6 6 0 0 0 12 0M12 17v4M9 21h6',
+    },
+  },
+  {
     /* กาแฟ · เครื่องดื่ม — ถ้วยมีไอ */
     test: /กาแฟ|ชา(นม)?|เครื่องดื่ม|น้ำปั่น|coffee|cafe|caf[eé]|tea|juice|drink|smoothie/i,
     style: {

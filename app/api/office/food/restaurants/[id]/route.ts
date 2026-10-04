@@ -6,6 +6,8 @@ import { assertSameOrigin, parseJsonBody } from '@/lib/http/guard'
 import { ok, withErrorHandling } from '@/lib/http/respond'
 import { enforceRateLimit } from '@/lib/ratelimit'
 import { requireOfficeUser } from '@/lib/office/guard'
+import { cuisineSchema, karaokeSchema, karaokeToStore, readKaraoke } from '@/lib/office/food-schema'
+import { KARAOKE as KARAOKE_CUISINE } from '@/lib/office/food'
 
 export const dynamic = 'force-dynamic'
 
@@ -115,17 +117,19 @@ export const GET = withErrorHandling(
       ratingCount = agg?.rating_count ?? 0
     }
 
-    const shopDishes: { name: string; price: number | null }[] = []
+    const shopDishes: { name: string; price: number | null; photo: string | null; photoUrl: string | null }[] = []
     {
       const { data: dishRows } = await admin
         .from('restaurant_dishes')
-        .select('name, price_satang')
+        .select('name, price_satang, photo_path')
         .eq('restaurant_id', id)
         .order('sort', { ascending: true })
       for (const row of dishRows ?? []) {
         shopDishes.push({
           name: row.name,
           price: row.price_satang == null ? null : row.price_satang / 100,
+          photo: row.photo_path,
+          photoUrl: row.photo_path ? admin.storage.from('restaurants').getPublicUrl(row.photo_path).data.publicUrl : null,
         })
       }
     }
@@ -169,6 +173,8 @@ export const GET = withErrorHandling(
         travelMinutes: (r.travel_minutes as number | null) ?? null,
         travelMode: (r.travel_mode as 'walking' | 'driving' | null) ?? null,
         openHours: (r.open_hours as Record<string, [string, string] | null> | null) ?? null,
+        /* ── 0061 ── ราคาคาราโอเกะ (อ่านแยก ล้มได้) */
+        karaoke: (await readKaraoke(admin, [id])).get(id) ?? null,
         /*
          * ── 0056 ── รูปของร้าน
          * ★ ล้มแล้วถอยได้ — ตารางมาจาก migration 0056 ซึ่งอาจยังไม่ได้รัน
@@ -236,7 +242,9 @@ export const POST = withErrorHandling(async (request: NextRequest, context: Rout
 const updateSchema = z.object({
   name: z.string().trim().min(1, 'common.required').max(80),
   signatureDish: z.string().trim().min(1, 'common.required').max(120),
-  cuisine: z.string().trim().max(40).optional().nullable(),
+  /* ── 0061 ── ประเภทจากรายการตายตัว + ราคาคาราโอเกะ */
+  cuisine: cuisineSchema,
+  karaoke: karaokeSchema,
   priceRange: z.enum(['฿', '฿฿', '฿฿฿']).optional().nullable(),
   distance: z.enum(['WALK', 'DRIVE', 'DELIVERY']).optional().nullable(),
   mapUrl: z.url().startsWith('https://').max(500).optional().nullable().or(z.literal('')),
@@ -244,7 +252,14 @@ const updateSchema = z.object({
   clearClosed: z.boolean().optional(),
   /* ── 0057 ── เมนูเด็ดหลายรายการ ราคาไม่บังคับ */
   dishes: z
-    .array(z.object({ name: z.string().trim().min(1).max(120), price: z.number().min(0).max(100000).optional().nullable() }))
+    .array(
+      z.object({
+        name: z.string().trim().min(1).max(120),
+        price: z.number().min(0).max(100000).optional().nullable(),
+        /* ── 0060 ── รูปของเมนู */
+        photo: z.string().regex(/^dishes\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.(jpg|png|webp)$/).optional().nullable(),
+      }),
+    )
     .max(20)
     .optional(),
   /* ★ ชุดเดียวกับตอนสร้างร้าน — ส่งมาคู่กันเท่านั้นถึงจะถูกใช้ */
@@ -264,6 +279,23 @@ export const PATCH = withErrorHandling(async (request: NextRequest, context: Rou
   await enforceRateLimit('foodAction', actor.id)
 
   const admin = getSupabaseAdminClient()
+
+  /*
+   * ★★★ 0061 — เปลี่ยนจากคาราโอเกะเป็นประเภทอื่น: ล้างราคาคาราโอเกะ "ก่อน" update_restaurant
+   *
+   *     ★ constraint restaurants_karaoke_shape ห้ามมีราคาคาราโอเกะในร้านที่ไม่ใช่คาราโอเกะ
+   *       ★★ ล้างทีหลังไม่ได้ — update_restaurant จะเปลี่ยนประเภทในขณะที่ราคายังค้างอยู่
+   *          แล้ว constraint ปฏิเสธทั้งคำขอ (เจอจากการทดสอบจริง: ได้ 400)
+   *     ★ ตรวจสิทธิ์เองก่อนเขียน — กฎเดียวกับใน update_restaurant (คนเพิ่มร้าน หรือผู้ดูแล)
+   *       คนที่ไม่มีสิทธิ์ข้ามขั้นนี้ไป แล้ว RPC ปฏิเสธตามปกติ
+   */
+  if (body.cuisine !== KARAOKE_CUISINE) {
+    const { data: own } = await admin.from('restaurants').select('added_by').eq('id', id).maybeSingle()
+    if (own && (own.added_by === actor.id || actor.isAdmin)) {
+      await admin.from('restaurants').update({ karaoke: null } as never).eq('id', id)
+    }
+  }
+
   const { data, error } = await admin.rpc('update_restaurant', {
     p_actor: actor.id,
     p_id: id,
@@ -289,6 +321,14 @@ export const PATCH = withErrorHandling(async (request: NextRequest, context: Rou
    *       ★★ การโยน error ตรงนี้จะทำให้หน้าจอบอกว่า "บันทึกไม่สำเร็จ"
    *          ทั้งที่ชื่อร้านกับโน้ตถูกเปลี่ยนไปเรียบร้อยแล้ว
    */
+  /* ── 0061 ── ร้านคาราโอเกะ: เขียนราคาหลัง update_restaurant (สิทธิ์ผ่านแล้ว) */
+  if (body.cuisine === KARAOKE_CUISINE && body.karaoke !== undefined) {
+    await admin
+      .from('restaurants')
+      .update({ karaoke: karaokeToStore(body.cuisine, body.karaoke) } as never)
+      .eq('id', id)
+  }
+
   if (body.dishes && body.dishes.length > 0) {
     /* ★ ล้มแล้วไม่ล้มทั้งคำขอ — ข้อมูลอื่นถูกบันทึกไปแล้ว (เหตุผลเดียวกับพิกัด) */
     await admin.rpc('set_restaurant_dishes', {

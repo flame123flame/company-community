@@ -9,9 +9,11 @@ import { cn } from '@/lib/cn'
 import { splitList } from '@/lib/i18n/office-format'
 import { departmentLabel } from '@/lib/office/departments'
 import { useOt } from '@/lib/i18n/office'
+import { useConfirm } from '@/components/ConfirmProvider'
 import { RandomWheel } from './RandomWheel'
 import { SpinWheel, SEGMENT_TINTS } from './SpinWheel'
 import type { Member } from '@/lib/office/teams'
+import { FunGuide } from './FunGuide'
 
 type NameSet = { id: string; name: string; members: Member[]; updatedAt: string }
 type Person = { id: string; name: string; department: string | null }
@@ -37,6 +39,7 @@ const WHEEL_MAX = 14
 
 export function FunNameWheel() {
   const ot = useOt()
+  const confirm = useConfirm()
   const [topic, setTopic] = useState('')
   const [members, setMembers] = useState<Member[]>([])
   const [typed, setTyped] = useState('')
@@ -98,6 +101,7 @@ export function FunNameWheel() {
   async function saveSet() {
     const name = window.prompt(ot('fun.sets.savePrompt'))
     if (!name?.trim()) return
+    if (!(await confirm({ kind: 'create', subject: name.trim() }))) return
     try {
       await apiFetch('/api/office/fun/name-sets', {
         method: 'POST',
@@ -110,7 +114,8 @@ export function FunNameWheel() {
     }
   }
 
-  async function removeSet(id: string) {
+  async function removeSet(id: string, name: string) {
+    if (!(await confirm({ kind: 'delete', subject: name }))) return
     try {
       await apiFetch('/api/office/fun/name-sets', { method: 'DELETE', body: { id } })
       await loadSets()
@@ -123,7 +128,8 @@ export function FunNameWheel() {
 
   return (
     <div className="py-2">
-      <div className="grid gap-6 lg:grid-cols-[1fr_21rem]">
+      <FunGuide id="name" art="wheel" />
+      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_21rem]">
         {/* ═══ เวที ═══════════════════════════════════════════════ */}
         <div className="relative">
           {/*
@@ -323,7 +329,7 @@ export function FunNameWheel() {
             <button
               type="button"
               onClick={() => setShowStaff((v) => !v)}
-              className="mt-3 text-xs text-link hover:underline"
+              className="mt-1 inline-flex min-h-11 items-center text-xs text-link hover:underline sm:mt-3 sm:min-h-0"
             >
               {ot('fun.name.fromStaff')} {showStaff ? '▲' : '▼'}
             </button>
@@ -427,7 +433,7 @@ export function FunNameWheel() {
                     >
                       {ot('fun.sets.load')}
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => void removeSet(s.id)}>
+                    <Button size="sm" variant="ghost" onClick={() => void removeSet(s.id, s.name)}>
                       ✕
                     </Button>
                   </li>

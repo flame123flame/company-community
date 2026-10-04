@@ -1,17 +1,19 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import Link from 'next/link'
 import { apiFetch, apiUpload } from '@/lib/api/client'
 import { officeErrorText } from '@/lib/i18n/office-format'
 import { shrinkImage } from '@/lib/image/shrink'
 import { Button } from '@/components/ui/Button'
+import { useConfirm } from '@/components/ConfirmProvider'
 import { Input } from '@/components/ui/Input'
 import { cn } from '@/lib/cn'
 import { Toggle } from '@/components/ui/Toggle'
 import { companyLabel } from '@/lib/office/company'
-import { DEPARTMENTS } from '@/lib/office/departments'
+import { DEPARTMENTS, departmentLabel } from '@/lib/office/departments'
 import { Untranslated, useOt, type OfficeKey } from '@/lib/i18n/office'
+import { FunGuide } from './FunGuide'
 
 type Profile = {
   displayName: string
@@ -97,6 +99,7 @@ const NOTIFY_GROUPS: NotifyGroup[] = [
 /** หน้าโปรไฟล์ + ตั้งค่าแจ้งเตือน (หัวข้อ 8.1) */
 export function OfficeProfile() {
   const ot = useOt()
+  const confirm = useConfirm()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [off, setOff] = useState<Set<string>>(new Set())
   const [department, setDepartment] = useState('')
@@ -164,6 +167,7 @@ export function OfficeProfile() {
   async function saveName() {
     const next = name.trim()
     if (!next || nameBusy) return
+    if (!(await confirm({ kind: 'edit', subject: `${ot('profile.name')}: ${next}` }))) return
 
     setNameBusy(true)
     setError(null)
@@ -184,6 +188,7 @@ export function OfficeProfile() {
   }
 
   async function saveDepartment() {
+    if (!(await confirm({ kind: 'edit', subject: `${ot('profile.department')}: ${departmentLabel(ot, department) ?? department}` }))) return
     setBusy(true)
     setError(null)
     setSaved(false)
@@ -212,6 +217,8 @@ export function OfficeProfile() {
    *      การเผาเน็ตของคนใช้และพื้นที่เก็บของเราไปพร้อมกัน
    */
   async function uploadAvatar(file: File) {
+    /* ★ เลือกไฟล์แล้วบันทึกทันที — จึงถามตรงนี้ */
+    if (!(await confirm({ kind: 'edit', subject: ot('profile.avatarChange') }))) return
     setUploading(true)
     setError(null)
     setAvatarNote(null)
@@ -250,286 +257,352 @@ export function OfficeProfile() {
   }
 
   if (!profile) {
-    return <p className="py-10 text-center text-sm text-ink-faint">{ot('common.loading')}</p>
+    return (
+      <div className="py-2">
+        <FunGuide id="profile" art="idcard" />
+        <p className="py-10 text-center text-sm text-ink-faint">{ot('common.loading')}</p>
+      </div>
+    )
   }
 
+  const shownName = profile.nickname || profile.displayName
+  /* ── ความพร้อมของโปรไฟล์ — เฉพาะเรื่องที่ผู้ใช้ทำเองได้ ── */
+  /* ★ pickAvatar เป็นธงบอกชนิด ไม่ใช่ฟังก์ชัน — ปุ่มเรียก fileRef เองตอนกด (ห้ามแตะ ref ตอน render) */
+  const checks: { key: OfficeKey; ok: boolean; href?: string; pickAvatar?: boolean }[] = [
+    { key: 'profile.check.avatar', ok: !!profile.avatarUrl, pickAvatar: true },
+    { key: 'profile.check.name', ok: !!shownName.trim(), href: '#prof-name' },
+    { key: 'profile.check.dept', ok: !!profile.department, href: '#prof-dept' },
+    { key: 'profile.check.qr', ok: profile.hasQr, href: '/office/wallet/qr' },
+  ]
+  const done = checks.filter((c) => c.ok).length
+  const pct = Math.round((done / checks.length) * 100)
+  const notifyTotal = NOTIFY_GROUPS.reduce((n, g) => n + g.items.length, 0)
+  const notifyOn = NOTIFY_GROUPS.reduce((n, g) => n + g.items.filter((i) => !off.has(i.type)).length, 0)
+  const deptName = profile.department ? departmentLabel(ot, profile.department) : null
+  const QUICK: { href: string; emoji: string; key: OfficeKey }[] = [
+    { href: '/office/wallet/qr', emoji: '🪪', key: 'top.qr' },
+    { href: '/office/wallet/owed', emoji: '💸', key: 'nav.wallet.owed' },
+    { href: '/office/wallet/summary', emoji: '📊', key: 'nav.wallet.summary' },
+    { href: '/office/market/mine', emoji: '📦', key: 'nav.market.mine' },
+  ]
+  const GROUP_EMOJI = ['💰', '💬', '🛍️', '⚙️']
+
   return (
-    <div className="max-w-3xl py-2">
+    <div className="py-2">
+      <FunGuide id="profile" art="idcard" />
 
-      {/*
-        * ═══ หัวโปรไฟล์: รูป + ชื่อ + รหัสพนักงาน ═══
-        *
-        * ★★★ หน้านี้เคยเป็นตารางคู่ป้าย-ค่า สามบรรทัด
-        *     ★ ซึ่งอ่านเป็น "หน้าแสดงข้อมูล" ไม่ใช่ "โปรไฟล์ของฉัน"
-        *       ★★ รูปกับชื่อที่ใหญ่พอทำให้คนรู้ทันทีว่ากำลังดูของตัวเองอยู่
-        *          ซึ่งสำคัญในระบบที่มีเรื่องเงินและเครื่องที่ใช้ร่วมกัน
-        */}
-      <div className="profile-hero mt-4 flex flex-col items-center gap-4 rounded-3xl p-6 sm:flex-row sm:items-start">
-        <div className="relative shrink-0">
-          {profile.avatarUrl ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={profile.avatarUrl}
-              alt={profile.displayName}
-              className="size-24 rounded-full object-cover ring-2 ring-accent/35"
-            />
-          ) : (
-            <span className="grid size-24 place-items-center rounded-full bg-accent text-3xl font-bold text-accent-ink ring-2 ring-accent/35">
-              <span dir="auto">
-                {(profile.nickname || profile.displayName).trim().charAt(0) || '?'}
-              </span>
-            </span>
-          )}
+      <div className="mt-6 grid items-start gap-5 lg:grid-cols-[360px_minmax(0,1fr)]">
+        {/* ═══ ซ้าย: บัตรพนักงาน + ความพร้อม + ทางลัด ═══ */}
+        <aside className="flex flex-col gap-4 lg:sticky lg:top-[calc(var(--spacing-header)+16px)]">
+          {/*
+            * ★★★ หัวโปรไฟล์เป็น "บัตรพนักงาน" — รูปใหญ่ ชื่อใหญ่ รหัสพนักงาน
+            *     ★ คนรู้ทันทีว่ากำลังดูของตัวเอง ซึ่งสำคัญในระบบที่มีเรื่องเงิน
+            */}
+          <div className="prof-card overflow-hidden rounded-[28px]">
+            <div className="prof-banner relative h-28">
+              {profile.isAdmin ? (
+                <span className="absolute end-3 top-3 rounded-full bg-[color-mix(in_srgb,var(--ck-shade)_35%,transparent)] px-2.5 py-1 text-[11px] font-bold text-[var(--ck-shine)] backdrop-blur">
+                  🛡️ Admin
+                </span>
+              ) : null}
+            </div>
+            <div className="-mt-14 flex flex-col items-center px-5 pb-6 text-center">
+              <div className="relative">
+                {profile.avatarUrl ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img src={profile.avatarUrl} alt={profile.displayName} className="size-28 rounded-full object-cover ring-4 ring-elevated" />
+                ) : (
+                  <span className="grid size-28 place-items-center rounded-full bg-accent text-4xl font-black text-accent-ink ring-4 ring-elevated">
+                    <span dir="auto">{shownName.trim().charAt(0) || '?'}</span>
+                  </span>
+                )}
+                {/* ★ ปุ่มกล้องทับมุมรูป — ที่ที่คนไปกดเปลี่ยนรูปโดยไม่ต้องอ่าน */}
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={uploading}
+                  title={ot('profile.avatarChange')}
+                  aria-label={ot('profile.avatarChange')}
+                  className="absolute -bottom-0.5 -end-0.5 grid size-11 place-items-center rounded-full border-4 border-elevated bg-ink text-page shadow-md transition-colors hover:bg-accent hover:text-accent-ink disabled:opacity-50"
+                >
+                  {uploading ? (
+                    <span className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  ) : (
+                    <svg viewBox="0 0 24 24" className="size-4.5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M4 8h3l1.5-2h7L17 8h3v11H4z" />
+                      <circle cx="12" cy="13" r="3.2" />
+                    </svg>
+                  )}
+                </button>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0]
+                    if (f) void uploadAvatar(f)
+                    e.target.value = ''
+                  }}
+                />
+              </div>
 
-          {/* ★ ปุ่มกล้องทับมุมรูป — ที่ที่คนไปกดเปลี่ยนรูปโดยไม่ต้องอ่าน */}
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            disabled={uploading}
-            title={ot('profile.avatarChange')}
-            aria-label={ot('profile.avatarChange')}
-            className={cn(
-              'absolute -end-1 -bottom-1 grid size-9 place-items-center rounded-full',
-              'border-2 border-page bg-surface text-ink transition-colors',
-              'hover:bg-accent hover:text-accent-ink disabled:opacity-50',
-            )}
-          >
-            {uploading ? (
-              <span className="size-4 animate-spin rounded-full border-2 border-accent border-t-transparent" />
-            ) : (
-              <svg
-                viewBox="0 0 24 24"
-                className="size-4.5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M4 8h3l1.5-2h7L17 8h3v11H4z" />
-                <circle cx="12" cy="13" r="3.2" />
-              </svg>
-            )}
-          </button>
-
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0]
-              if (f) void uploadAvatar(f)
-              e.target.value = ''
-            }}
-          />
-        </div>
-
-        <div className="min-w-0 flex-1 text-center sm:text-start">
-          <p className="text-[22px] font-bold leading-tight text-ink">
-            <span dir="auto">{profile.nickname || profile.displayName}</span>
-          </p>
-          <p className="mt-1 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs text-ink-soft sm:justify-start">
-            {profile.username ? <span className="font-mono">@{profile.username}</span> : null}
-            {profile.employeeCode ? (
-              <span className="rounded-full bg-surface px-2 py-0.5 font-mono">
-                {profile.employeeCode}
-              </span>
-            ) : null}
-            {profile.isAdmin ? (
-              <span className="rounded-full bg-accent/15 px-2 py-0.5 font-medium text-accent">
-                Admin
-              </span>
-            ) : null}
-          </p>
-
-          <p className="mt-2 text-xs text-ink-faint">{ot('profile.avatarHint')}</p>
-          {avatarNote ? <p className="mt-1 text-xs text-accent">{avatarNote}</p> : null}
-
-          <div className="mt-3 flex flex-wrap justify-center gap-2 sm:justify-start">
-            <Link
-              href="/office/wallet/qr"
-              className="inline-flex h-9 items-center rounded-full bg-surface px-4 text-sm text-ink transition-colors hover:bg-surface-hover"
-            >
-              {profile.hasQr ? ot('profile.qrChange') : ot('profile.qrAdd')}
-            </Link>
+              <p dir="auto" className="mt-3 text-[24px] font-black leading-tight text-ink">{shownName}</p>
+              {profile.position ? <p dir="auto" className="mt-0.5 text-sm text-ink-soft">{profile.position}</p> : null}
+              <div className="mt-2 flex flex-wrap justify-center gap-1.5 text-xs">
+                {profile.username ? <span className="rounded-full bg-surface px-2.5 py-1 font-mono text-ink-soft">@{profile.username}</span> : null}
+                {profile.employeeCode ? (
+                  <span className="rounded-full bg-surface px-2.5 py-1 font-mono font-semibold text-ink">🪪 {profile.employeeCode}</span>
+                ) : null}
+                {deptName ? <span dir="auto" className="rounded-full bg-accent/12 px-2.5 py-1 font-medium text-accent">🏢 {deptName}</span> : null}
+              </div>
+              <p className="mt-3 text-[11px] text-ink-faint">{ot('profile.avatarHint')}</p>
+              {avatarNote ? <p className="mt-1 text-xs font-medium text-accent">{avatarNote}</p> : null}
+            </div>
           </div>
-        </div>
-      </div>
 
-      {/* ── ชื่อของฉัน ────────────────────────────────────────── */}
-      {/*
-        * ★★★ อยู่เหนือ "ข้อมูลพนักงาน" โดยตั้งใจ
-        *
-        *     ★ การ์ดข้างล่างเป็นข้อมูลที่ผู้ใช้แก้เองไม่ได้ (ผู้ดูแลแก้ให้)
-        *       ★★ ถ้าวางช่องที่แก้ได้ไว้ใต้ช่องที่แก้ไม่ได้ คนจะเลื่อนผ่าน
-        *          การ์ดบนแล้วสรุปว่า "หน้านี้แก้อะไรไม่ได้เลย" แล้วออกไป
-        *     ★ ของที่กดได้ควรอยู่ก่อนของที่อ่านอย่างเดียวเสมอ
-        */}
-      <div className="mt-4 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-5">
-        {/*
-          * ★ สองบรรทัดนี้ยังไม่ได้แปล (กติกา "ทำไทยอย่างเดียว" ใน AGENTS.md)
-          *   ★★ <Untranslated> ติดป้าย lang="th" ให้ และจะเลิกติดเองวันที่แปลเสร็จ
-          */}
-        <p className="text-sm font-medium text-ink">
-          <Untranslated>{ot('profile.secName')}</Untranslated>
-        </p>
-        <p className="mt-0.5 text-xs text-ink-faint">
-          <Untranslated>{ot('profile.nameHint')}</Untranslated>
-        </p>
+          {/* ── ความพร้อมของโปรไฟล์ ── */}
+          <div className="mkt-panel rounded-[28px] p-4">
+            <div className="flex items-center gap-3">
+              <span
+                aria-hidden="true"
+                className="prof-ring grid size-14 shrink-0 place-items-center rounded-full text-sm font-black tabular-nums text-ink"
+                style={{ '--p': `${pct}%` } as CSSProperties}
+              >
+                <span className="grid size-11 place-items-center rounded-full bg-elevated">{pct}%</span>
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-bold text-ink">
+                  <Untranslated>{ot('profile.check.title')}</Untranslated>
+                </span>
+                <span className="block text-xs text-ink-soft">
+                  <Untranslated>{done === checks.length ? ot('profile.check.done') : ot('profile.check.left', { n: checks.length - done })}</Untranslated>
+                </span>
+              </span>
+            </div>
+            <ul className="mt-3 flex flex-col gap-1">
+              {checks.map((c) => {
+                const body = (
+                  <>
+                    <span aria-hidden="true" className={cn('grid size-6 shrink-0 place-items-center rounded-full text-[11px] font-bold', c.ok ? 'mkt-check-done' : 'bg-surface text-ink-faint')}>
+                      {c.ok ? '✓' : ''}
+                    </span>
+                    <span className={cn('min-w-0 flex-1 text-[13px]', c.ok ? 'text-ink-soft line-through decoration-ink-faint/50' : 'font-medium text-ink')}>
+                      <Untranslated>{ot(c.key)}</Untranslated>
+                    </span>
+                    {!c.ok ? <span aria-hidden="true" className="text-ink-faint rtl:-scale-x-100">›</span> : null}
+                  </>
+                )
+                const cls = 'flex min-h-11 w-full items-center gap-2.5 rounded-xl px-2 text-start transition-colors hover:bg-surface'
+                return (
+                  <li key={c.key}>
+                    {c.ok ? (
+                      <div className={cls}>{body}</div>
+                    ) : c.pickAvatar ? (
+                      <button type="button" onClick={() => fileRef.current?.click()} className={cls}>{body}</button>
+                    ) : c.href?.startsWith('#') ? (
+                      <a href={c.href} className={cls}>{body}</a>
+                    ) : (
+                      <Link href={c.href ?? '#'} className={cls}>{body}</Link>
+                    )}
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <label htmlFor="dispName" className="sr-only">
-            {ot('profile.name')}
-          </label>
-          <Input
-            id="dispName"
-            radius="round"
-            className="min-w-0 flex-1 sm:max-w-sm"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            /* ★ ความยาวสูงสุดตรงกับ displayNameSchema ฝั่ง server เป๊ะ
-                 ★★ ให้ช่องกรอกหยุดที่ 40 ดีกว่าปล่อยให้พิมพ์ 60 แล้วค่อย
-                    ฟ้องตอนกดบันทึก ซึ่งแปลว่าต้องลบทิ้งเองยี่สิบตัว */
-            maxLength={40}
-            /* ★ ชื่อคนเป็นภาษาอะไรก็ได้ ไม่เกี่ยวกับภาษาของหน้า */
-            dir="auto"
-            onKeyDown={(e) => {
-              /* ★ Enter บันทึกเลย — ช่องเดียวในกล่องนี้ จึงไม่กำกวมว่าจะส่งอะไร */
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                void saveName()
-              }
-            }}
-          />
-          <Button
-            size="sm"
-            variant="primary"
-            onClick={saveName}
-            /* ★ ชื่อว่างบันทึกไม่ได้ — ปุ่มบอกก่อนกด ไม่ใช่ฟ้องหลังกด */
-            disabled={!name.trim() || nameBusy}
+          {/* ── ทางลัดของฉัน ── */}
+          <div className="mkt-panel rounded-[28px] p-4">
+            <p className="text-sm font-bold text-ink">
+              <Untranslated>{ot('profile.quick.title')}</Untranslated>
+            </p>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {QUICK.map((q) => (
+                <Link key={q.href} href={q.href} className="chat-start flex min-h-14 items-center gap-2.5 rounded-2xl px-3 py-2">
+                  <span aria-hidden="true" className="text-xl">{q.emoji}</span>
+                  <span className="min-w-0 text-[12.5px] font-semibold leading-tight text-ink">{ot(q.key)}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </aside>
+
+        {/* ═══ ขวา: ส่วนที่แก้ได้ (บน) → อ่านอย่างเดียว (ล่าง) ═══ */}
+        <div className="flex min-w-0 flex-col gap-4">
+          {/*
+            * ★★★ ของที่แก้ได้อยู่ก่อนของที่อ่านอย่างเดียวเสมอ
+            *     ★ ไม่งั้นคนเลื่อนผ่านการ์ดบนแล้วสรุปว่า "หน้านี้แก้อะไรไม่ได้เลย"
+            */}
+          {/* ── 1 · ชื่อที่แสดง ── */}
+          <ProfSection id="prof-name" n={1} emoji="✏️" title={<Untranslated>{ot('profile.secName')}</Untranslated>} hint={<Untranslated>{ot('profile.nameHint')}</Untranslated>}>
+            <div className="flex flex-wrap items-center gap-2">
+              <label htmlFor="dispName" className="sr-only">{ot('profile.name')}</label>
+              <Input
+                id="dispName"
+                radius="round"
+                className="min-w-0 flex-1 sm:max-w-sm"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                /* ★ ความยาวสูงสุดตรงกับ displayNameSchema ฝั่ง server เป๊ะ */
+                maxLength={40}
+                /* ★ ชื่อคนเป็นภาษาอะไรก็ได้ ไม่เกี่ยวกับภาษาของหน้า */
+                dir="auto"
+                onKeyDown={(e) => {
+                  /* ★ Enter บันทึกเลย — ช่องเดียวในกล่องนี้ จึงไม่กำกวมว่าจะส่งอะไร */
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    void saveName()
+                  }
+                }}
+              />
+              {/* ★ ชื่อว่างบันทึกไม่ได้ — ปุ่มบอกก่อนกด ไม่ใช่ฟ้องหลังกด */}
+              <Button variant="primary" className="min-h-11" onClick={saveName} disabled={!name.trim() || nameBusy}>
+                {ot('common.save')}
+              </Button>
+            </div>
+            {nameNote ? (
+              <p className="mt-2 text-xs font-medium text-accent">
+                ✓ <Untranslated>{nameNote}</Untranslated>
+              </p>
+            ) : null}
+          </ProfSection>
+
+          {/* ── 2 · ฝ่าย/แผนก ── */}
+          <ProfSection id="prof-dept" n={2} emoji="🏢" title={ot('profile.department')} hint={ot('profile.departmentHint')}>
+            {/*
+              * ★★ เป็นรายการให้เลือก ไม่ใช่ช่องพิมพ์ — ชุดเดียวกับฟอร์มสมัคร
+              *    ★ พิมพ์อิสระแล้วคนจะแก้เป็นคำอื่น หลุดจากตัวกรองในหน้า Admin
+              */}
+            <div className="flex items-center gap-2">
+              <label htmlFor="dept" className="sr-only">{ot('profile.department')}</label>
+              <select
+                id="dept"
+                value={department}
+                onChange={(e) => {
+                  setDepartment(e.target.value)
+                  setSaved(false)
+                }}
+                className={cn(
+                  'field-input h-11 min-w-0 flex-1 rounded-full border border-line bg-input px-4 sm:max-w-sm',
+                  'text-[16px] text-ink sm:text-sm',
+                  'transition-colors focus:border-accent/70 focus:outline-none',
+                  department === '' && 'text-ink-faint',
+                )}
+              >
+                <option value="">{ot('reg.deptPick')}</option>
+                {DEPARTMENTS.map((d) => (
+                  <option key={d.value} value={d.value}>
+                    {ot(d.labelKey)}
+                  </option>
+                ))}
+                {/* ★ ฝ่ายเดิมที่ไม่อยู่ในรายการต้องไม่หายไปจากช่อง — ไม่งั้นเผลอเซฟทับ */}
+                {department && !DEPARTMENTS.some((d) => d.value === department) ? (
+                  <option value={department}>{department}</option>
+                ) : null}
+              </select>
+              <Button className="min-h-11" loading={busy} disabled={!department} onClick={saveDepartment}>
+                {ot('common.save')}
+              </Button>
+            </div>
+            {saved ? <p className="mt-2 text-xs font-medium text-accent">✓ {ot('profile.saved')}</p> : null}
+          </ProfSection>
+
+          {/* ── 3 · การแจ้งเตือน ── */}
+          <ProfSection
+            id="prof-notify"
+            n={3}
+            emoji="🔔"
+            title={ot('profile.notify')}
+            hint={ot('profile.notifyHint')}
+            badge={
+              <span className="rounded-full bg-surface px-2.5 py-1 text-[11px] font-bold tabular-nums text-ink-soft">
+                <Untranslated>{ot('profile.notifyOn', { n: notifyOn, total: notifyTotal })}</Untranslated>
+              </span>
+            }
           >
-            {ot('common.save')}
-          </Button>
-          {nameNote ? (
-            <p className="text-xs text-accent">
-              <Untranslated>{nameNote}</Untranslated>
+            <div className="grid gap-3 md:grid-cols-2">
+              {NOTIFY_GROUPS.map((g, gi) => (
+                <div key={g.titleKey} className="rounded-2xl bg-surface/60 p-3">
+                  <p className="mb-1 flex items-center gap-1.5 text-xs font-bold text-ink">
+                    <span aria-hidden="true">{GROUP_EMOJI[gi]}</span>
+                    {ot(g.titleKey)}
+                  </p>
+                  <div className="flex flex-col">
+                    {g.items.map((n) => (
+                      <Toggle key={n.type} plain checked={!off.has(n.type)} onChange={() => void toggle(n.type)} label={ot(n.labelKey)} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </ProfSection>
+
+          {/* ── 4 · ข้อมูลพนักงาน (อ่านอย่างเดียว) ── */}
+          <ProfSection
+            id="prof-employee"
+            n={4}
+            emoji="🪪"
+            title={ot('profile.secEmployee')}
+            hint={ot('profile.askAdmin')}
+            badge={
+              <span className="inline-flex items-center gap-1 rounded-full bg-surface px-2.5 py-1 text-[11px] font-semibold text-ink-soft">
+                🔒 <Untranslated>{ot('profile.readonly')}</Untranslated>
+              </span>
+            }
+          >
+            <dl className="grid gap-x-6 gap-y-3 rounded-2xl bg-surface/50 p-4 sm:grid-cols-2">
+              <Row label={ot('reg.firstName')} value={profile.firstName} />
+              <Row label={ot('reg.lastName')} value={profile.lastName} />
+              <Row label={ot('profile.phone')} value={profile.phone} mono />
+              <Row label={ot('profile.position')} value={profile.position} />
+              <Row label={ot('profile.company')} value={companyLabel(ot, profile.company)} wide />
+            </dl>
+          </ProfSection>
+
+          {error ? (
+            <p role="alert" className="text-sm text-danger">
+              {error}
             </p>
           ) : null}
         </div>
       </div>
-
-      {/* ── ข้อมูลพนักงาน (อ่านอย่างเดียว) ───────────────────── */}
-      <div className="mt-4 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-5">
-        <p className="text-sm font-medium text-ink">{ot('profile.secEmployee')}</p>
-        <p className="mt-0.5 text-xs text-ink-faint">{ot('profile.askAdmin')}</p>
-
-        <dl className="mt-4 grid gap-x-6 gap-y-3 sm:grid-cols-2">
-          <Row label={ot('reg.firstName')} value={profile.firstName} />
-          <Row label={ot('reg.lastName')} value={profile.lastName} />
-          <Row label={ot('profile.phone')} value={profile.phone} mono />
-          <Row label={ot('profile.position')} value={profile.position} />
-          <Row label={ot('profile.company')} value={companyLabel(ot, profile.company)} wide />
-        </dl>
-
-        {/*
-          * ★★★ เอาบรรทัด "ชื่อและรูปแก้ได้ที่หน้าตั้งค่าของห้องเพลง" ออกแล้ว
-          *
-          *     ★ มันพูดไม่จริงมาตั้งแต่วันที่ใส่ปุ่มกล้องบนรูปในหน้านี้ —
-          *       รูปแก้ได้ที่นี่อยู่แล้ว ★★ และตอนนี้ชื่อก็แก้ได้ที่นี่ด้วย
-          *     ★ คำแนะนำที่พาไปผิดที่ แย่กว่าไม่มีคำแนะนำเลย — คนจะเดินไป
-          *       หน้าห้องเพลงแล้วหาไม่เจอ แล้วสรุปว่าแก้ชื่อไม่ได้
-          *     ★★ เรื่อง "ใช้ร่วมกันทั้งสองระบบ" ย้ายไปอยู่ใต้หัวข้อชื่อ
-          *        ซึ่งเป็นที่ที่คนกำลังจะแก้ชื่ออ่านอยู่พอดี
-          */}
-      </div>
-
-      {/* ── ฝ่าย/แผนก ────────────────────────────────────────── */}
-      <div className="mt-4 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-4">
-        <label htmlFor="dept" className="block text-sm font-medium text-ink">
-          {ot('profile.department')}
-        </label>
-        <p className="mt-0.5 text-xs text-ink-faint">{ot('profile.departmentHint')}</p>
-        {/*
-          * ★★ เป็นรายการให้เลือก ไม่ใช่ช่องพิมพ์ — ชุดเดียวกับฟอร์มสมัคร
-          *    ★ ถ้าที่นี่พิมพ์อิสระ คนจะแก้ "ฝ่ายพัฒนาระบบ" เป็น "IT" แล้ว
-          *      หลุดออกจากกลุ่มที่ตัวกรองในหน้า Admin ใช้ทันที
-          *      ★★ ซึ่งเป็นปัญหาเดียวกับที่แก้ไปแล้วตอนทำฟอร์มสมัคร
-          *         การแก้ที่เดียวแล้วปล่อยอีกที่ไว้คือการแก้ครึ่งเดียว
-          */}
-        <div className="mt-2.5 flex items-center gap-2">
-          <select
-            id="dept"
-            value={department}
-            onChange={(e) => {
-              setDepartment(e.target.value)
-              setSaved(false)
-            }}
-            className={cn(
-              'field-input h-11 min-w-0 flex-1 rounded-full border border-line bg-input px-4',
-              'text-[16px] text-ink sm:text-sm',
-              'transition-colors focus:border-accent/70 focus:outline-none',
-              department === '' && 'text-ink-faint',
-            )}
-          >
-            <option value="">{ot('reg.deptPick')}</option>
-            {DEPARTMENTS.map((d) => (
-              <option key={d.value} value={d.value}>
-                {ot(d.labelKey)}
-              </option>
-            ))}
-            {/* ★ ฝ่ายเดิมที่ไม่อยู่ในรายการต้องไม่หายไปจากช่อง
-                ★★ คนที่ Admin ตั้งค่าให้เป็นฝ่ายอื่น หรือสมัครด้วย "อื่น ๆ"
-                   จะเห็นช่องว่างเปล่าแล้วเผลอเซฟทับของเดิมทิ้ง */}
-            {department && !DEPARTMENTS.some((d) => d.value === department) ? (
-              <option value={department}>{department}</option>
-            ) : null}
-          </select>
-
-          <Button size="sm" loading={busy} disabled={!department} onClick={saveDepartment}>
-            {ot('common.save')}
-          </Button>
-        </div>
-        {saved ? <p className="mt-2 text-xs text-accent">{ot('profile.saved')}</p> : null}
-      </div>
-
-      {/* ── สวิตช์แจ้งเตือน ──────────────────────────────────── */}
-      <div className="mt-4 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-4">
-        <p className="text-sm font-medium text-ink">{ot('profile.notify')}</p>
-        <p className="mt-0.5 text-xs text-ink-faint">{ot('profile.notifyHint')}</p>
-
-        <div className="mt-3 flex flex-col gap-4">
-          {NOTIFY_GROUPS.map((g) => (
-            <div key={g.titleKey}>
-              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
-                {ot(g.titleKey)}
-              </p>
-              <div className="flex flex-col gap-1">
-                {g.items.map((n) => {
-                  const on = !off.has(n.type)
-                  return (
-                    <Toggle
-                      key={n.type}
-                      plain
-                      checked={on}
-                      onChange={() => void toggle(n.type)}
-                      label={ot(n.labelKey)}
-                    />
-                  )
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {error ? (
-        <p role="alert" className="mt-3 text-sm text-danger">
-          {error}
-        </p>
-      ) : null}
     </div>
+  )
+}
+
+/** หนึ่งส่วนของหน้าโปรไฟล์ — เลขลำดับ + ไอคอน + หัวข้อ + คำอธิบาย */
+function ProfSection({
+  id,
+  n,
+  emoji,
+  title,
+  hint,
+  badge,
+  children,
+}: {
+  id: string
+  n: number
+  emoji: string
+  title: React.ReactNode
+  hint: React.ReactNode
+  badge?: React.ReactNode
+  children: React.ReactNode
+}) {
+  return (
+    <section id={id} className="mkt-panel scroll-mt-[calc(var(--spacing-header)+16px)] rounded-[28px] p-5 sm:p-6">
+      <div className="flex flex-wrap items-start gap-3">
+        <span className="room-step-num grid size-9 shrink-0 place-items-center rounded-xl text-sm font-black">{n}</span>
+        <div className="min-w-0 flex-[1_1_12rem]">
+          <h2 className="flex items-center gap-2 text-base font-bold text-ink">
+            <span aria-hidden="true">{emoji}</span>
+            {title}
+          </h2>
+          <p className="mt-0.5 text-xs leading-relaxed text-ink-soft">{hint}</p>
+        </div>
+        {badge ? <div className="shrink-0 ps-12 sm:ps-0">{badge}</div> : null}
+      </div>
+      <div className="mt-4">{children}</div>
+    </section>
   )
 }
 

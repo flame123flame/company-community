@@ -1,14 +1,15 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiFetch } from '@/lib/api/client'
-import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/cn'
 import { useOt } from '@/lib/i18n/office'
+import { useConfirm } from '@/components/ConfirmProvider'
 import { randomIndex } from '@/lib/office/draw'
 import { isMuted, playCelebrate, setMuted, vibrate } from '@/lib/office/sound'
 import { Confetti } from './Confetti'
 import { SlotReels } from './SlotReels'
+import { FunGuide } from './FunGuide'
 
 type Pick = { id: string; number: string; drawDate: string | null; createdAt: string }
 type BoardRow = { number: string; picks: number }
@@ -24,6 +25,7 @@ const DIGIT_OPTIONS = [2, 3, 6] as const
  */
 export function FunLottery() {
   const ot = useOt()
+  const confirm = useConfirm()
   const [digits, setDigits] = useState<number>(2)
   const [target, setTarget] = useState<string[]>(['0', '0'])
   const [flash, setFlash] = useState(false)
@@ -74,6 +76,28 @@ export function FunLottery() {
     setSpinning(true)
   }
 
+  /*
+   * ── ย่อเครื่องให้พอดีจอ ──────────────────────────────────────────
+   * ★ ความกว้างจริงของเครื่อง = วงล้อ × จำนวนหลัก + ช่องไฟ + ขอบกระจก
+   *   (ค่าเดียวกับคลาสใน SlotReels: ล้อ 72/84px · ช่องไฟ 8/10px · ขอบ 16px×2 + เส้น 2px)
+   */
+  const fitRef = useRef<HTMLDivElement | null>(null)
+  const [zoom, setZoom] = useState(1)
+  useEffect(() => {
+    const el = fitRef.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const measure = () => {
+      const wide = window.matchMedia('(min-width: 640px)').matches
+      const reel = wide ? 84 : 72
+      const gap = wide ? 10 : 8
+      const natural = digits * reel + (digits - 1) * gap + 32 + 2
+      setZoom(Math.min(1, el.clientWidth / natural))
+    }
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [digits])
+
   /** เรียกจาก SlotReels เมื่อวงล้อทุกหลักหยุดหมดแล้ว */
   function finish() {
     setSpinning(false)
@@ -86,6 +110,7 @@ export function FunLottery() {
 
   async function save() {
     if (!result) return
+    if (!(await confirm({ kind: 'create', subject: result }))) return
     try {
       await apiFetch('/api/office/fun/lottery', { method: 'POST', body: { number: result } })
       setSaved(true)
@@ -95,7 +120,8 @@ export function FunLottery() {
     }
   }
 
-  async function remove(id: string) {
+  async function remove(id: string, number: string) {
+    if (!(await confirm({ kind: 'delete', subject: number }))) return
     try {
       await apiFetch('/api/office/fun/lottery', { method: 'DELETE', body: { id } })
       await load()
@@ -109,7 +135,9 @@ export function FunLottery() {
     : null
 
   return (
-    <div className="max-w-2xl py-2">
+    <div className="py-2">
+    <FunGuide id="lottery" art="lottery" />
+    <div className="mt-6 max-w-2xl">
 
       {/* ── สล็อตแมชชีน ─────────────────────────────────────────── */}
       {/*
@@ -158,7 +186,17 @@ export function FunLottery() {
           *      ★★ กรอบกับเส้นกลางคือสิ่งที่ทำให้สมองอ่านว่า "เครื่องสล็อต"
           *         ซึ่งพาความคาดหวังเรื่องการลุ้นมาด้วยทั้งชุดโดยไม่ต้องอธิบาย
           */}
-        <div className="lotto-glass relative mx-auto w-fit rounded-2xl px-4 py-4">
+        {/*
+          * ★★ ย่อ "ทั้งเครื่อง" ตามสัดส่วนเมื่อจอแคบกว่าเครื่อง — ไม่ใช่บีบแค่ความกว้าง
+          *    ★ เคยหดเฉพาะความกว้างวงล้อ: 6 หลักบนมือถือได้ล้อผอมสูง 41×104px ดูอัด
+          *      ★★ zoom ย่อกว้าง สูง และตัวเลขเท่ากัน — หน้าตาเดิมแค่เล็กลง
+          *         และระยะหมุนใน SlotReels (คิดเป็น px คงที่) ยังถูกต้องทุกอย่าง
+          */}
+        <div ref={fitRef} className="w-full">
+        <div
+          className="lotto-glass relative mx-auto w-fit rounded-2xl px-4 py-4"
+          style={zoom < 1 ? { zoom } : undefined}
+        >
           <span
             aria-hidden="true"
             className={cn('lotto-payline', spinning && 'is-live')}
@@ -167,61 +205,96 @@ export function FunLottery() {
             <SlotReels target={target} spinning={spinning} onDone={finish} />
           </div>
         </div>
+        </div>
 
         {flash ? <span aria-hidden="true" className="slot-flash rounded-3xl" /> : null}
 
-        <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
-          {DIGIT_OPTIONS.map((n) => (
+        {/*
+          * ★★ แผงควบคุมเป็นระบบเดียว — ทุกชิ้นสูงเท่ากันในแถวเดียวกัน
+          *    ★ เดิม: ชิปเตี้ย 32px · ปุ่มสุ่ม 52px · emoji ลำโพงลอย · ปุ่มบันทึกตกไปอีกแถว
+          *      ★★ ตาไม่รู้ว่าจะอ่านอะไรก่อน — ดูเป็นของสี่ชิ้นที่วางมาด้วยกันโดยบังเอิญ
+          *    ★ แถวบน = ตั้งค่า (จำนวนหลัก + เสียง) · แถวล่าง = การกระทำ (สุ่ม · บันทึก)
+          */}
+        <div className="mx-auto mt-6 flex w-full max-w-sm flex-col gap-4">
+          <div className="flex items-center gap-2">
+            <div role="radiogroup" aria-label={ot('fun.lottery.title')} className="grid flex-1 grid-cols-3 gap-1 rounded-full bg-surface p-1">
+              {DIGIT_OPTIONS.map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  role="radio"
+                  aria-checked={digits === n}
+                  disabled={spinning}
+                  onClick={() => setDigits(n)}
+                  className={cn(
+                    'h-10 rounded-full text-sm transition-all disabled:opacity-40',
+                    digits === n
+                      ? 'bg-page font-semibold text-ink shadow-[0_2px_8px_-2px_color-mix(in_srgb,var(--color-ink)_30%,transparent)]'
+                      : 'text-ink-soft hover:text-ink',
+                  )}
+                >
+                  {ot('fun.lottery.digitsN', { n })}
+                </button>
+              ))}
+            </div>
+
             <button
-              key={n}
               type="button"
-              disabled={spinning}
-              onClick={() => setDigits(n)}
-              className={cn(
-                'h-8 rounded-full px-3 text-[13px] transition-colors disabled:opacity-40',
-                digits === n ? 'bg-ink text-page' : 'bg-surface text-ink-soft hover:bg-surface-hover',
-              )}
+              onClick={() => {
+                const next = !muted
+                setMuted(next)
+                setMutedState(next)
+              }}
+              aria-label={muted ? ot('wheel.soundOn') : ot('wheel.soundOff')}
+              aria-pressed={!muted}
+              className="grid size-12 shrink-0 place-items-center rounded-full bg-surface text-ink-soft transition-colors hover:text-ink"
             >
-              {ot('fun.lottery.digitsN', { n })}
+              <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M11 5 6 9H3v6h3l5 4z" />
+                {muted ? <path d="m22 9-6 6M16 9l6 6" /> : <path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13" />}
+              </svg>
             </button>
-          ))}
+          </div>
 
           {/*
-            * ★★ ปุ่มสุ่มเป็นปุ่มกลมนูนของตู้ ไม่ใช่ปุ่มสี่เหลี่ยมเหมือนปุ่มอื่นในเว็บ
-            *    ★ มันคือการกระทำเดียวที่คนเข้ามาหน้านี้เพื่อทำ — ต้องหาเจอ
-            *      จากหางตาโดยไม่ต้องอ่าน ★★ ปุ่มที่หน้าตาเหมือนปุ่มอื่นทุกใบ
-            *      คือปุ่มที่ต้องอ่านก่อนถึงจะรู้ว่าใช่
+            * ★★ ปุ่มสุ่มยังเป็นปุ่มนูนของตู้ — การกระทำเดียวที่คนเข้ามาหน้านี้เพื่อทำ
+            *    ★ กว้างเต็มแผง และเมื่อมีผลแล้วแบ่งครึ่งกับ "บันทึกเลขนี้" ที่สูงเท่ากัน
             */}
-          <button
-            type="button"
-            disabled={spinning}
-            onClick={spin}
-            className={cn('lotto-button', spinning && 'is-spinning')}
-          >
-            {ot('fun.lottery.spin')}
-          </button>
+          <div className={cn('grid gap-3', result && !spinning ? 'grid-cols-2' : 'grid-cols-1')}>
+            <button
+              type="button"
+              disabled={spinning}
+              onClick={spin}
+              className={cn('lotto-button w-full gap-2', spinning && 'is-spinning')}
+            >
+              <span className="inline-flex items-center gap-2">
+                <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M4 7a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3zM8.5 8.5h.01M15.5 8.5h.01M12 12h.01M8.5 15.5h.01M15.5 15.5h.01" />
+                </svg>
+                {ot('fun.lottery.spin')}
+              </span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              const next = !muted
-              setMuted(next)
-              setMutedState(next)
-            }}
-            aria-label={muted ? ot('wheel.soundOn') : ot('wheel.soundOff')}
-            className="grid size-9 place-items-center rounded-full text-ink-soft hover:bg-surface hover:text-ink"
-          >
-            {muted ? '🔇' : '🔊'}
-          </button>
-        </div>
-
-        {result && !spinning ? (
-          <div className="mt-4 text-center">
-            <Button variant="secondary" disabled={saved} onClick={save}>
-              {saved ? ot('fun.lottery.saved') : ot('fun.lottery.save')}
-            </Button>
+            {result && !spinning ? (
+              <button
+                type="button"
+                disabled={saved}
+                onClick={save}
+                className={cn(
+                  'inline-flex h-[52px] items-center justify-center gap-2 rounded-full text-[15px] font-semibold transition-colors',
+                  saved
+                    ? 'bg-[color-mix(in_srgb,var(--color-accent)_12%,transparent)] text-accent'
+                    : 'border border-line-strong bg-page text-ink hover:bg-surface',
+                )}
+              >
+                <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d={saved ? 'm5 12 4 4L19 7' : 'M6 4h12v16l-6-4-6 4z'} />
+                </svg>
+                {saved ? ot('fun.lottery.saved') : ot('fun.lottery.save')}
+              </button>
+            ) : null}
           </div>
-        ) : null}
+        </div>
 
         {result && !spinning ? <Confetti /> : null}
       </div>
@@ -271,9 +344,9 @@ export function FunLottery() {
               <li key={p.id}>
                 <button
                   type="button"
-                  onClick={() => void remove(p.id)}
+                  onClick={() => void remove(p.id, p.number)}
                   title={ot('fun.lottery.tapDelete')}
-                  className="h-8 rounded-full bg-surface px-3 font-mono text-sm tabular-nums text-ink hover:bg-danger/15 hover:text-danger"
+                  className="h-10 sm:h-8 rounded-full bg-surface px-3 font-mono text-sm tabular-nums text-ink hover:bg-danger/15 hover:text-danger"
                 >
                   {p.number} ✕
                 </button>
@@ -282,6 +355,7 @@ export function FunLottery() {
           </ul>
         )}
       </div>
+    </div>
     </div>
   )
 }

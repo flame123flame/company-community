@@ -7,8 +7,10 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { cn } from '@/lib/cn'
 import { officeErrorText } from '@/lib/i18n/office-format'
 import { useOt } from '@/lib/i18n/office'
+import { useConfirm } from '@/components/ConfirmProvider'
 import { playCelebrate, vibrate } from '@/lib/office/sound'
 import { Confetti } from './Confetti'
+import { FunGuide } from './FunGuide'
 
 type CupTeam = { id: string; name: string; color: string; members: { id?: string; label: string }[] }
 type Match = {
@@ -35,6 +37,7 @@ type Stat = { userId: string; name: string; skill: number; matches: number }
 /** สายการแข่งขัน + สถิติ (FR-C08 / FR-C09) */
 export function FunCup() {
   const ot = useOt()
+  const confirm = useConfirm()
   const [list, setList] = useState<ListItem[]>([])
   const [stats, setStats] = useState<Stat[]>([])
   const [open, setOpen] = useState<Bracket | null>(null)
@@ -65,6 +68,8 @@ export function FunCup() {
 
   async function record(matchId: string, winner: string) {
     if (!open) return
+    // ★ บันทึกผู้ชนะ = แก้ผลการแข่ง → ยืนยันก่อน (subject = ทีมที่ชนะ)
+    if (!(await confirm({ kind: 'edit', subject: `🏆 ${open.teams.find((t) => t.id === winner)?.name ?? open.name}` }))) return
     setBusy(matchId)
     try {
       await apiFetch(`/api/office/fun/tournaments/${open.id}`, {
@@ -83,7 +88,7 @@ export function FunCup() {
   }
 
   async function remove(id: string) {
-    if (!window.confirm(ot('confirm.deleteCup'))) return
+    if (!(await confirm({ kind: 'delete', subject: open?.name, message: ot('confirm.deleteCup') }))) return
     try {
       await apiFetch(`/api/office/fun/tournaments/${id}`, { method: 'DELETE' })
       setOpen(null)
@@ -122,6 +127,8 @@ export function FunCup() {
 
     return (
       <div className="py-2">
+        <FunGuide id="cup" art="cup" />
+        <div className="mt-6" />
         {error ? (
           <p role="alert" className="mb-4 text-sm text-danger">
             {error}

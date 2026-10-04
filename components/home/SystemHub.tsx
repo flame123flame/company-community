@@ -49,7 +49,7 @@ const CARDS: Card[] = [
     demo: 'eq',
   },
   {
-    href: '/office/food/random',
+    href: '/office/food/picks',
     titleKey: 'hub.food',
     detailKey: 'hub.foodDetail',
     icon: 'M7 3v8a3 3 0 0 0 3 3v7M7 3v5M10 3v5M17 3c-1.5 2-2 4-2 6s.5 3 2 3v9',
@@ -257,10 +257,9 @@ export async function SystemHub() {
   const { t } = await getT()
 
   return (
-    <section id="systems" className="mx-auto w-full max-w-[1120px] scroll-mt-20 px-4 pt-4">
-      <h2 className="reveal text-center text-sm text-ink-soft">{t('hub.detail')}</h2>
-
-      <div className="reveal-stagger mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    /* ★ หัวข้อและ id="systems" อยู่ที่ HomeSection บนหน้าแรกแล้ว */
+    <div className="mx-auto w-full max-w-[1120px] px-4">
+      <div className="reveal-stagger grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {CARDS.map((card) => (
           <Link
             key={card.href}
@@ -362,6 +361,6 @@ export async function SystemHub() {
           </Link>
         ))}
       </div>
-    </section>
+    </div>
   )
 }

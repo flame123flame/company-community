@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/Button'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { MAX_MS } from '@/lib/office/draw'
 import { officeErrorText } from '@/lib/i18n/office-format'
-import { useOt } from '@/lib/i18n/office'
+import { Untranslated, useOt } from '@/lib/i18n/office'
+import { useConfirm } from '@/components/ConfirmProvider'
 import { RandomWheel, type WheelItem } from './RandomWheel'
 
 type Room = {
@@ -31,12 +32,14 @@ type Member = { id: string; name: string; avatarUrl: string | null; isMe: boolea
  */
 export function DrawRoom({ roomId }: { roomId: string }) {
   const ot = useOt()
+  const confirm = useConfirm()
   const router = useRouter()
   const [room, setRoom] = useState<Room | null>(null)
   const [members, setMembers] = useState<Member[]>([])
   const [missing, setMissing] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
 
   /*
    * ★ คนที่เพิ่งเปิดหน้าทีหลังไม่ต้องดูแอนิเมชันย้อนหลัง
@@ -134,6 +137,8 @@ export function DrawRoom({ roomId }: { roomId: string }) {
   }, [roomId, load])
 
   async function act(action: 'spin' | 'leave' | 'finish') {
+    // ★ ยืนยันเฉพาะออกจากห้อง — หมุน/จบรอบคือตัวเกมเอง ไม่ต้องถาม
+    if (action === 'leave' && !(await confirm({ kind: 'leave', subject: room?.title }))) return
     setBusy(true)
     setError(null)
     try {
@@ -165,6 +170,31 @@ export function DrawRoom({ roomId }: { roomId: string }) {
     return <p className="py-10 text-center text-sm text-ink-faint">{ot('common.loading')}</p>
   }
 
+  /*
+   * ★★ ชวนเพื่อน = ส่งลิงก์ห้องนี้
+   *    ★ มือถือใช้แผ่นแชร์ของระบบ (ส่งเข้า LINE ได้ตรง ๆ) · คอมคัดลอกลิงก์
+   */
+  async function invite() {
+    if (!room) return
+    const url = window.location.href
+    if (navigator.share && window.matchMedia('(pointer: coarse)').matches) {
+      try {
+        await navigator.share({ title: room.title, text: ot('room.inviteText', { title: room.title }), url })
+        return
+      } catch {
+        /* ปิดแผ่นแชร์ = ไม่ทำอะไรต่อ */
+        return
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 2200)
+    } catch {
+      window.prompt(ot('room.inviteCopy'), url)
+    }
+  }
+
   const late = lateRef.current === true
   const showResultOnly = late && room.winnerLabel !== null
 
@@ -179,6 +209,25 @@ export function DrawRoom({ roomId }: { roomId: string }) {
           {room.title}
         </h2>
       </div>
+
+      {/* ── ชวนเพื่อน ─────────────────────────────────────────── */}
+      {room.status === 'OPEN' ? (
+        <div className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl border border-dashed border-accent/50 bg-accent/5 p-3">
+          <p className="min-w-0 flex-1 text-xs leading-relaxed text-ink-soft">
+            <Untranslated>{ot('room.inviteHint')}</Untranslated>
+          </p>
+          <button
+            type="button"
+            onClick={() => void invite()}
+            className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full bg-accent px-4 text-sm font-semibold text-accent-ink transition-opacity hover:opacity-90"
+          >
+            <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" />
+            </svg>
+            <Untranslated>{copied ? ot('room.inviteCopied') : ot('room.inviteCopy')}</Untranslated>
+          </button>
+        </div>
+      ) : null}
 
       {/* ── คนในห้อง ──────────────────────────────────────────── */}
       <div className="mt-4 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-3">

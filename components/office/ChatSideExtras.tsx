@@ -1,8 +1,7 @@
 'use client'
 
-import { cn } from '@/lib/cn'
 import { departmentLabel } from '@/lib/office/departments'
-import { useOt } from '@/lib/i18n/office'
+import { Untranslated, useOt } from '@/lib/i18n/office'
 import { ChatAvatar } from './ChatAvatar'
 
 /**
@@ -24,30 +23,8 @@ export function ChatUnreadCard({ rooms }: { rooms: Room[] }) {
   const total = rooms.reduce((sum, r) => sum + r.unread, 0)
   const from = rooms.filter((r) => r.unread > 0).length
 
-  if (total === 0) {
-    return (
-      <div className="flex items-center gap-3 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md px-4 py-3">
-        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-surface text-ink-soft">
-          <svg
-            viewBox="0 0 24 24"
-            className="size-5"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <path d="m4 12.5 5 5L20 7" />
-          </svg>
-        </span>
-        <span className="min-w-0">
-          <span className="block text-sm font-medium text-ink">{ot('chat.allRead')}</span>
-          <span className="block text-xs text-ink-faint">{ot('chat.allReadHint')}</span>
-        </span>
-      </div>
-    )
-  }
+  /* ★ อ่านครบแล้วไม่ต้องแสดงอะไร — การ์ดนี้มีไว้เตือนของค้างเท่านั้น (เจ้าของสั่งเอาการ์ด "อ่านครบแล้ว" ออก) */
+  if (total === 0) return null
 
   return (
     <div className="chat-unread-card flex items-center gap-3 rounded-2xl px-4 py-3">
@@ -116,104 +93,66 @@ export function ChatQuickStart({
  * ★ ฟองสองใบบนหัวเป็นภาพแทนบทสนทนา วาดด้วย div ไม่ใช่รูป — เปลี่ยนสีตามธีม
  *   ได้เอง และไม่มีไฟล์ให้โหลดเพิ่ม
  */
-export function ChatWelcome() {
+export function ChatWelcome({ onNewDm, onNewGroup }: { onNewDm: () => void; onNewGroup: () => void }) {
   const ot = useOt()
-  const feats: { icon: string; title: string; hint: string }[] = [
-    {
-      icon: 'M13 2 4.5 13H11l-1 9 8.5-11H12z',
-      title: ot('chat.featRealtime'),
-      hint: ot('chat.featRealtimeHint'),
-    },
-    {
-      icon: 'm4 12.5 5 5L20 7',
-      title: ot('chat.featRead'),
-      hint: ot('chat.featReadHint'),
-    },
-    {
-      icon: 'M20 4H4a1 1 0 0 0-1 1v12l4-3h13a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1z',
-      title: ot('chat.featTyping'),
-      hint: ot('chat.featTypingHint'),
-    },
-    {
-      icon: 'M20 11.5 12 19.5a5 5 0 0 1-7-7l8-8a3.4 3.4 0 0 1 4.8 4.8l-8 8a1.8 1.8 0 0 1-2.5-2.5l7.3-7.3',
-      title: ot('chat.featFile'),
-      hint: ot('chat.featFileHint'),
-    },
+  /*
+   * ★★ ทุกอย่างที่ห้องแชททำได้ บอกตรงนี้ตอนยังไม่ได้เปิดห้อง — พื้นที่ว่างที่สุดของหน้า
+   *    ★ เดิมเป็นแค่ประโยคเดียวกลางผนังสีฟ้า ส่วนการ์ดฟีเจอร์ซ่อนอยู่จนกว่าแอนิเมชันจะเล่น
+   */
+  const feats: { emoji: string; title: string; hint: string }[] = [
+    { emoji: '⚡', title: ot('chat.featRealtime'), hint: ot('chat.featRealtimeHint') },
+    { emoji: '📎', title: ot('chat.featFile'), hint: ot('chat.featFileHint') },
+    { emoji: '↩️', title: ot('chat.featReply'), hint: ot('chat.featReplyHint') },
+    { emoji: '✅', title: ot('chat.featRead'), hint: ot('chat.featReadHint') },
+    { emoji: '✍️', title: ot('chat.featTyping'), hint: ot('chat.featTypingHint') },
+    { emoji: '🔕', title: ot('chat.featMute'), hint: ot('chat.featMuteHint') },
   ]
 
   return (
-    <div className="chat-wall flex flex-1 flex-col items-center justify-center px-6 py-10">
+    <div className="chat-wall flex flex-1 flex-col items-center justify-center px-5 py-10 sm:px-8">
       <div className="chat-welcome-art" aria-hidden="true">
         <span className="chat-welcome-bubble chat-welcome-bubble-you" />
         <span className="chat-welcome-bubble chat-welcome-bubble-me" />
         <span className="chat-welcome-bubble chat-welcome-bubble-you2" />
       </div>
 
-      <p className="mt-6 text-center text-[17px] font-semibold text-white drop-shadow-sm">
-        {ot('chat.welcomeTitle')}
-      </p>
-      <p className="mt-1.5 max-w-md text-center text-[13px] text-white/80">
-        {ot('chat.welcomeHint')}
-      </p>
+      <p className="mt-6 text-center text-[22px] font-black text-white drop-shadow-sm">{ot('chat.welcomeTitle')}</p>
+      <p className="mt-1.5 max-w-md text-center text-[13px] leading-relaxed text-white/85">{ot('chat.welcomeHint')}</p>
 
-      <div className="mt-7 grid w-full max-w-2xl gap-2.5 sm:grid-cols-2">
-        {feats.map((f, i) => (
-          <div
-            key={f.title}
-            className="chat-feat flex items-start gap-2.5 rounded-2xl px-3.5 py-3"
-            style={{ animationDelay: `${120 + i * 80}ms` }}
-          >
-            <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-full bg-white/20 text-white">
-              <svg
-                viewBox="0 0 24 24"
-                className="size-4.5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.9"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <path d={f.icon} />
-              </svg>
+      <div className="mt-6 flex flex-wrap justify-center gap-2">
+        <button
+          type="button"
+          onClick={onNewDm}
+          className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[var(--ck-shine)] px-5 text-sm font-bold text-[var(--ck-shade)] shadow-lg transition-transform hover:-translate-y-0.5"
+        >
+          💬 {ot('chat.newDm')}
+        </button>
+        <button
+          type="button"
+          onClick={onNewGroup}
+          className="inline-flex min-h-12 items-center gap-2 rounded-full border border-white/40 bg-white/15 px-5 text-sm font-bold text-white backdrop-blur transition-transform hover:-translate-y-0.5"
+        >
+          👥 {ot('chat.newGroup')}
+        </button>
+      </div>
+
+      <div className="mt-8 grid w-full max-w-3xl gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
+        {feats.map((f) => (
+          <div key={f.title} className="chat-feat-card flex items-start gap-3 rounded-2xl px-4 py-3.5">
+            <span aria-hidden="true" className="grid size-10 shrink-0 place-items-center rounded-xl bg-white/20 text-xl">
+              {f.emoji}
             </span>
             <span className="min-w-0">
-              <span className="block text-[13px] font-medium text-white">{f.title}</span>
-              <span className="block text-[11.5px] leading-snug text-white/70">{f.hint}</span>
+              <span className="block text-[13.5px] font-bold text-white">
+                <Untranslated>{f.title}</Untranslated>
+              </span>
+              <span className="mt-0.5 block text-[12px] leading-snug text-white/75">
+                <Untranslated>{f.hint}</Untranslated>
+              </span>
             </span>
           </div>
         ))}
       </div>
-    </div>
-  )
-}
-
-export function ChatStats({ rooms }: { rooms: Room[] }) {
-  const ot = useOt()
-  const groups = rooms.filter((r) => r.kind === 'GROUP').length
-  const dms = rooms.length - groups
-
-  const cells: { label: string; value: number }[] = [
-    { label: ot('chat.statAll'), value: rooms.length },
-    { label: ot('chat.statGroup'), value: groups },
-    { label: ot('chat.statDm'), value: dms },
-  ]
-
-  return (
-    <div className="grid grid-cols-3 gap-2">
-      {cells.map((c, i) => (
-        <div
-          key={c.label}
-          className={cn(
-            'rounded-2xl border border-line bg-elevated/50 backdrop-blur-md px-3 py-2.5 text-center',
-            'chat-stat',
-          )}
-          style={{ animationDelay: `${i * 70}ms` }}
-        >
-          <span className="block text-lg font-bold text-ink tabular-nums">{c.value}</span>
-          <span className="block text-[11px] text-ink-faint">{c.label}</span>
-        </div>
-      ))}
     </div>
   )
 }

@@ -16,9 +16,11 @@ import { ChatStyleDialog } from './ChatStyleDialog'
 import { sanitizeAppearance } from '@/lib/lobby/appearance'
 import { SearchResults } from '@/components/youtube/SearchResults'
 import { Recommendations } from '@/components/youtube/Recommendations'
+import { MusicGuide } from '@/components/music/MusicGuide'
 import { ConnectionBanner } from './ConnectionBanner'
 import { AppHeader, Avatar } from '@/components/AppHeader'
 import { Toast, useToast } from '@/components/ui/Toast'
+import { useConfirm } from '@/components/ConfirmProvider'
 import { useRoomChannel } from '@/hooks/useRoomChannel'
 import { rememberSearchThumbnail } from '@/hooks/useSearchSuggestions'
 import { useServerClock } from '@/hooks/useServerClock'
@@ -75,6 +77,7 @@ export function RoomClient({
   youtubeConfigured: boolean
 }) {
   const t = useT()
+  const confirm = useConfirm()
   const [state, dispatch] = useReducer(roomReducer, bootstrap, initialState)
   const { serverNow, remeasure } = useServerClock(bootstrap.serverTime)
   const { toast, showToast } = useToast()
@@ -502,19 +505,20 @@ export function RoomClient({
   )
 
   const handleDeleteChat = useCallback(
-    (id: string) => {
-      // ★ ฟองที่ยังส่งไม่เสร็จ ลบทิ้งในเครื่องพอ — มันยังไม่มีตัวตนใน DB
+    async (id: string) => {
+      // ★ ฟองที่ยังส่งไม่เสร็จ ลบทิ้งในเครื่องพอ — มันยังไม่มีตัวตนใน DB (ไม่ต้องถาม)
       if (id.startsWith('temp:')) {
         chat.settle(id, null)
         return
       }
+      if (!(await confirm({ kind: 'delete' }))) return
       chat.remove(id)
       void apiFetch(`/api/rooms/${code}/chat/${id}`, { method: 'DELETE' }).catch((error) => {
         showToast(errorText(error, t, 'toast.deleteFailed'), 'error')
         void handleResync()
       })
     },
-    [chat, code, handleResync, showToast, t],
+    [chat, code, confirm, handleResync, showToast, t],
   )
 
   const handleReactChat = useCallback(
@@ -864,8 +868,10 @@ export function RoomClient({
 
   const handleUploadSticker = useCallback(
     (file: File) => {
-      setUploadingSticker(true)
       void (async () => {
+        // ★ เพิ่มสติกเกอร์เข้าคลังของห้อง = สร้างของใหม่ที่ทุกคนเห็น → ถามก่อน
+        if (!(await confirm({ kind: 'create' }))) return
+        setUploadingSticker(true)
         try {
           // ★ keepAlpha = true — สติกเกอร์ต้องคงพื้นหลังโปร่งใส
           //   (รูปโปรไฟล์แปลงเป็น JPEG ได้เพราะเป็นวงกลมทึบอยู่แล้ว)
@@ -906,18 +912,19 @@ export function RoomClient({
         }
       })()
     },
-    [code, showToast, t],
+    [code, confirm, showToast, t],
   )
 
   const handleRemoveSticker = useCallback(
-    (id: string) => {
+    async (id: string) => {
+      if (!(await confirm({ kind: 'delete' }))) return
       setStickers((prev) => prev.filter((s) => s.id !== id))
       void apiFetch(`/api/rooms/${code}/stickers/${id}`, { method: 'DELETE' }).catch((error) => {
         showToast(errorText(error, t, 'toast.deleteFailed'), 'error')
         void handleResync()
       })
     },
-    [code, handleResync, showToast, t],
+    [code, confirm, handleResync, showToast, t],
   )
 
   /* ── เปลี่ยนชื่อห้อง ──────────────────────────────────────────────────── */
@@ -972,6 +979,8 @@ export function RoomClient({
   }, [state.playback.queueItemId, requestAdvance])
 
   const handleClear = useCallback(async () => {
+    // ★ ล้างทั้งคิวย้อนไม่ได้ — กล่องเตือนชนิดอันตราย
+    if (!(await confirm({ kind: 'danger', subject: t('room.clearQueue') }))) return
     setControlPending(true)
     try {
       const { removed } = await apiFetch<{ removed: number }>(`/api/rooms/${code}/queue`, {
@@ -983,7 +992,7 @@ export function RoomClient({
     } finally {
       setControlPending(false)
     }
-  }, [code, showToast, t])
+  }, [code, confirm, showToast, t])
 
   /**
    * ★★ วางลิงก์ YouTube ที่ไหนก็ได้บนหน้าห้อง → เข้าคิวเลย
@@ -1195,6 +1204,7 @@ export function RoomClient({
    */
   const uploadWallpaper = useCallback(
     async (file: File) => {
+      if (!(await confirm({ kind: 'edit', subject: t('chat.theme') }))) return
       setWallpaperUploading(true)
       try {
         const uploaded = await handleUploadImage(file)
@@ -1209,7 +1219,7 @@ export function RoomClient({
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [handleUploadImage, state.room.chatTheme, state.room.chatWallpaper],
+    [confirm, handleUploadImage, state.room.chatTheme, state.room.chatWallpaper, t],
   )
 
   const applyChatStyle = useCallback(
@@ -1410,6 +1420,19 @@ export function RoomClient({
             </div>
           ) : null}
 
+          {/**
+            * ★★ แสงรอบจอ (ambient) — ปกเพลงเบลอแรงฟุ้งออกนอกกรอบวิดีโอ
+            *    ★ เปลี่ยนสีตามเพลงที่เล่นทุกครั้ง ทั้งหน้าจึงรู้สึกว่า "เพลงนี้กำลังเล่น"
+            *    ★ เฉพาะตอน player เต็มจอ — ตอนย่อไปมุมจอ แสงลอยค้างกลางหน้าจะดูเป็นบั๊ก
+            */}
+          {playerMode === 'full' && state.nowPlaying?.thumbnailUrl ? (
+            <div
+              aria-hidden="true"
+              className="room-ambient"
+              style={{ backgroundImage: `url(${state.nowPlaying.thumbnailUrl})` }}
+            />
+          ) : null}
+
           <MusicPlayer
             playback={state.playback}
             nowPlaying={state.nowPlaying}
@@ -1427,7 +1450,34 @@ export function RoomClient({
           />
 
           <div className={cn('px-4 lg:px-0', searching && 'hidden')}>
-            <h1 className="mt-3 text-lg font-medium leading-6 lg:text-xl">
+            {/* ★ ป้ายสถานะ + ชื่อห้อง เหนือชื่อเพลง — รู้ทันทีว่าอยู่ห้องไหน และเพลงเล่นอยู่ไหม */}
+            <div className="relative mt-4 flex flex-wrap items-center gap-2">
+              {state.nowPlaying && state.playback.isPlaying ? (
+                <span className="room-live-chip inline-flex items-center gap-1.5 rounded-full px-2.5 py-1">
+                  <span className="flex h-3 items-end gap-[2px]" aria-hidden="true">
+                    {[0, 1, 2].map((i) => (
+                      <span
+                        key={i}
+                        className="eq-bar w-[2px] rounded-full bg-current"
+                        style={{
+                          height: [6, 11, 8][i],
+                          animationDuration: `${[0.7, 0.95, 0.8][i]}s`,
+                          animationDelay: `${[0, 0.2, 0.35][i]}s`,
+                        }}
+                      />
+                    ))}
+                  </span>
+                  <span className="text-[10.5px] font-bold uppercase tracking-wider">{t('join.playing')}</span>
+                </span>
+              ) : null}
+              <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-full bg-surface px-2.5 py-1 text-[11.5px] font-semibold text-ink-soft">
+                <svg viewBox="0 0 24 24" className="size-3.5 shrink-0" fill="currentColor" aria-hidden="true">
+                  <path d="M12 3a9 9 0 0 0-9 9v7a2 2 0 0 0 2 2h2v-8H5v-1a7 7 0 0 1 14 0v1h-2v8h2a2 2 0 0 0 2-2v-7a9 9 0 0 0-9-9z" />
+                </svg>
+                <span dir="auto" className="truncate">{state.room.name}</span>
+              </span>
+            </div>
+            <h1 className="relative mt-2 text-xl font-black leading-snug tracking-tight lg:text-2xl">
               {state.nowPlaying?.title ?? t('room.nothingPlaying')}
             </h1>
 
@@ -1458,9 +1508,12 @@ export function RoomClient({
              *   คนที่ดู player อยู่จึงไม่มีทางเห็นโดยไม่เลื่อน
              */}
             {state.queue[0] ? (
-              <p className="mt-1 truncate text-xs text-ink-soft">
-                <span className="text-ink-faint">{t('room.upNext')}</span>
-                {state.queue[0].title}
+              <p className="room-next mt-2 flex min-w-0 max-w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-ink-soft">
+                <svg viewBox="0 0 24 24" className="size-3.5 shrink-0 text-accent" fill="currentColor" aria-hidden="true">
+                  <path d="M6 5.5v13l9-6.5zM16 5h2.5v14H16z" />
+                </svg>
+                <span className="shrink-0 font-semibold text-ink-faint">{t('room.upNext')}</span>
+                <span dir="auto" className="truncate">{state.queue[0].title}</span>
               </p>
             ) : null}
 
@@ -1483,6 +1536,11 @@ export function RoomClient({
               onSummary={() => setSummaryOpen(true)}
               onReact={handleReact}
             />
+
+            {/* ★ คำอธิบายแบบเดียวกับทุกหน้า — คนเข้าห้องครั้งแรกไม่ต้องมีใครสอน · ยุบได้ */}
+            <div className="mt-5">
+              <MusicGuide id="room" art="vinyl" />
+            </div>
           </div>
 
           {/* ★ ผลการค้นหาเต็มความกว้าง — player ย่อไปมุมขวาล่างแล้ว */}
@@ -1681,7 +1739,10 @@ export function RoomClient({
           wallpaperUrl={state.room.chatWallpaperUrl}
           dark={dark}
           uploading={wallpaperUploading}
-          onPick={(next) => void applyChatStyle(next)}
+          onPick={async (next) => {
+            if (!(await confirm({ kind: 'edit', subject: t('chat.theme') }))) return
+            void applyChatStyle(next)
+          }}
           onUpload={(file) => void uploadWallpaper(file)}
           onClose={() => setStyleOpen(false)}
         />

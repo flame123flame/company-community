@@ -10,12 +10,14 @@ import { useRememberedDisplayName } from '@/hooks/useRememberedDisplayName'
 import { displayNameSchema, roomNameSchema } from '@/lib/validation/schemas'
 import type { RoomDto } from '@/types/room'
 import { useT } from '@/lib/i18n/client'
+import { useConfirm } from '@/components/ConfirmProvider'
 import type { DictKey } from '@/lib/i18n/dict'
 
 const MAX = 60
 
 export function CreateRoomButton({ configured }: { configured: boolean }) {
   const t = useT()
+  const confirm = useConfirm()
   const router = useRouter()
   /**
    * ★ ไม่มีช่อง "ชื่อของคุณ" ที่นี่แล้ว
@@ -78,6 +80,13 @@ export function CreateRoomButton({ configured }: { configured: boolean }) {
         setError(
           t((parsedRoom.error.issues[0]?.message as DictKey | undefined) ?? 'home.create.errRoomName'),
         )
+        setPending(false)
+        busy.current = false
+        return
+      }
+
+      // ★ ผ่านการตรวจทั้งหมดแล้ว — ถามยืนยันก่อนสร้างห้องจริง
+      if (!(await confirm({ kind: 'create', subject: trimmedRoom }))) {
         setPending(false)
         busy.current = false
         return

@@ -1,13 +1,16 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { apiFetch, apiUpload } from '@/lib/api/client'
 import { Button } from '@/components/ui/Button'
+import { useConfirm } from '@/components/ConfirmProvider'
 import { useLocale } from '@/lib/i18n/client'
 import { officeErrorText } from '@/lib/i18n/office-format'
 import { useOt } from '@/lib/i18n/office'
 import { formatBaht } from '@/lib/office/wallet'
+import { shrinkImage } from '@/lib/image/shrink'
+import { SlipDrop } from './SlipDrop'
 
 type Files = {
   creditorName: string | null
@@ -38,10 +41,10 @@ export function WalletPay({
   const ot = useOt()
   const locale = useLocale()
   const router = useRouter()
+  const confirm = useConfirm()
   const [files, setFiles] = useState<Files | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const fileRef = useRef<HTMLInputElement | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -55,21 +58,22 @@ export function WalletPay({
     void load()
   }, [load])
 
-  async function uploadSlip(file: File) {
-    setBusy(true)
+  async function uploadSlip(file: File): Promise<boolean> {
     setError(null)
     try {
-      await apiUpload(`/api/office/wallet/debts/${debtId}/files`, file)
+      await apiUpload(`/api/office/wallet/debts/${debtId}/files`, await shrinkImage(file, 1280))
       await load()
+      return true
     } catch (e) {
       setError(officeErrorText(e, ot))
-    } finally {
-      setBusy(false)
-      if (fileRef.current) fileRef.current.value = ''
+      return false
     }
   }
 
   async function markPaid() {
+    /* ★ ถามก่อนแจ้งว่าจ่ายแล้ว — แนบสลิปไม่ต้องถาม ถามตอนกดส่งจริงครั้งเดียว */
+    const who = files?.creditorName ?? description
+    if (!(await confirm({ kind: 'edit', subject: `${who ? `${who} ` : ''}฿${formatBaht(locale, amount)}` }))) return
     setBusy(true)
     setError(null)
     try {
@@ -124,33 +128,8 @@ export function WalletPay({
 
       {/* ── สลิป ─────────────────────────────────────────────────── */}
       {isDebtor ? (
-        <div className="mt-4 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-4">
-          <p className="text-sm font-medium text-ink">{ot('wallet.pay.slip')}</p>
-
-          {files?.slipUrl ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={files.slipUrl}
-              alt={ot('wallet.pay.slipAlt')}
-              className="mt-2 block w-full max-w-48 rounded-xl"
-            />
-          ) : (
-            <p className="mt-1 text-xs text-ink-faint">{ot('wallet.pay.noSlip')}</p>
-          )}
-
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            hidden
-            onChange={(e) => {
-              const f = e.target.files?.[0]
-              if (f) void uploadSlip(f)
-            }}
-          />
-          <Button size="sm" className="mt-3" loading={busy} onClick={() => fileRef.current?.click()}>
-            {files?.slipUrl ? ot('wallet.pay.changeSlip') : ot('wallet.pay.attachSlip')}
-          </Button>
+        <div className="mt-4">
+          <SlipDrop onFile={uploadSlip} existingUrl={files?.slipUrl ?? null} disabled={busy} />
         </div>
       ) : null}
 

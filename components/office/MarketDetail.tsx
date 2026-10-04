@@ -9,6 +9,7 @@ import { cn } from '@/lib/cn'
 import { useLocale } from '@/lib/i18n/client'
 import { officeErrorText } from '@/lib/i18n/office-format'
 import { Untranslated, useOt } from '@/lib/i18n/office'
+import { useConfirm } from '@/components/ConfirmProvider'
 import {
   categoryLabel,
   conditionLabel,
@@ -21,6 +22,7 @@ import {
 import { ChatAvatar } from './ChatAvatar'
 import { GalleryWithThumbs } from './ListingGallery'
 import { ShareLink } from './ShareLink'
+import { marketActConfirm } from './MarketList'
 
 type Queue = { userId: string; name: string; avatarUrl: string | null; position: number; at: string }
 
@@ -46,6 +48,7 @@ type Queue = { userId: string; name: string; avatarUrl: string | null; position:
  */
 export function MarketDetail({ id }: { id: string }) {
   const ot = useOt()
+  const confirm = useConfirm()
   const locale = useLocale()
   const router = useRouter()
   const [listing, setListing] = useState<Listing & { sellerDepartment: string | null } | null>(null)
@@ -83,7 +86,9 @@ export function MarketDetail({ id }: { id: string }) {
     void load()
   }, [load])
 
-  async function act(body: Record<string, unknown>) {
+  async function act(body: Record<string, unknown>, buyerName?: string) {
+    const ask = listing ? marketActConfirm(ot, listing, body, { buyerName }) : null
+    if (ask && !(await confirm(ask))) return
     setBusy(true)
     setError(null)
     try {
@@ -97,7 +102,7 @@ export function MarketDetail({ id }: { id: string }) {
   }
 
   async function remove() {
-    if (!window.confirm(ot('confirm.deleteListing'))) return
+    if (!(await confirm({ kind: 'delete', subject: listing?.title, message: ot('confirm.deleteListing') }))) return
     setBusy(true)
     try {
       await apiFetch(`/api/office/market/${id}`, { method: 'DELETE' })
@@ -118,7 +123,7 @@ export function MarketDetail({ id }: { id: string }) {
         <p className="text-sm text-ink-soft"><Untranslated>{ot('market.gone')}</Untranslated></p>
         <Link
           href="/office/market"
-          className="mt-4 inline-flex h-9 items-center rounded-full bg-surface px-4 text-sm text-ink hover:bg-surface-hover"
+          className="mt-4 inline-flex h-11 sm:h-9 items-center rounded-full bg-surface px-4 text-sm text-ink hover:bg-surface-hover"
         >
           <Untranslated>{ot('market.backToList')}</Untranslated>
         </Link>
@@ -133,7 +138,7 @@ export function MarketDetail({ id }: { id: string }) {
     <div className="max-w-5xl py-2">
       <Link
         href="/office/market"
-        className="inline-flex items-center gap-1 text-sm text-ink-soft transition-colors hover:text-ink"
+        className="inline-flex min-h-11 items-center gap-1 text-sm text-ink-soft transition-colors hover:text-ink"
       >
         <svg viewBox="0 0 24 24" className="size-4 rtl:-scale-x-100" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="m15 6-6 6 6 6" />
@@ -218,7 +223,7 @@ export function MarketDetail({ id }: { id: string }) {
             {!l.canManage ? (
               <Link
                 href={`/office/market/chat?listing=${l.id}`}
-                className="shrink-0 inline-flex h-9 items-center rounded-full bg-accent px-4 text-sm font-medium text-accent-ink transition-colors hover:bg-accent-hover"
+                className="shrink-0 inline-flex h-11 sm:h-9 items-center rounded-full bg-accent px-4 text-sm font-medium text-accent-ink transition-colors hover:bg-accent-hover"
               >
                 {ot('market.chat.open')}
               </Link>
@@ -332,7 +337,7 @@ export function MarketDetail({ id }: { id: string }) {
                       size="sm"
                       variant="ghost"
                       loading={busy}
-                      onClick={() => void act({ action: 'bill', buyerId: q.userId })}
+                      onClick={() => void act({ action: 'bill', buyerId: q.userId }, q.name)}
                     >
                       {ot('market.createDebt')}
                     </Button>

@@ -39,13 +39,14 @@ const SWATCH = {
   light: { page: '#ffffff', bar: '#f9f9f9', card: '#f2f2f2', line: '#e5e5e5' },
 } as const
 
-function ThemePreview({ mode }: { mode: 'system' | 'dark' | 'light' }) {
+function ThemePreview({ mode, big = false }: { mode: 'system' | 'dark' | 'light'; big?: boolean }) {
+  const size = big ? 'h-14 w-20 rounded-xl' : 'size-10 rounded-lg'
   /* ★ "ตามเครื่อง" วาดสองซีกในกรอบเดียว — สื่อว่าเป็นได้ทั้งสองอย่าง */
   if (mode === 'system') {
     return (
       <span
         aria-hidden="true"
-        className="relative grid size-10 shrink-0 overflow-hidden rounded-lg border border-line"
+        className={cn('relative grid shrink-0 overflow-hidden border border-line', size)}
       >
         <span className="absolute inset-0 flex">
           <span className="h-full w-1/2" style={{ background: SWATCH.dark.page }} />
@@ -67,7 +68,7 @@ function ThemePreview({ mode }: { mode: 'system' | 'dark' | 'light' }) {
   return (
     <span
       aria-hidden="true"
-      className="relative grid size-10 shrink-0 overflow-hidden rounded-lg border"
+      className={cn('relative grid shrink-0 overflow-hidden border', size)}
       style={{ background: s.page, borderColor: s.line }}
     >
       <span className="absolute inset-x-0 top-0 h-[9px]" style={{ background: s.bar }} />
@@ -117,6 +118,31 @@ export function ThemeToggle() {
 
   const current = OPTIONS.find((o) => o.value === pref) ?? OPTIONS[0]!
 
+  /*
+   * ★★ เปลี่ยนโทนแบบ "วงกลมแผ่ออกจากจุดที่กด" (View Transitions API)
+   *    ★ เบราว์เซอร์ที่ไม่รองรับ หรือคนที่ตั้งลดการเคลื่อนไหว → เปลี่ยนทันทีเหมือนเดิม
+   */
+  function choose(value: ThemePref, e: React.MouseEvent) {
+    const doc = document as Document & { startViewTransition?: (cb: () => void) => { ready: Promise<void> } }
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (!doc.startViewTransition || reduce || value === pref) {
+      setTheme(value)
+      return
+    }
+    const x = e.clientX || window.innerWidth - 40
+    const y = e.clientY || 28
+    const r = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y))
+    const vt = doc.startViewTransition(() => setTheme(value))
+    void vt.ready
+      .then(() => {
+        document.documentElement.animate(
+          { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${r}px at ${x}px ${y}px)`] },
+          { duration: 650, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', pseudoElement: '::view-transition-new(root)' },
+        )
+      })
+      .catch(() => undefined)
+  }
+
   return (
     <div ref={boxRef} className="relative">
       <button
@@ -126,8 +152,9 @@ export function ThemeToggle() {
         aria-haspopup="menu"
         aria-expanded={open}
         title={t('header.theme')}
+        style={{ '--hc': '255 149 0' } as React.CSSProperties}
         className={cn(
-          'grid size-10 shrink-0 place-items-center rounded-full text-ink',
+          'hdr-btn grid size-11 shrink-0 place-items-center rounded-full text-ink sm:size-10',
           'transition-colors hover:bg-surface',
           /* ★ ค้างสีไว้ตอนเมนูเปิด — บอกว่าเมนูที่ลอยอยู่มาจากปุ่มนี้ (เหมือนปุ่มภาษา) */
           open && 'bg-surface',
@@ -149,18 +176,31 @@ export function ThemeToggle() {
           aria-label={t('header.theme')}
           className={cn(
             /* ★ end-0 ไม่ใช่ right-0 — เหตุผลเดียวกับเมนูภาษา (RTL) */
-            'absolute end-0 top-[calc(100%+8px)] z-50 w-[min(calc(100vw-24px),290px)] overflow-hidden',
-            'rounded-2xl border border-line bg-elevated shadow-2xl',
-            'menu-pop',
+            'absolute end-0 top-[calc(100%+8px)] z-50 w-[min(calc(100vw-24px),380px)] overflow-hidden',
+            /* ★ มือถือ: ลอยเต็มความกว้างจอใต้แถบหัว — ที่ 320px ยึดขอบขวาของปุ่มแล้วล้นออกซ้ายจอ */
+            'max-sm:fixed max-sm:left-3 max-sm:right-3 max-sm:top-[calc(var(--spacing-header)+8px)] max-sm:w-auto',
+            'pop-wow rounded-[26px]',
           )}
+          style={{ '--pc': '255 176 32', '--pc2': '88 86 214' } as React.CSSProperties}
         >
-          <div className="border-b border-line px-4 py-2.5">
-            <p className="text-xs font-medium uppercase tracking-wide text-ink-faint">
-              {t('header.theme')}
-            </p>
+          {/* ── หัว: ดวงอาทิตย์-พระจันทร์ ── */}
+          <div className="pop-hero relative overflow-hidden px-4 pb-4 pt-4">
+            <span aria-hidden="true" className="pop-blob pop-blob-a" />
+            <span aria-hidden="true" className="pop-blob pop-blob-b" />
+            <div className="relative flex items-center gap-3">
+              <span aria-hidden="true" className="pop-icon theme-orb grid size-12 shrink-0 place-items-center rounded-2xl">
+                <SunIcon className="hidden size-6 [html[data-theme=light]_&]:block" />
+                <MoonIcon className="hidden size-6 [html[data-theme=dark]_&]:block" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-lg font-black leading-tight text-[var(--ck-shine)]">{t('header.theme')}</p>
+                <p className="text-xs font-medium text-[color-mix(in_srgb,var(--ck-shine)_85%,transparent)]">{t('header.themeHint')}</p>
+              </div>
+            </div>
           </div>
 
-          <div className="grid gap-1 p-2">
+          {/* ── สามตัวเลือกเป็นการ์ดตัวอย่างหน้าจอ ── */}
+          <div className="grid grid-cols-3 gap-2 p-3">
             {OPTIONS.map((option, i) => {
               const active = pref === option.value
               return (
@@ -170,42 +210,28 @@ export function ThemeToggle() {
                   role="menuitemradio"
                   aria-checked={active}
                   style={{ '--i': i } as React.CSSProperties}
-                  onClick={() => {
-                    setTheme(option.value)
+                  onClick={(e) => {
+                    choose(option.value, e)
                     setOpen(false)
                   }}
-                  className={cn(
-                    'menu-item flex w-full items-center gap-3 rounded-xl border px-2.5 py-2 text-start',
-                    'transition-colors',
-                    active ? 'border-accent/40 bg-accent/10' : 'border-transparent hover:bg-surface',
-                  )}
+                  className={cn('menu-item theme-card flex flex-col items-center gap-2 rounded-2xl p-2 pb-2.5 text-center', active && 'theme-card-on')}
                 >
-                  <ThemePreview mode={option.value} />
-
-                  <span className="min-w-0 flex-1">
-                    <span
-                      className={cn(
-                        'block text-[13px] leading-tight text-ink',
-                        active ? 'font-semibold' : 'font-medium',
-                      )}
-                    >
+                  <span className="relative">
+                    <ThemePreview mode={option.value} big />
+                    {active ? (
+                      <span aria-hidden="true" className="theme-check absolute -end-1.5 -top-1.5 grid size-5 place-items-center rounded-full">
+                        <svg viewBox="0 0 24 24" className="size-3.5" fill="currentColor">
+                          <path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z" />
+                        </svg>
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="min-w-0">
+                    <span className={cn('block text-[12.5px] leading-tight text-ink', active ? 'font-bold' : 'font-medium')}>
                       {t(option.label)}
                     </span>
-                    <span className="mt-0.5 block text-[11px] leading-snug text-ink-faint">
-                      {t(option.hint)}
-                    </span>
+                    <span className="mt-0.5 block text-[10.5px] leading-snug text-ink-faint">{t(option.hint)}</span>
                   </span>
-
-                  {active ? (
-                    <svg
-                      viewBox="0 0 24 24"
-                      className="size-3.5 shrink-0 text-accent"
-                      fill="currentColor"
-                      aria-hidden="true"
-                    >
-                      <path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z" />
-                    </svg>
-                  ) : null}
                 </button>
               )
             })}

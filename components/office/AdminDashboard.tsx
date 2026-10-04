@@ -81,7 +81,7 @@ export function AdminDashboard() {
               type="button"
               onClick={() => setDays(d)}
               className={cn(
-                'h-8 rounded-full px-3 text-sm transition-colors',
+                'h-10 sm:h-8 rounded-full px-3 text-sm transition-colors',
                 days === d ? 'bg-accent text-accent-ink' : 'bg-surface text-ink-soft hover:bg-elevated',
               )}
             >

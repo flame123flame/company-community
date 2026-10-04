@@ -271,7 +271,7 @@ export function SignInForm({
           size="lg"
           block
           loading={pending}
-          className="mt-5 h-12 rounded-xl"
+          className="join-cta mt-5 h-13 sm:h-13 rounded-2xl text-base font-bold"
         >
           {t('auth.submit')}
           {/* ★ rtl:-scale-x-100 — ลูกศร "ไปข้างหน้า" ต้องชี้ไปทางที่ภาษานั้นเดิน

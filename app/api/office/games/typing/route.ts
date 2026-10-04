@@ -132,6 +132,8 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
       finished: p.finished_at !== null,
       me: p.user_id === actor.id,
     })),
+    /* ★ เวลาของ server — หน้าจอใช้ชดเชยนาฬิกาเครื่องที่เพี้ยน ให้ทุกเครื่องเริ่มพร้อมกัน */
+    serverNow: new Date().toISOString(),
   })
 })
 

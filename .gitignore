@@ -41,4 +41,5 @@ yarn-error.log*
 !.vscode/extensions.json
 .env*
 .seed-demo-ids.json
+.seed-more-ids.json
 !.env.example

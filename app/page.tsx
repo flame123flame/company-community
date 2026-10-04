@@ -3,7 +3,9 @@ import { AppHeader } from '@/components/AppHeader'
 import { HeaderActions } from '@/components/HeaderActions'
 import { PortalHero } from '@/components/home/PortalHero'
 import { SystemHub } from '@/components/home/SystemHub'
-import { HubFeatures } from '@/components/home/HubFeatures'
+import { FeatureCatalog, catalogModules } from '@/components/home/FeatureCatalog'
+import { HomeOutro } from '@/components/home/HomeOutro'
+import { HomeSection } from '@/components/home/HomeSection'
 import { SetupNotice } from '@/components/home/SetupNotice'
 import { getHomeStats } from '@/lib/home/stats'
 import { OfficeSummary, type HomeSummaryData } from '@/components/home/OfficeSummary'
@@ -14,6 +16,8 @@ import { SignInScreen } from '@/components/SignInScreen'
 import { getRegisteredUser } from '@/lib/supabase/server'
 import { viewerIsAdmin } from '@/lib/office/session'
 import { getT } from '@/lib/i18n/server'
+import { buildNav } from '@/lib/office/nav-data'
+import { ModuleNav } from '@/components/nav/ModuleNav'
 
 /**
  * หน้าแรก — พอร์ทัลของทั้งบริษัท
@@ -87,6 +91,21 @@ export default async function HomePage() {
     summary = null
   }
 
+  /* ── ส่วนของหน้า: เลขลำดับคำนวณจากส่วนที่มีจริง ── */
+  const modules = catalogModules(isAdmin)
+  const featureCount = modules.reduce((n, m) => n + m.items.length, 0)
+  const sections = [
+    ...(summary ? [{ id: 'today', title: t('home.sec.today.t'), detail: t('home.sec.today.d') }] : []),
+    { id: 'systems', title: t('home.sec.systems.t'), detail: t('home.sec.systems.d') },
+    {
+      id: 'features',
+      title: t('home.sec.features.t'),
+      detail: t('home.sec.features.d', { n: featureCount, m: modules.length }),
+    },
+    { id: 'start', title: t('home.sec.start.t'), detail: t('home.sec.start.d') },
+  ].map((x, i) => ({ ...x, n: i + 1 }))
+  const sec = (id: string) => sections.find((x) => x.id === id)!
+
   return (
     <>
       {/* ★ แถบความคืบหน้าการเลื่อน — CSS ล้วนด้วย animation-timeline: scroll()
@@ -98,7 +117,7 @@ export default async function HomePage() {
           ★★ เดิมแถบบนมีแค่ภาษากับธีม — คนที่เข้ามาหน้านี้จึงไม่มีทางรู้ว่า
              ตัวเองเป็นใครอยู่ และไม่มีทางออก */}
       <AppHeader
-        center={<span />}
+        center={<ModuleNav modules={buildNav(ot, t, isAdmin)} label={ot('nav.modules')} />}
         /*
          * ★★★ ชุดเดียวกับที่แถบบนของ /office ใช้ — ไม่ใช่ชุดที่หน้านี้ประกอบเอง
          *
@@ -124,19 +143,24 @@ export default async function HomePage() {
         <SetupNotice />
       </main>
 
-      {/* ★★ ตัวเลขของฉันมาก่อนการ์ดเมนู
-          ★ คนที่เปิดหน้านี้ทุกเช้าไม่ได้มาหาเมนู เขามาดูว่ามีอะไรค้างอยู่ไหม
-            ★★ การ์ดเมนูอยู่ที่เดิมทุกวัน ส่วนตัวเลขเปลี่ยนทุกวัน —
-               ของที่เปลี่ยนควรอยู่บนของที่ไม่เปลี่ยน */}
-      {summary ? <OfficeSummary ot={ot} locale={locale} data={summary} /> : null}
+      {summary ? (
+        <HomeSection {...sec('today')}>
+          <OfficeSummary ot={ot} locale={locale} data={summary} />
+        </HomeSection>
+      ) : null}
 
-      {/* ★ id="systems" — ปุ่มหลักบนหัวหน้าเลื่อนมาที่นี่ */}
-      <SystemHub />
+      {/* ★ id="systems" — ปุ่มหลักบนหัวหน้าและปุ่มปิดท้ายเลื่อนมาที่นี่ */}
+      <HomeSection {...sec('systems')} band>
+        <SystemHub />
+      </HomeSection>
 
-      {/* ★ เนื้อหาอธิบายความสามารถอยู่ "ใต้" การ์ด ไม่ใช่เหนือ
-          ★★ คนที่เคยใช้แล้วกลับมาคือคนส่วนใหญ่ของหน้านี้ เขาต้องเจอทางเข้า
-             ก่อน ส่วนคนใหม่เลื่อนลงอ่านต่อได้ ซึ่งเป็นสิ่งที่คนใหม่ทำอยู่แล้ว */}
-      <HubFeatures />
+      <HomeSection {...sec('features')}>
+        <FeatureCatalog isAdmin={isAdmin} />
+      </HomeSection>
+
+      <HomeSection {...sec('start')} band>
+        <HomeOutro />
+      </HomeSection>
 
       <footer className="mx-auto w-full max-w-[680px] px-4 pb-20 pt-16">
         {/**
@@ -151,8 +175,6 @@ export default async function HomePage() {
          */}
         <p className="text-center text-[11px] leading-relaxed text-ink-faint">
           {t('footer.rights', { year: new Date().getFullYear() })}
-          <br />
-          {t('footer.owner')}
         </p>
 
         <p className="mt-3 text-center text-[11px] leading-relaxed text-ink-faint">

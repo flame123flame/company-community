@@ -108,7 +108,7 @@ export function Recommendations({
                 aria-label={t('search.addLabel', { title: video.title })}
                 className="group w-full text-start disabled:cursor-not-allowed"
               >
-                <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-surface">
+                <div className="rec-thumb relative aspect-video w-full overflow-hidden rounded-2xl bg-surface">
                   <Image
                     src={video.thumbnailUrl}
                     alt=""
@@ -139,7 +139,7 @@ export function Recommendations({
                         !disabled && 'group-hover:opacity-100 group-focus-visible:opacity-100',
                       )}
                     >
-                      <span className="flex items-center gap-1.5 rounded-full bg-ink px-3 py-1.5 text-xs font-medium text-page">
+                      <span className="rec-add flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-bold">
                         <svg
                           viewBox="0 0 24 24"
                           className="size-4"
@@ -212,11 +212,18 @@ function Heading({
 }) {
   const t = useT()
   return (
-    <div className="mb-3">
-      <h2 className="flex flex-wrap items-baseline gap-x-2 text-base font-medium">
+    <div className="mb-4 flex items-start gap-3">
+      {/* ★ ไอคอนไล่สีหน้าหัวข้อ — ภาษาเดียวกับหัวข้อในหน้าออฟฟิศ */}
+      <span aria-hidden="true" className="mus-act-icon grid size-10 shrink-0 place-items-center rounded-2xl" style={{ '--tint': '175 82 222' } as React.CSSProperties}>
+        <svg viewBox="0 0 24 24" className="size-5" fill="currentColor">
+          <path d="M12 2l2.4 6.9H22l-6 4.4 2.3 7L12 16l-6.3 4.3 2.3-7-6-4.4h7.6z" />
+        </svg>
+      </span>
+      <div className="min-w-0 flex-1">
+      <h2 className="flex flex-wrap items-baseline gap-x-2 text-lg font-black">
         {t('rec.title')}
         {total > 0 ? (
-          <span className="text-xs font-normal text-ink-soft">
+          <span className="rounded-full bg-surface px-2 py-0.5 text-[11px] font-semibold text-ink-soft">
             {t('rec.count', { shown, total })}
           </span>
         ) : null}
@@ -246,6 +253,7 @@ function Heading({
       ) : (
         <p className="mt-0.5 text-xs text-ink-soft">{t('rec.subtitle')}</p>
       )}
+      </div>
     </div>
   )
 }

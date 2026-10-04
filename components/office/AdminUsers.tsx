@@ -3,6 +3,7 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 import { apiFetch } from '@/lib/api/client'
 import { Button } from '@/components/ui/Button'
+import { useConfirm } from '@/components/ConfirmProvider'
 import { Input } from '@/components/ui/Input'
 import { cn } from '@/lib/cn'
 import { departmentLabel } from '@/lib/office/departments'
@@ -34,6 +35,7 @@ type Row = {
 /** หน้าจัดการผู้ใช้งาน (FR-X09 · หัวข้อ 8.6) */
 export function AdminUsers({ selfId }: { selfId: string }) {
   const ot = useOt()
+  const confirm = useConfirm()
   const [rows, setRows] = useState<Row[]>([])
   const [query, setQuery] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
@@ -57,6 +59,31 @@ export function AdminUsers({ selfId }: { selfId: string }) {
   }, [load])
 
   async function act(id: string, body: Record<string, unknown>) {
+    /*
+     * ★ ถามก่อนทุกการกระทำกับบัญชีผู้ใช้ — รวมไว้ที่นี่ที่เดียว เมนูและฟอร์มเรียกมาที่นี่หมด
+     *   ★★ รีเซ็ตรหัส · ให้/ถอดสิทธิ์ admin · ระงับบัญชี = danger · คืนสถานะ/แก้ข้อมูล = edit
+     */
+    const row = rows.find((r) => r.id === id)
+    const name = row ? row.nickname || row.displayName : undefined
+    const label =
+      body.action === 'resetPassword'
+        ? ot('admin.users.resetPassword')
+        : body.action === 'admin'
+          ? body.isAdmin
+            ? ot('admin.users.makeAdmin')
+            : ot('admin.users.removeAdmin')
+          : body.action === 'status'
+            ? body.status === 'SUSPENDED'
+              ? ot('admin.users.suspend')
+              : ot('admin.users.restore')
+            : null
+    const kind = body.action === 'profile' || (body.action === 'status' && body.status === 'ACTIVE') ? 'edit' : 'danger'
+    const ok = await confirm(
+      label
+        ? { kind, subject: name, title: name ? `${label} · ${name}` : label, confirmLabel: label }
+        : { kind, subject: name },
+    )
+    if (!ok) return
     setBusy(id)
     setError(null)
     try {

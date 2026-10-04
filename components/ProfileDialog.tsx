@@ -24,6 +24,7 @@ import { shrinkImage } from '@/lib/image/shrink'
 import { cn } from '@/lib/cn'
 import { useMounted } from '@/hooks/useMounted'
 import { useT } from '@/lib/i18n/client'
+import { useConfirm } from '@/components/ConfirmProvider'
 
 const NAME_MAX = 40
 const NICK_MAX = 30
@@ -81,6 +82,7 @@ export function ProfileDialog({
   onClose?: () => void
 }) {
   const t = useT()
+  const confirm = useConfirm()
   const [displayName, setDisplayName] = useState(initial?.displayName ?? '')
   const [nickname, setNickname] = useState(initial?.nickname ?? '')
   const [avatarUrl, setAvatarUrl] = useState(initial?.avatarUrl ?? null)
@@ -222,6 +224,8 @@ export function ProfileDialog({
       nameRef.current?.focus()
       return
     }
+    /* ★ ตั้งครั้งแรก = เพิ่ม · มีโปรไฟล์อยู่แล้ว = แก้ไข — ถามหลังตรวจชื่อผ่านแล้ว */
+    if (!(await confirm({ kind: initial ? 'edit' : 'create', subject: name }))) return
 
     setPending(true)
     setError(null)
@@ -515,13 +519,13 @@ export function ProfileDialog({
             *    คนที่ยืมคอมเพื่อน หรือใช้เครื่องร่วมกันที่บ้าน จะเปลี่ยนเป็นชื่อ
             *    ตัวเองไม่ได้เลยนอกจากไปล้าง site data เอง ซึ่งไม่มีใครรู้วิธี
             *
-            * ★ ไม่ถาม confirm เพราะไม่มีอะไรหาย — พิมพ์ชื่อเดิมกลับเข้ามาได้เสมอ
-            *   (ต่างจากการลบข้อมูล ซึ่งย้อนไม่ได้)
+            * ★ ถามด้วยกล่อง "ยื้อ" กลางของเว็บ — เจ้าของสั่งให้ทุกการออกจากระบบต้องยืนยัน (4 ต.ค. 2026)
             */}
           {initial?.username ? (
             <button
               type="button"
-              onClick={() => {
+              onClick={async () => {
+                if (!(await confirm({ kind: 'logout' }))) return
                 void signOutCompletely().then(() => window.location.reload())
               }}
               className="mt-3 block w-full text-center text-xs text-ink-faint underline underline-offset-2 hover:text-ink"

@@ -8,6 +8,9 @@ import { OfficeI18nProvider } from '@/lib/i18n/office'
 import { officeDictSubset } from '@/lib/i18n/office-dict'
 import { getLocale } from '@/lib/i18n/server'
 import { getOt } from '@/lib/i18n/office-server'
+import { getT } from '@/lib/i18n/server'
+import { buildNav } from '@/lib/office/nav-data'
+import { AppLauncher } from '@/components/nav/AppLauncher'
 
 /**
  * กลุ่มปุ่มขวามือของแถบบน — ชุดเดียวใช้ทุกหน้า
@@ -40,6 +43,9 @@ export async function HeaderActions({
 }) {
   const locale = await getLocale()
   const { ot } = await getOt()
+  const { t } = await getT()
+  /* ★ เมนูรวมทุกระบบ — แปลฝั่ง server แล้วส่งเป็นข้อความ (ดู lib/office/nav-data) */
+  const modules = buildNav(ot, t, isAdmin)
 
   /*
    * ★★ ส่งเฉพาะกุญแจที่ปุ่มพวกนี้ใช้ ไม่ใช่ดิกชันนารีออฟฟิศทั้ง 779 กุญแจ
@@ -51,15 +57,27 @@ export async function HeaderActions({
   return (
     <OfficeI18nProvider dict={dict}>
       {/*
+        * ★★ "แท่นปุ่ม" แก้วฝ้า — รวมปุ่มขวามือเป็นแคปซูลเดียว มีเส้นคั่นเป็นกลุ่ม
+        *    (เมนูทุกระบบ | แชท · แจ้งเตือน | ภาษา · โทนสี | บัญชี)
+        *    ★ จอแคบกว่า 640px ไม่มีแคปซูล — ทุกพิกเซลของแถบบนมือถือมีค่า
+        */}
+      <div className="hdr-dock flex items-center gap-0.5 sm:gap-1">
+      <AppLauncher
+        modules={modules}
+        labels={{ open: ot('top.apps'), title: ot('top.appsTitle'), hint: ot('top.appsHint'), close: ot('common.close'), theme: ot('top.theme') }}
+      />
+      {/*
         * ★ ปุ่มผู้ดูแลระบบพาไปหน้าจัดการผู้ใช้ตรง ๆ ไม่ใช่แดชบอร์ด
         *   ★★ คนกดปุ่มนี้ส่วนใหญ่มาเพื่อจัดการคน ไม่ได้มาดูกราฟ
         */}
+      <span aria-hidden="true" className="hdr-sep" />
       {isAdmin ? (
         <Link
           href="/office/admin/users"
           title={ot('nav.admin')}
           aria-label={ot('nav.admin')}
-          className="grid size-9 shrink-0 place-items-center rounded-full text-accent transition-colors hover:bg-accent/15"
+          style={{ '--hc': '88 86 214' } as React.CSSProperties}
+          className="hdr-btn grid size-11 shrink-0 place-items-center rounded-full text-accent transition-colors hover:bg-accent/15 sm:size-9"
         >
           <svg
             viewBox="0 0 24 24"
@@ -78,13 +96,19 @@ export async function HeaderActions({
 
       <ChatMenu meId={userId} />
       <NotificationBell userId={userId} />
+      <span aria-hidden="true" className="hdr-sep" />
       <LanguageToggle />
-      <ThemeToggle />
+      {/* ★ จอแคบกว่า 360px ปุ่มเจ็ดปุ่มล้นจอ — ย้ายปุ่มโทนสีไปไว้ในเมนูทุกระบบแทน */}
+      <div className="max-[359px]:hidden">
+        <ThemeToggle />
+      </div>
       {/*
         * ★ ชื่อผู้ใช้เป็นตัวยืนยันว่า "กำลังใช้ในนามใคร" ซึ่งสำคัญมากใน
         *   ระบบที่มีเรื่องเงิน — คนต้องเห็นได้ทันทีว่าไม่ได้สวมบัญชีคนอื่นอยู่
         */}
+      <span aria-hidden="true" className="hdr-sep" />
       <UserMenu displayName={displayName} isAdmin={isAdmin} avatarUrl={avatarUrl} />
+      </div>
     </OfficeI18nProvider>
   )
 }

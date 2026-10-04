@@ -60,8 +60,9 @@ export function LanguageToggle() {
         aria-haspopup="menu"
         aria-expanded={open}
         title={t('common.language')}
+        style={{ '--hc': '10 132 255' } as React.CSSProperties}
         className={cn(
-          'flex h-10 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-ink',
+          'hdr-btn flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-full px-2.5 text-ink sm:h-10 sm:min-w-0',
           'transition-colors hover:bg-surface',
           open && 'bg-surface',
         )}
@@ -99,18 +100,35 @@ export function LanguageToggle() {
              *    ★ บนมือถือกว้างเท่าจอลบขอบ — 380 ตรง ๆ จะล้นจอ 390px
              */
             'absolute end-0 top-[calc(100%+8px)] z-50 w-[min(calc(100vw-24px),380px)] overflow-hidden',
-            'rounded-2xl border border-line bg-elevated shadow-2xl',
-            'menu-pop',
+            /* ★ มือถือ: ลอยเต็มความกว้างจอใต้แถบหัว — ยึดขอบขวาของปุ่มแล้วล้นออกซ้ายจอ (วัดได้ -80px) */
+            'max-sm:fixed max-sm:left-3 max-sm:right-3 max-sm:top-[calc(var(--spacing-header)+8px)] max-sm:w-auto',
+            'pop-wow rounded-[26px]',
           )}
+          style={{ '--pc': '10 132 255', '--pc2': '175 82 222' } as React.CSSProperties}
         >
-          <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
-            <p className="text-xs font-medium uppercase tracking-wide text-ink-faint">
-              {t('common.language')}
-            </p>
-            {/* ★ บอกจำนวนไปเลย — คนจะได้รู้ว่าเลื่อนแล้วเจออะไรอีกกี่อัน */}
-            <span className="font-mono text-[11px] tabular-nums text-ink-faint">
-              {LOCALES.length}
-            </span>
+          {/* ── หัว: ลูกโลกหมุน + ภาษาที่ใช้อยู่ตอนนี้ ── */}
+          <div className="pop-hero relative overflow-hidden px-4 pb-4 pt-4">
+            <span aria-hidden="true" className="pop-blob pop-blob-a" />
+            <span aria-hidden="true" className="pop-blob pop-blob-b" />
+            <div className="relative flex items-center gap-3">
+              <span aria-hidden="true" className="pop-icon grid size-12 shrink-0 place-items-center rounded-2xl">
+                <svg viewBox="0 0 24 24" className="lang-globe size-6" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
+                </svg>
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-lg font-black leading-tight text-[var(--ck-shine)]">{t('common.language')}</p>
+                <p className="text-xs font-medium text-[color-mix(in_srgb,var(--ck-shine)_85%,transparent)]">
+                  {t('header.langHint', { n: LOCALES.length })}
+                </p>
+              </div>
+              {/* ★ ภาษาที่ใช้อยู่ตอนนี้ เด่นในหัวกล่อง — ไม่ต้องไล่หาจุดเลือกในตาราง */}
+              <span className="pop-pill inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-bold" lang={locale}>
+                <span aria-hidden="true" className="text-base leading-none">{LOCALE_FLAG[locale]}</span>
+                {LOCALE_LABELS[locale]}
+              </span>
+            </div>
           </div>
 
           {/**
@@ -135,11 +153,8 @@ export function LanguageToggle() {
                       if (code !== locale) applyLocale(code)
                     }}
                     className={cn(
-                      'menu-item group relative flex items-center gap-2.5 rounded-xl border px-2.5 py-2 text-start',
-                      'transition-colors',
-                      active
-                        ? 'border-accent/40 bg-accent/10'
-                        : 'border-transparent hover:bg-surface',
+                      'menu-item lang-tile group relative flex min-h-12 items-center gap-2.5 rounded-2xl px-2.5 py-2 text-start',
+                      active && 'lang-tile-on',
                     )}
                   >
                     {/**
@@ -151,10 +166,7 @@ export function LanguageToggle() {
                       */}
                     <span
                       aria-hidden="true"
-                      className={cn(
-                        'grid size-8 shrink-0 place-items-center rounded-lg text-[17px] leading-none',
-                        active ? 'bg-accent/15' : 'bg-surface',
-                      )}
+                      className="lang-flag grid size-9 shrink-0 place-items-center rounded-xl text-[20px] leading-none"
                     >
                       {LOCALE_FLAG[code]}
                     </span>
@@ -177,7 +189,7 @@ export function LanguageToggle() {
                     {active ? (
                       <svg
                         viewBox="0 0 24 24"
-                        className="size-3.5 shrink-0 text-accent"
+                        className="lang-check size-5 shrink-0 rounded-full p-0.5"
                         fill="currentColor"
                         aria-hidden="true"
                       >

@@ -11,13 +11,24 @@ import { SignInScreen } from '@/components/SignInScreen'
 import { getRegisteredUser } from '@/lib/supabase/server'
 import { envStatus } from '@/lib/env'
 import { getT } from '@/lib/i18n/server'
+import { getOt } from '@/lib/i18n/office-server'
+import { buildNav } from '@/lib/office/nav-data'
+import { ModuleNav } from '@/components/nav/ModuleNav'
+import { MusicGuide } from '@/components/music/MusicGuide'
+import { splitList } from '@/lib/i18n/office-format'
+import { Untranslated } from '@/lib/i18n/office'
 
 /*
  * ★ absolute เพื่อไม่ให้ template เติมชื่อเว็บต่อท้ายอีกรอบ
  *   ★★ ของเดิมได้ "Frame Room · Frame Room" มาตลอดโดยไม่มีใครสังเกต
  *      เพราะชื่อหน้ากับชื่อเว็บเป็นคำเดียวกัน
  */
-export const metadata: Metadata = { title: { absolute: 'AWA ROOM' } }
+/* ★ ชื่อแบรนด์เปลี่ยนเป็น AWA Plaza แล้ว ไม่ชนกับชื่อหน้าอีก — ใช้ template ปกติ
+     ได้ "ห้องฟังเพลง · AWA Plaza" ตามภาษาที่เลือก */
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getT()
+  return { title: t('hub.music') }
+}
 
 /**
  * หน้าห้องฟังเพลง
@@ -60,6 +71,7 @@ export default async function MusicHomePage() {
 
   const stats = await getHomeStats()
   const { t } = await getT()
+  const { ot } = await getOt()
 
   const live = stats.listeners > 0
 
@@ -78,8 +90,9 @@ export default async function MusicHomePage() {
         * ★ viewer อาจเป็น null ถ้ายังไม่ได้ผูกรหัสพนักงาน — คนกลุ่มนั้นยังใช้
         *   ห้องเพลงได้ตามเดิม แค่ไม่มีปุ่มของโมดูลออฟฟิศ
         */}
+      {/* ★ แถบโมดูลชุดเดียวกับหน้าแรกและออฟฟิศ — เดินจากห้องเพลงไปโมดูลอื่นได้ทันที */}
       <AppHeader
-        center={<span />}
+        center={<ModuleNav modules={buildNav(ot, t, viewer?.isAdmin ?? false)} label={ot('nav.modules')} />}
         actions={
           viewer ? (
             <HeaderActions
@@ -94,37 +107,15 @@ export default async function MusicHomePage() {
 
       {/* ── แถบหัว ───────────────────────────────────────────────── */}
       {/**
-        * ★★ เตี้ยและกระชับ ไม่ใช่พาดหัวเต็มจอแบบหน้าขาย
-        *
-        *    ★ งานของมันคือบอกว่า "นี่คือหน้าห้องเพลง" แล้วหลีกทางให้ของจริง
-        *      — ไม่ใช่ขายของให้คนที่ตัดสินใจเข้ามาแล้ว
-        *    ★★ ตัวเลขสดทำให้หน้ารู้สึกมีชีวิตตั้งแต่บรรทัดแรก ซึ่งสโลแกนทำไม่ได้
+        * ★★ หัวหน้าเป็น "เวที" — แผ่นเสียงหมุนกับตัวเลขสด บอกว่าที่นี่มีชีวิต
+        *    ★ ตัวเลขจริงสามช่อง (ห้อง · คนฟัง · ซิงก์) แทนสโลแกน
+        *    ★ ภาพแผ่นเสียงซ่อนบนจอแคบ — มือถือต้องเห็นปุ่มสร้างห้องเร็วที่สุด
         */}
-      <section className="music-hero px-4 pb-8 pt-10 sm:pb-10 sm:pt-14">
-        <div className="mx-auto w-full max-w-[1120px]">
-          <h1 className="hero-in text-[clamp(26px,4.4vw,38px)] font-bold leading-tight tracking-tight">
-            {t('hub.music')}
-          </h1>
-          <p
-            className="hero-in mt-2 max-w-[520px] text-[14.5px] leading-relaxed text-ink-soft"
-            style={{ '--d': '70ms' } as React.CSSProperties}
-          >
-            {t('hub.musicDetail')}
-          </p>
-
-          {/* ★ จุดแดงเต้นเฉพาะตอนมีคนฟังอยู่จริง — ถ้าไม่มีใครฟัง
-              การเต้นจะกลายเป็นคำโกหกเล็ก ๆ ที่หน้านี้บอกทุกครั้งที่เปิด */}
-          <div
-            className="hero-in mt-5 flex flex-wrap items-center gap-2.5"
-            style={{ '--d': '140ms' } as React.CSSProperties}
-          >
-            {/* ★★★ ประโยคเดียว ไม่ใช่ตัวเลขแยกกับคำ
-                ★ เคยเขียนเป็น <b>{n}</b> แล้วตามด้วย common.listeners
-                  ★★ แต่กุญแจนั้นมี {n} อยู่ในตัวแล้ว ผลคือ "1 1 คนกำลังฟัง"
-                     เลขซ้ำสองครั้งทุกภาษา — เห็นตอนถ่ายจอ ไม่ใช่ตอนอ่านโค้ด
-                ★ rooms.summary เป็นประโยคที่แปลครบ 16 ภาษาอยู่แล้ว และเป็น
-                  ประโยคเดียวกับที่หัวรายชื่อห้องใช้ — ทั้งหน้าจึงพูดตรงกัน */}
-            <span className="music-stat">
+      <section className="music-hero mus-hero px-4 pb-10 pt-8 sm:pb-12 sm:pt-12">
+        <div className="mx-auto grid w-full max-w-[1120px] items-center gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="min-w-0">
+            {/* ★ จุดแดงเต้นเฉพาะตอนมีคนฟังอยู่จริง — ไม่งั้นมันคือคำโกหก */}
+            <span className="music-stat hero-in">
               {live ? <span className="music-live" aria-hidden="true" /> : null}
               <span>
                 {live
@@ -132,6 +123,63 @@ export default async function MusicHomePage() {
                   : t('rooms.summaryIdle', { rooms: stats.rooms })}
               </span>
             </span>
+            <h1
+              className="mus-title hero-in mt-4 text-[clamp(34px,7vw,64px)] font-black leading-[1.05] tracking-tight"
+              style={{ '--d': '70ms' } as React.CSSProperties}
+            >
+              {t('hub.music')}
+            </h1>
+            <p
+              className="hero-in mt-3 max-w-[520px] text-[15px] leading-relaxed text-ink-soft sm:text-base"
+              style={{ '--d': '140ms' } as React.CSSProperties}
+            >
+              {t('hub.musicDetail')}
+            </p>
+
+            <dl
+              className="hero-in mt-6 grid max-w-[520px] grid-cols-3 gap-2 sm:gap-3"
+              style={{ '--d': '210ms' } as React.CSSProperties}
+            >
+              {(
+                [
+                  [String(stats.rooms), t('music.statRooms'), '255 0 51'],
+                  [String(stats.listeners), t('music.statListeners'), '175 82 222'],
+                  [t('music.statSyncV'), t('music.statSync'), '10 132 255'],
+                ] as const
+              ).map(([v, label, tint], i) => (
+                <div
+                  key={label}
+                  className="mus-stat-tile min-w-0 rounded-2xl px-3 py-3 sm:px-4"
+                  style={{ '--tint': tint, '--i': i } as React.CSSProperties}
+                >
+                  <dd className="truncate text-xl font-black tabular-nums text-ink sm:text-2xl">
+                    {i === 2 ? <Untranslated>{v}</Untranslated> : v}
+                  </dd>
+                  <dt className="mt-0.5 truncate text-[11px] text-ink-soft sm:text-xs">
+                    <Untranslated>{label}</Untranslated>
+                  </dt>
+                </div>
+              ))}
+            </dl>
+          </div>
+
+          <div aria-hidden="true" className="relative mx-auto hidden size-[300px] lg:block">
+            <span className="mus-halo" />
+            <div className="mus-vinyl absolute left-5 top-5 size-[260px]">
+              <span className="mus-vinyl-label" />
+            </div>
+            <span className="mus-arm mus-arm-lg" />
+            {(
+              [
+                ['♪', '-4%', '8%', '0s'],
+                ['♫', '86%', '-2%', '0.8s'],
+                ['♬', '90%', '74%', '1.6s'],
+              ] as const
+            ).map(([n, x, y, d]) => (
+              <span key={n} className="mus-note absolute grid size-12 place-items-center rounded-2xl text-2xl font-black" style={{ left: x, top: y, '--dl': d } as React.CSSProperties}>
+                {n}
+              </span>
+            ))}
           </div>
         </div>
       </section>
@@ -139,64 +187,71 @@ export default async function MusicHomePage() {
       <main className="mx-auto w-full max-w-[1120px] px-4 pt-7">
         <SetupNotice />
 
+        {/* ★ คำอธิบายแบบเดียวกับทุกหน้าในออฟฟิศ — ยุบได้และจำไว้ในเครื่อง */}
+        <div className="mb-7">
+          <MusicGuide id="music" art="stage" />
+        </div>
+
         {/* ── สองทางเข้า: เปิดห้องใหม่ / มีรหัสอยู่แล้ว ──────────── */}
         {/**
           * ★★★ วางคู่กันในแถวเดียว ไม่ใช่เรียงลงมาคั่นด้วยคำว่า "หรือ"
-          *
-          *     ★ เรียงลงมาทำให้คนอ่านเป็นลำดับ: ทำอันบนก่อน แล้วค่อยอันล่าง
-          *       ★★ แต่สองอันนี้เป็นทางเลือกที่ "แทนกัน" — เปิดห้องใหม่
-          *          หรือเข้าห้องที่เพื่อนเปิดไว้ ไม่มีใครทำทั้งสองอย่าง
-          *     ★ วางคู่กันบอกความจริงนั้นด้วยรูปทรง ไม่ต้องมีคำว่า "หรือ"
-          *       มาอธิบาย และประหยัดความสูงไปหนึ่งหน้าจอบนมือถือ
-          *
+          *     สองอันนี้เป็นทางเลือกที่ "แทนกัน" — วางคู่กันบอกความจริงนั้นด้วยรูปทรง
           * ★ ช่องซ้ายกว้างกว่า — "เปิดห้องใหม่" คือสิ่งที่คนส่วนใหญ่มาทำ
-          *   ส่วนการพิมพ์รหัส 6 ตัวเป็นกรณีที่เพื่อนส่งรหัสมาให้ตรง ๆ เท่านั้น
           */}
         <div className="grid gap-4 lg:grid-cols-[1.35fr_1fr]">
-          {/* ★ id="create" — ลิงก์เดิมจากที่อื่นยังเลื่อนมาที่นี่ได้
-              scroll-mt เผื่อความสูงของแถบบนที่ติดอยู่ ไม่งั้นหัวข้อจะโดนบัง */}
+          {/* ★ id="create" — ลิงก์เดิมจากที่อื่นยังเลื่อนมาที่นี่ได้ */}
           <section
             id="create"
-            className="music-act music-act-primary reveal scroll-mt-20 p-5 sm:p-7"
+            className="music-act music-act-primary mus-act reveal scroll-mt-20 overflow-hidden p-5 sm:p-7"
+            style={{ '--tint': '255 0 51' } as React.CSSProperties}
           >
-            <div className="flex items-start gap-3">
-              <span
-                aria-hidden="true"
-                className="grid size-11 shrink-0 place-items-center rounded-2xl border border-accent/35 bg-accent/12 text-accent"
-              >
-                <svg viewBox="0 0 24 24" className="size-5" fill="currentColor">
+            <span aria-hidden="true" className="mus-act-glow" />
+            <div className="relative flex items-start gap-3.5">
+              <span aria-hidden="true" className="mus-act-icon grid size-12 shrink-0 place-items-center rounded-2xl">
+                <svg viewBox="0 0 24 24" className="size-6" fill="currentColor">
                   <path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z" />
                 </svg>
               </span>
               <div className="min-w-0">
-                <h2 className="text-lg font-semibold leading-tight">{t('home.create.title')}</h2>
-                <p className="mt-1 text-xs leading-relaxed text-ink-soft">
+                <h2 className="text-xl font-black leading-tight">{t('home.create.title')}</h2>
+                <p className="mt-1 text-[13px] leading-relaxed text-ink-soft">
                   {t('home.create.detail')}
                 </p>
               </div>
             </div>
+            <ul className="relative mt-4 flex flex-wrap gap-1.5">
+              {splitList(t('music.createPerk')).map((perk) => (
+                <li key={perk} className="mus-perk inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium">
+                  <svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="m5 12 5 5 9-10" />
+                  </svg>
+                  <Untranslated>{perk}</Untranslated>
+                </li>
+              ))}
+            </ul>
 
-            <div className="mt-5">
+            <div className="relative mt-5">
               <CreateRoomButton configured={supabaseOk} />
             </div>
           </section>
 
-          <section className="music-act reveal p-5 sm:p-6">
-            <div className="flex items-start gap-3">
-              <span
-                aria-hidden="true"
-                className="grid size-11 shrink-0 place-items-center rounded-2xl bg-surface font-mono text-base text-ink-soft"
-              >
+          <section
+            className="music-act mus-act reveal overflow-hidden p-5 sm:p-6"
+            style={{ '--tint': '10 132 255' } as React.CSSProperties}
+          >
+            <span aria-hidden="true" className="mus-act-glow" />
+            <div className="relative flex items-start gap-3.5">
+              <span aria-hidden="true" className="mus-act-icon grid size-12 shrink-0 place-items-center rounded-2xl font-mono text-xl font-black">
                 #
               </span>
               <div className="min-w-0">
-                <h2 className="text-lg font-semibold leading-tight">{t('home.join.title')}</h2>
-                <p className="mt-1 text-xs leading-relaxed text-ink-soft">
-                  {t('home.join.codeLabel')}
+                <h2 className="text-xl font-black leading-tight">{t('home.join.title')}</h2>
+                <p className="mt-1 text-[13px] leading-relaxed text-ink-soft">
+                  <Untranslated>{t('music.joinHint')}</Untranslated>
                 </p>
               </div>
             </div>
-            <div className="mt-5">
+            <div className="relative mt-5">
               <JoinRoomForm />
             </div>
           </section>
@@ -225,8 +280,6 @@ export default async function MusicHomePage() {
          */}
         <p className="text-center text-[11px] leading-relaxed text-ink-faint">
           {t('footer.rights', { year: new Date().getFullYear() })}
-          <br />
-          {t('footer.owner')}
         </p>
 
         <p className="mt-3 text-center text-[11px] leading-relaxed text-ink-faint">

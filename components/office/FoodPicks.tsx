@@ -3,10 +3,10 @@
 import Link from 'next/link'
 import Image from 'next/image'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { apiFetch } from '@/lib/api/client'
+import { useConfirm } from '@/components/ConfirmProvider'
 import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
 import { cn } from '@/lib/cn'
 import { officeErrorText } from '@/lib/i18n/office-format'
 import { Untranslated, useOt } from '@/lib/i18n/office'
@@ -15,6 +15,7 @@ import {
   PRICE_OPTIONS,
   distanceLabel,
   emptyFilters,
+  karaokeFrom,
   filterRestaurants,
   type Filters,
   type Restaurant,
@@ -27,12 +28,14 @@ import { ShopPhotos } from './ShopPhotos'
 import { Stars } from './Stars'
 import { AddRestaurantForm, type EditingShop } from './AddRestaurantForm'
 import { FilterSheet, FilterGroup, FilterChip } from './FilterSheet'
+import { FunGuide } from './FunGuide'
 
 export type PicksSort = 'new' | 'votes' | 'rating' | 'near'
 
 /** หน้าร้านเด็ด (FR-A03–A06) */
 export function FoodPicks() {
   const ot = useOt()
+  const confirm = useConfirm()
   const [data, setData] = useState<RestaurantList>({ items: [], cuisines: [] })
   const [filters, setFilters] = useState<Filters>(emptyFilters)
   /*
@@ -103,10 +106,6 @@ export function FoodPicks() {
     )
   }, [data.items, filters, sort])
 
-  /** ตัวกรองที่เลือกอยู่กี่อย่าง — ตัวเลขบนปุ่ม "ตัวกรอง (n)" */
-  const filterCount =
-    (filters.price ? 1 : 0) + (filters.distance ? 1 : 0) + (sort === 'new' ? 0 : 1)
-
   async function vote(id: string) {
     /* ★ สลับหน้าจอทันที แล้วค่อยรอ server — ปุ่มกดแล้วต้องตอบสนองทันที */
     setData((prev) => ({
@@ -127,7 +126,8 @@ export function FoodPicks() {
     }
   }
 
-  async function reportClosed(id: string) {
+  async function reportClosed(id: string, name: string) {
+    if (!(await confirm({ kind: 'danger', subject: name, message: ot('food.picks.reportClosed') }))) return
     try {
       const res = await apiFetch<{ reports: number; threshold: number; maybeClosed: boolean }>(
         `/api/office/food/restaurants/${id}`,
@@ -147,8 +147,8 @@ export function FoodPicks() {
     window.setTimeout(() => setNotes((p) => ({ ...p, [id]: '' })), 4000)
   }
 
-  async function remove(id: string) {
-    if (!window.confirm(ot('confirm.deleteRestaurant'))) return
+  async function remove(id: string, name: string) {
+    if (!(await confirm({ kind: 'delete', subject: name, message: ot('confirm.deleteRestaurant') }))) return
     try {
       await apiFetch(`/api/office/food/restaurants/${id}`, { method: 'DELETE' })
       await load()
@@ -158,6 +158,7 @@ export function FoodPicks() {
   }
 
   async function markOpen(r: Restaurant) {
+    if (!(await confirm({ kind: 'edit', subject: r.name }))) return
     try {
       await apiFetch(`/api/office/food/restaurants/${r.id}`, {
         method: 'PATCH',
@@ -228,168 +229,225 @@ export function FoodPicks() {
   const safePage = Math.min(page, pageCount - 1)
   const pageRows = shown.slice(safePage * PER_PAGE, safePage * PER_PAGE + PER_PAGE)
 
+  /* ── ตัวเลขสรุป + ยอดฮิต 3 อันดับ ── */
+  const stats = [
+    { key: 'food.stat.total', n: data.items.length, c: 'var(--ck-gold)' },
+    { key: 'food.stat.myHearts', n: data.items.filter((r) => r.voted).length, c: 'var(--color-accent)' },
+    { key: 'food.stat.reviewed', n: data.items.filter((r) => r.ratingCount > 0).length, c: 'var(--ck-gold-deep)' },
+    { key: 'food.stat.cuisines', n: data.cuisines.length, c: 'var(--color-link)' },
+  ]
+  const top = [...data.items]
+    .filter((r) => r.voteCount > 0 && !r.maybeClosed)
+    .sort((a, b) => b.voteCount - a.voteCount || (b.rating ?? 0) - (a.rating ?? 0))
+    .slice(0, 3)
+  const SORTS: { id: PicksSort; key: 'food.picks.sortNew' }[] = [
+    { id: 'new', key: 'food.picks.sortNew' },
+    { id: 'votes', key: 'food.picks.sortVotes' as 'food.picks.sortNew' },
+    { id: 'rating', key: 'food.picks.sortRating' as 'food.picks.sortNew' },
+    ...(data.items.some((x) => x.travelMeters != null)
+      ? [{ id: 'near' as const, key: 'food.picks.sortNear' as 'food.picks.sortNew' }]
+      : []),
+  ]
+  /* ★ การเรียงย้ายมาอยู่บนแถบเครื่องมือแล้ว — ปุ่ม "ตัวกรอง (n)" นับแค่ราคากับระยะ */
+  const sheetCount = (filters.price ? 1 : 0) + (filters.distance ? 1 : 0)
+
   return (
     <div className="w-full pb-10">
-      {/*
-        * ══ 1 · ค้นหาและกรอง ═══════════════════════════════════
-        *
-        * ★★★ ของเดิมเป็นแถวลอย ๆ สามแถวที่ไม่มีหัวข้อ
-        *     ★ ช่องค้นหา · ชิปประเภท · ปุ่มตัวกรอง — ทั้งสามอ่านเป็นของ
-        *       คนละชุดที่บังเอิญอยู่ติดกัน
-        *       ★★ ตอนนี้อยู่ในเซกชันเดียวที่มีชื่อ และหุบได้เมื่อเลือกเสร็จแล้ว
-        */}
-      <Section
-        collapsible
-        /* ★ ชื่อเซกชันต้องไม่ซ้ำกับปุ่ม "ตัวกรอง" ที่อยู่ข้างใน
-             ★★ ซ้ำแล้วทั้งคนและสคริปต์ทดสอบแยกไม่ออกว่าจะกดอันไหน —
-                สคริปต์กดหัวเซกชันแล้วรอแผ่นตัวกรองที่ไม่มีวันเปิด */
-        title={<Untranslated>{ot('food.picks.findTitle')}</Untranslated>}
-        hint={<Untranslated>{ot('food.picks.count', { n: data.items.length })}</Untranslated>}
-        badge={
-          filterCount > 0 ? (
-            <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[11px] font-medium tabular-nums text-accent">
-              {filterCount}
-            </span>
-          ) : undefined
-        }
-        summary={
-          [
-            filters.query,
-            filters.cuisine,
-            filters.price,
-            filters.distance ? distanceLabel(ot, filters.distance) : '',
-          ]
-            .filter(Boolean)
-            .join(' · ') || undefined
-        }
-        action={
-          <Button variant="primary" className="min-h-11 shrink-0" onClick={() => setAdding(true)}>
+      <FunGuide id="foodPicks" art="picks" />
+
+      {/* ═══ ตัวเลขสรุป ═══ */}
+      <div className="mt-6 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+        {stats.map((x) => (
+          <div key={x.key} className="mkt-stat rounded-2xl p-3.5" style={{ '--sc': x.c } as CSSProperties}>
+            <p className="text-2xl font-black tabular-nums text-ink">{loading ? '–' : x.n}</p>
+            <p className="mt-0.5 text-xs text-ink-soft">
+              <Untranslated>{ot(x.key as 'food.stat.total')}</Untranslated>
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {/* ═══ ยอดฮิตของออฟฟิศ — 3 อันดับจากหัวใจ ═══ */}
+      {top.length > 0 ? (
+        <section className="food-podium mt-6 rounded-[28px] p-5 sm:p-6">
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <h2 className="text-lg font-black text-ink">
+              🏆 <Untranslated>{ot('food.top.title')}</Untranslated>
+            </h2>
+            <p className="text-xs text-ink-soft">
+              <Untranslated>{ot('food.top.hint')}</Untranslated>
+            </p>
+          </div>
+          <ol className="mt-4 grid gap-3 sm:grid-cols-3">
+            {top.map((r, i) => {
+              const style = cuisineStyle(r.name, r.cuisine)
+              return (
+                <li key={r.id}>
+                  <Link
+                    href={`/office/food/picks/${r.id}`}
+                    className={cn('food-top group relative flex h-full flex-col overflow-hidden rounded-3xl', i === 0 && 'food-top-1')}
+                    style={{ '--ct': style.tint } as CSSProperties}
+                  >
+                    <div className="relative aspect-[16/9] overflow-hidden">
+                      {r.coverUrl ? (
+                        <Image src={r.coverUrl} alt="" fill sizes="(max-width:640px) 100vw, 360px" className="object-cover transition-transform duration-500 group-hover:scale-105" unoptimized />
+                      ) : (
+                        <span aria-hidden="true" className="food-top-fallback absolute inset-0 grid place-items-center">
+                          <svg viewBox="0 0 24 24" className="size-12 text-[var(--ck-shine)]" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                            <path d={style.icon} />
+                          </svg>
+                        </span>
+                      )}
+                      <span className="market-scrim" aria-hidden="true" />
+                      <span aria-hidden="true" className="food-medal absolute start-3 top-3 grid size-11 place-items-center rounded-full text-2xl">
+                        {['🥇', '🥈', '🥉'][i]}
+                      </span>
+                      <span className="mkt-price absolute bottom-3 start-3 text-sm">
+                        ♥ <Untranslated>{ot('food.top.hearts', { n: r.voteCount })}</Untranslated>
+                      </span>
+                    </div>
+                    <div className="flex flex-1 flex-col p-4">
+                      <p dir="auto" className="truncate text-base font-bold text-ink">{r.name}</p>
+                      {r.signatureDish ? (
+                        <p dir="auto" className="mt-0.5 truncate text-xs text-ink-soft">{r.signatureDish}</p>
+                      ) : null}
+                      {r.ratingCount > 0 ? (
+                        <p className="mt-1.5 text-xs text-ink-soft">
+                          <span className="text-[var(--ck-gold-deep)]">★</span>{' '}
+                          <span className="font-bold text-ink">{r.rating?.toFixed(1)}</span> ({r.ratingCount})
+                        </p>
+                      ) : null}
+                    </div>
+                  </Link>
+                </li>
+              )
+            })}
+          </ol>
+        </section>
+      ) : null}
+
+      {/* ═══ แถบเครื่องมือ: ค้นหา · เพิ่มร้าน · ประเภท · เรียง · ตัวกรอง ═══ */}
+      <section className="mkt-panel mt-6 rounded-3xl p-4 sm:p-5">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative min-w-0 flex-[1_1_16rem]">
+            <svg viewBox="0 0 24 24" className="pointer-events-none absolute start-4 top-1/2 size-4.5 -translate-y-1/2 text-ink-faint" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.5-3.5" />
+            </svg>
+            <input
+              type="search"
+              value={filters.query}
+              onChange={(e) => setFilters((f) => ({ ...f, query: e.target.value }))}
+              placeholder={ot('food.picks.searchPlaceholder')}
+              aria-label={ot('food.picks.searchPlaceholder')}
+              className="h-12 w-full rounded-full border border-line bg-input ps-11 pe-4 text-base text-ink outline-none placeholder:text-ink-faint focus:border-line-strong sm:text-sm"
+            />
+          </div>
+
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setFilterOpen((v) => !v)}
+              aria-expanded={filterOpen}
+              className={cn(
+                'inline-flex h-12 items-center gap-2 rounded-full border px-4 text-sm font-medium transition-colors',
+                sheetCount > 0 ? 'border-ink bg-ink text-page' : 'border-line bg-elevated text-ink hover:bg-surface',
+              )}
+            >
+              <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <path d="M3 5h18M6 12h12M10 19h4" />
+              </svg>
+              {sheetCount > 0 ? ot('food.filter.withCount', { n: sheetCount }) : ot('food.filter.title')}
+            </button>
+
+            <FilterSheet
+              open={filterOpen}
+              onClose={() => setFilterOpen(false)}
+              title={ot('food.filter.title')}
+              count={sheetCount}
+              onClear={() => setFilters((f) => ({ ...f, price: null, distance: null }))}
+            >
+              <FilterGroup label={ot('food.filter.price')}>
+                {PRICE_OPTIONS.map((p) => (
+                  <FilterChip key={p} active={filters.price === p} onClick={() => setFilters((f) => ({ ...f, price: f.price === p ? null : p }))}>
+                    {p}
+                  </FilterChip>
+                ))}
+              </FilterGroup>
+              <FilterGroup label={ot('food.filter.distance')}>
+                {DISTANCE_OPTIONS.map((d) => (
+                  <FilterChip key={d} active={filters.distance === d} onClick={() => setFilters((f) => ({ ...f, distance: f.distance === d ? null : d }))}>
+                    {distanceLabel(ot, d)}
+                  </FilterChip>
+                ))}
+              </FilterGroup>
+            </FilterSheet>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setAdding(true)}
+            className="team-go inline-flex h-12 items-center gap-2 rounded-full px-5 text-sm font-bold"
+          >
+            <svg viewBox="0 0 24 24" className="size-4.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
             <Untranslated>{ot('food.picks.add')}</Untranslated>
-          </Button>
-        }
-      >
-        <Input
-          radius="round"
-          value={filters.query}
-          onChange={(e) => setFilters((f) => ({ ...f, query: e.target.value }))}
-          placeholder={ot('food.picks.searchPlaceholder')}
-        />
+          </button>
+        </div>
+
+        {/* ── เรียงลำดับ: เห็นตลอด ไม่ต้องเปิดแผ่นตัวกรอง ── */}
+        <div role="radiogroup" aria-label={ot('food.filter.sort')} className="mt-4 flex w-full flex-wrap rounded-full bg-surface p-1 sm:w-fit">
+          {SORTS.map((o) => (
+            <button
+              key={o.id}
+              type="button"
+              role="radio"
+              aria-checked={sort === o.id}
+              onClick={() => setSort(o.id)}
+              className={cn(
+                'h-10 flex-1 rounded-full px-3.5 text-[13px] transition-all sm:h-8 sm:flex-none',
+                sort === o.id ? 'bg-elevated font-semibold text-ink shadow-sm' : 'text-ink-soft hover:text-ink',
+              )}
+            >
+              {ot(o.key)}
+            </button>
+          ))}
+        </div>
 
         {/*
-          * ★★ ประเภทอาหารเป็นชิปที่มีไอคอนประจำประเภท ไม่ใช่ตัวหนังสือล้วน
-          *    ★ ชุดเดียวกับการ์ดร้าน — คนเห็นไอคอนชามเส้นบนชิป แล้วเจอ
-          *      ไอคอนเดียวกันบนการ์ดที่กรองออกมา จึงรู้ว่ากรองทำงานจริง
+          * ★★ ประเภทอาหารเป็นการ์ดเล็กมีไอคอนประจำประเภท — ชุดเดียวกับการ์ดร้าน
+          *    คนเห็นไอคอนบนชิป แล้วเจอไอคอนเดียวกันบนการ์ดที่กรองออกมา
           */}
-        <div className="scrollbar-none -mx-4 mt-3 flex gap-1.5 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
-          <Chip active={!filters.cuisine} onClick={() => setFilters((f) => ({ ...f, cuisine: null }))}>
-            {ot('food.picks.allCuisines')}
-          </Chip>
+        <div className="mkt-rail -mx-1 mt-4 flex gap-2 overflow-x-auto px-1 pb-1">
+          <button
+            type="button"
+            aria-pressed={!filters.cuisine}
+            onClick={() => setFilters((f) => ({ ...f, cuisine: null }))}
+            className="mkt-cat flex min-w-[5rem] shrink-0 flex-col items-center gap-1 rounded-2xl px-3 py-2.5"
+          >
+            <span aria-hidden="true" className="mkt-cat-emoji text-xl leading-none">🍽️</span>
+            <span className="whitespace-nowrap text-xs font-medium text-ink">{ot('food.picks.allCuisines')}</span>
+          </button>
           {data.cuisines.map((c) => {
             const style = cuisineStyle(c, c)
             return (
-              <Chip
+              <button
                 key={c}
-                active={filters.cuisine === c}
+                type="button"
+                aria-pressed={filters.cuisine === c}
                 onClick={() => setFilters((f) => ({ ...f, cuisine: f.cuisine === c ? null : c }))}
+                className="mkt-cat flex min-w-[5rem] shrink-0 flex-col items-center gap-1 rounded-2xl px-3 py-2.5"
               >
-                <span className="inline-flex items-center gap-1.5">
-                  <svg
-                    viewBox="0 0 24 24"
-                    className="size-3.5"
-                    style={{ color: `rgb(${style.tint})` }}
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.9"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                  >
-                    <path d={style.icon} />
-                  </svg>
-                  <span dir="auto">{c}</span>
-                </span>
-              </Chip>
+                <svg viewBox="0 0 24 24" className="mkt-cat-emoji size-5" style={{ color: `rgb(${style.tint})` }} fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d={style.icon} />
+                </svg>
+                <span dir="auto" className="whitespace-nowrap text-xs font-medium text-ink">{c}</span>
+              </button>
             )
           })}
         </div>
-
-        {/* ── ราคา · การเดินทาง · การเรียง ───────────────────── */}
-        <div className="relative mt-3">
-          <button
-            type="button"
-            onClick={() => setFilterOpen((v) => !v)}
-            aria-expanded={filterOpen}
-            className={cn(
-              'inline-flex h-11 items-center gap-2 rounded-full border px-4 text-sm transition-colors',
-              filterCount > 0
-                ? 'border-ink bg-ink text-page'
-                : 'border-line bg-surface text-ink hover:bg-surface-hover',
-            )}
-          >
-            <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M3 5h18M6 12h12M10 19h4" />
-            </svg>
-            {filterCount > 0
-              ? ot('food.filter.withCount', { n: filterCount })
-              : ot('food.filter.title')}
-          </button>
-
-          <FilterSheet
-            open={filterOpen}
-            onClose={() => setFilterOpen(false)}
-            title={ot('food.filter.title')}
-            count={filterCount}
-            onClear={() => {
-              setFilters((f) => ({ ...f, price: null, distance: null }))
-              setSort('new')
-            }}
-          >
-            <FilterGroup label={ot('food.filter.price')}>
-              {PRICE_OPTIONS.map((p) => (
-                <FilterChip
-                  key={p}
-                  active={filters.price === p}
-                  onClick={() => setFilters((f) => ({ ...f, price: f.price === p ? null : p }))}
-                >
-                  {p}
-                </FilterChip>
-              ))}
-            </FilterGroup>
-
-            <FilterGroup label={ot('food.filter.distance')}>
-              {DISTANCE_OPTIONS.map((d) => (
-                <FilterChip
-                  key={d}
-                  active={filters.distance === d}
-                  onClick={() => setFilters((f) => ({ ...f, distance: f.distance === d ? null : d }))}
-                >
-                  {distanceLabel(ot, d)}
-                </FilterChip>
-              ))}
-            </FilterGroup>
-
-            <FilterGroup label={ot('food.filter.sort')}>
-              <FilterChip active={sort === 'new'} onClick={() => setSort('new')}>
-                {ot('food.picks.sortNew')}
-              </FilterChip>
-              <FilterChip active={sort === 'votes'} onClick={() => setSort('votes')}>
-                {ot('food.picks.sortVotes')}
-              </FilterChip>
-              <FilterChip active={sort === 'rating'} onClick={() => setSort('rating')}>
-                {ot('food.picks.sortRating')}
-              </FilterChip>
-              {/* ★ ตัวเลือกนี้โผล่เฉพาะเมื่อมีร้านที่คิดระยะทางได้จริงอย่างน้อยหนึ่งร้าน
-                     ★★ ตัวเลือกที่กดแล้วลำดับไม่ขยับ คือตัวเลือกที่ทำให้คนไม่เชื่อ
-                        ตัวกรองทั้งกล่อง */}
-              {data.items.some((x) => x.travelMeters != null) ? (
-                <FilterChip active={sort === 'near'} onClick={() => setSort('near')}>
-                  {ot('food.picks.sortNear')}
-                </FilterChip>
-              ) : null}
-            </FilterGroup>
-          </FilterSheet>
-        </div>
-      </Section>
+      </section>
 
       {error ? (
         <p role="alert" className="mt-4 text-sm text-danger">
@@ -399,6 +457,7 @@ export function FoodPicks() {
 
       {/* ══ 2 · รายการร้าน ═══════════════════════════════════════ */}
       <Section
+        className="mt-6"
         title={<Untranslated>{ot('food.picks.listTitle')}</Untranslated>}
         badge={
           shown.length > 0 ? (
@@ -411,11 +470,17 @@ export function FoodPicks() {
         {/* ★★ ไม่ใส่ items-start — การ์ดในแถวเดียวกันต้องสูงเท่ากัน
                ★ ของเดิมแถวดูขาด ๆ เพราะร้านที่มีป้าย "เปิดอยู่" หรือเมนูสี่รายการ
                  สูงกว่าใบข้าง ๆ แล้วเส้นฐานไม่ตรงกันสักแถว */}
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {loading ? (
-            <p className="col-span-full py-10 text-center text-sm text-ink-faint">
-              {ot('common.loading')}
-            </p>
+            Array.from({ length: 6 }, (_, i) => (
+              <div key={i} className="overflow-hidden rounded-3xl border border-line">
+                <div className="mkt-skel aspect-video" />
+                <div className="space-y-2 p-4">
+                  <div className="mkt-skel h-4 w-2/3 rounded-full" />
+                  <div className="mkt-skel h-3 w-1/2 rounded-full" />
+                </div>
+              </div>
+            ))
           ) : pageRows.length === 0 ? (
             <p className="col-span-full py-10 text-center text-sm text-ink-faint">
               {data.items.length === 0 ? ot('food.picks.empty') : ot('common.empty')}
@@ -427,8 +492,8 @@ export function FoodPicks() {
                 r={r}
                 note={notes[r.id]}
                 onVote={() => void vote(r.id)}
-                onReport={() => void reportClosed(r.id)}
-                onRemove={() => void remove(r.id)}
+                onReport={() => void reportClosed(r.id, r.name)}
+                onRemove={() => void remove(r.id, r.name)}
                 onMarkOpen={() => void markOpen(r)}
                 onPhotos={() => void load()}
                 onEdit={() => setEditing(r)}
@@ -592,8 +657,7 @@ function Card({
   return (
     <article
       className={cn(
-        'group/card relative flex h-full flex-col rounded-2xl border border-line bg-elevated/50 p-4 backdrop-blur-md',
-        'transition-all duration-200 hover:-translate-y-0.5 hover:border-line-strong hover:shadow-lg',
+        'food-card mkt-card-in group/card relative flex h-full flex-col rounded-3xl border border-line bg-elevated p-4',
         /* ★ ร้านที่อาจปิดจางลงแต่ยังอ่านได้ — ไม่ซ่อน เพราะคนที่รู้ว่ายังเปิด
              ต้องเห็นมันเพื่อกดยืนยัน (FR-A05) */
         r.maybeClosed && 'opacity-60',
@@ -615,7 +679,7 @@ function Card({
       <Link
         href={`/office/food/picks/${r.id}`}
         aria-label={r.name}
-        className="absolute inset-0 z-0 rounded-2xl focus-visible:ring-2 focus-visible:ring-accent"
+        className="absolute inset-0 z-0 rounded-3xl focus-visible:ring-2 focus-visible:ring-accent"
       />
       {/*
         * ── รูปปก ──────────────────────────────────────────────────
@@ -623,7 +687,7 @@ function Card({
         *   ★★ ช่องอัปโหลดแยกแปลว่ามีคนต้องรับหน้าที่หารูปมาใส่ ซึ่งไม่มีใครทำ
         *      ส่วนรูปจากรีวิวเกิดขึ้นเองทุกครั้งที่มีคนไปกินแล้วถ่ายรูป
         */}
-      <div className="pointer-events-none relative -mx-4 -mt-4 mb-3 overflow-hidden rounded-t-2xl">
+      <div className="pointer-events-none relative -mx-4 -mt-4 mb-3 overflow-hidden rounded-t-3xl">
         {r.coverUrl ? (
           <div className="relative aspect-video">
             <Image src={r.coverUrl} alt="" fill sizes="(max-width:640px) 100vw, 360px" className="object-cover" unoptimized />
@@ -802,11 +866,22 @@ function Card({
         *    ★ การ์ดโชว์สามรายการแรก ที่เหลือบอกเป็นจำนวน —
         *      ★★ ร้านที่มีสิบเมนูจะทำให้การ์ดสูงกว่าใบอื่นสามเท่า แล้วแถวเพี้ยน
         */}
+      {/* ── 0061 ── ร้านคาราโอเกะ: ราคาเริ่มต้นแทนเมนู ── */}
+      {r.karaoke && karaokeFrom(r.karaoke) != null ? (
+        <p className="relative z-10 mb-2 inline-flex w-fit items-center gap-1.5 rounded-full bg-[color-mix(in_srgb,var(--color-link)_12%,transparent)] px-3 py-1 text-xs font-semibold text-ink">
+          🎤 <Untranslated>{ot('food.karaoke.from', { price: `฿${karaokeFrom(r.karaoke)!.toLocaleString()}` })}</Untranslated>
+        </p>
+      ) : null}
       {(r.dishes?.length ?? 0) > 0 ? (
         <ul className="mt-1 flex flex-col gap-0.5">
           {r.dishes!.slice(0, 3).map((d) => (
-            <li key={d.name} className="flex items-baseline justify-between gap-2 text-[13px]">
-              <span dir="auto" className="min-w-0 truncate text-ink-soft">
+            <li key={d.name} className="flex items-center justify-between gap-2 text-[13px]">
+              {/* ★ ภาพย่อรูปเมนู (0060) — เห็นหน้าตาอาหารก่อนกดเข้าร้าน */}
+              {d.photoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- รูปจาก Storage ที่ไม่ได้ตั้ง remotePatterns
+                <img src={d.photoUrl} alt="" loading="lazy" className="size-7 shrink-0 rounded-md object-cover ring-1 ring-line" />
+              ) : null}
+              <span dir="auto" className="min-w-0 flex-1 truncate text-ink-soft">
                 {d.name}
               </span>
               {d.price != null ? (
@@ -958,29 +1033,3 @@ function Tag({ children }: { children: React.ReactNode }) {
  *   ★★ ของเดิมเป็นอีโมจิที่ขึ้นกับฟอนต์ของเครื่อง หน้าตาจึงต่างกันทุกเครื่อง
  *      ★ และหน้าสร้างบิลกับหน้านี้ใช้คนละชุด ร้านเดียวกันเลยมีสองหน้าตา
  */
-
-function Chip({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean
-  onClick: () => void
-  children: React.ReactNode
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={cn(
-        /* ★ shrink-0 สำคัญกับแถวที่เลื่อนแนวนอน — ไม่งั้น flex จะบีบชิปให้แคบลง
-             จนตัวหนังสือขึ้นบรรทัดใหม่ แทนที่จะปล่อยให้ล้นออกไปให้เลื่อน */
-        'h-11 shrink-0 rounded-full px-4 text-sm transition-colors',
-        active ? 'bg-ink text-page' : 'bg-surface text-ink-soft hover:bg-surface-hover hover:text-ink',
-      )}
-    >
-      {children}
-    </button>
-  )
-}

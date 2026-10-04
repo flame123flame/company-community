@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useLobbyPresence, type Walker } from '@/hooks/useLobbyPresence'
@@ -12,6 +12,7 @@ import { SPRITE_H, SPRITE_W, spriteSheet } from '@/lib/lobby/sprite'
 import { TILE, blockedAt, buildWorld, zoneAt, type RoomRow } from '@/lib/lobby/world'
 import { AvatarStudio } from './AvatarStudio'
 import { useT } from '@/lib/i18n/client'
+import { Untranslated } from '@/lib/i18n/office'
 
 /**
  * ลอบบี้ — ออฟฟิศที่เดินเข้าไปฟังเพลงห้องไหนก็ได้
@@ -340,7 +341,14 @@ export function Lobby({
   const offX = Math.max(0, (viewW - world.width) / 2)
   const offY = Math.max(0, (viewH - world.height) / 2)
 
-  const sheet = useMemo(() => spriteSheet(look), [look])
+  /*
+   * ★★ ภาพตัวละครวาดด้วย canvas ซึ่งมีแค่ในเบราว์เซอร์ — server ได้ '' เสมอ
+   *    ★ ถ้าคำนวณตอน hydrate เลย React เจอค่าไม่ตรงกับ HTML แล้ว "ไม่ซ่อมให้"
+   *      ผลคือตัวเราและรูปบนปุ่มแต่งตัวว่างเปล่าตลอดไป (เห็นจากภาพจริง)
+   *    ★ รอ hydrate เสร็จก่อนค่อยวาด — รอบแรกตรงกับ server รอบถัดไปได้ภาพจริง
+   */
+  const hydrated = useHydrated()
+  const sheet = useMemo(() => (hydrated ? spriteSheet(look) : ''), [hydrated, look])
 
   /**
    * ★ เรียงตาม y ก่อนวาด — คนที่ยืนล่างกว่าต้องบังคนที่ยืนบนกว่า
@@ -458,10 +466,20 @@ export function Lobby({
 
       {/* ── แถบบอกวิธีเล่น ───────────────────────────────────────── */}
       <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center px-4">
-        <p className="rounded-full border border-line bg-page/80 px-3.5 py-1.5 text-[11px] text-ink-soft backdrop-blur-md">
-          <span className="hidden sm:inline">{t('lobby.hintDesktop')}</span>
-          <span className="sm:hidden">{t('lobby.hintMobile')}</span>
-        </p>
+        <div className="flex max-w-[calc(100%-7.5rem)] flex-col items-center gap-1.5 sm:max-w-none">
+          <p className="lobby-chip flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[11px] font-medium text-ink-soft">
+            <svg viewBox="0 0 24 24" className="hidden size-4 shrink-0 text-accent sm:block" fill="currentColor" aria-hidden="true">
+              <path d="M10 3h4v4h-4zM4 9h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4zM7 17h10v3H7z" />
+            </svg>
+            <span className="hidden sm:inline">{t('lobby.hintDesktop')}</span>
+            <span className="sm:hidden">{t('lobby.hintMobile')}</span>
+          </p>
+          {/* ★ ตัวเลขคนเดินอยู่ตอนนี้ — บอกว่าที่นี่มีชีวิต ไม่ใช่แผนที่ว่าง ๆ */}
+          <p className="lobby-chip flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold text-ink">
+            <span className="music-live" aria-hidden="true" />
+            <Untranslated>{t('lobby.people', { n: crowd.length + 1 })}</Untranslated>
+          </p>
+        </div>
       </div>
 
       {/* ── ปุ่มกลับ / แต่งตัว ───────────────────────────────────── */}
@@ -469,7 +487,7 @@ export function Lobby({
         <Link
           href="/"
           aria-label={t('common.backHome')}
-          className="grid size-9 place-items-center rounded-full border border-line bg-page/80 text-ink-soft backdrop-blur-md transition-colors hover:text-ink"
+          className="lobby-chip grid size-11 place-items-center rounded-full text-ink-soft transition-[color,transform] hover:-translate-x-0.5 hover:text-ink"
         >
           <svg viewBox="0 0 24 24" className="size-4 rtl:-scale-x-100" fill="currentColor" aria-hidden="true">
             <path d="M15.4 7.4 14 6l-6 6 6 6 1.4-1.4-4.6-4.6z" />
@@ -482,12 +500,12 @@ export function Lobby({
           type="button"
           onClick={() => setStudioOpen(true)}
           className={cn(
-            'flex items-center gap-2 rounded-full border border-line bg-page/85 py-1.5 ps-1.5 pe-3.5',
-            'text-xs text-ink backdrop-blur-md transition-colors hover:border-line-strong',
+            'lobby-chip flex min-h-11 items-center gap-2 rounded-full py-1.5 ps-1.5 pe-3.5',
+            'text-xs font-semibold text-ink transition-transform hover:-translate-y-0.5',
           )}
         >
           <span
-            className="size-7 shrink-0 overflow-hidden rounded-full bg-surface"
+            className="lobby-ava size-8 shrink-0 overflow-hidden rounded-full bg-surface"
             style={{
               backgroundImage: `url(${sheet})`,
               backgroundPosition: `-2px -6px`,
@@ -505,17 +523,17 @@ export function Lobby({
             type="button"
             onClick={enterHere}
             className={cn(
-              'flex max-w-[92vw] items-center gap-3 rounded-full bg-accent py-2.5 ps-3 pe-5',
-              'text-accent-ink shadow-2xl transition-transform active:scale-[0.98]',
+              'join-cta lobby-enter flex max-w-[92vw] items-center gap-3 rounded-full py-2.5 ps-3 pe-5',
+              'text-accent-ink transition-transform active:scale-[0.98]',
             )}
           >
-            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-white/20">
+            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[color-mix(in_srgb,var(--ck-shine)_22%,transparent)]">
               <svg viewBox="0 0 24 24" className="size-5" fill="currentColor" aria-hidden="true">
                 <path d="M10 17l5-5-5-5v10zM4 4h2v16H4z" />
               </svg>
             </span>
             <span className="min-w-0 text-start">
-              <span className="block truncate text-sm font-medium">{t('lobby.enterRoom', { name: here.name })}</span>
+              <span className="block truncate text-sm font-bold">{t('lobby.enterRoom', { name: here.name })}</span>
               <span dir="auto" className="block truncate text-[11px] opacity-80">
                 {here.nowPlaying ? here.nowPlaying.title : t('lobby.nothingPlaying')}
               </span>
@@ -542,7 +560,8 @@ export function Lobby({
  *   ถ้าไม่มี ตัวละครคนอื่นจะกระตุกเป็นขั้น ๆ เหมือนภาพนิ่งต่อกัน
  */
 function Character({ walker }: { walker: Walker }) {
-  const sheet = useMemo(() => spriteSheet(walker.appearance), [walker.appearance])
+  const hydrated = useHydrated()
+  const sheet = useMemo(() => (hydrated ? spriteSheet(walker.appearance) : ''), [hydrated, walker.appearance])
   const [frame, setFrame] = useState(0)
 
   useEffect(() => {
@@ -585,4 +604,10 @@ function Character({ walker }: { walker: Walker }) {
       </p>
     </div>
   )
+}
+
+const noopSubscribe = () => () => {}
+/** true หลัง hydrate เสร็จ — server และรอบ hydrate ได้ false ตรงกันเสมอ */
+function useHydrated(): boolean {
+  return useSyncExternalStore(noopSubscribe, () => true, () => false)
 }

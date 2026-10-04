@@ -161,7 +161,8 @@ export function NotificationBell({ userId }: { userId: string }) {
         aria-label={ot('top.notifications')}
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="relative grid size-10 place-items-center rounded-full text-ink transition-colors hover:bg-surface"
+        style={{ '--hc': '255 176 32' } as React.CSSProperties}
+        className="hdr-btn relative grid size-11 place-items-center rounded-full text-ink transition-colors hover:bg-surface sm:size-10"
       >
         <svg
           viewBox="0 0 24 24"
@@ -179,7 +180,7 @@ export function NotificationBell({ userId }: { userId: string }) {
         {unread > 0 ? (
           <span
             className={cn(
-              'absolute -end-0.5 -top-0.5 min-w-[18px] rounded-full px-1',
+              'hdr-badge absolute -end-0.5 -top-0.5 min-w-[18px] rounded-full px-1',
               'bg-accent text-[10px] font-bold leading-[18px] text-accent-ink',
             )}
           >
@@ -210,44 +211,37 @@ export function NotificationBell({ userId }: { userId: string }) {
             className={cn(
               'notify-panel fixed inset-x-2 bottom-2 z-50 flex max-h-[82vh] flex-col',
               'sm:absolute sm:inset-x-auto sm:bottom-auto sm:end-0 sm:mt-2 sm:max-h-[min(34rem,80vh)] sm:w-[24rem]',
-              'overflow-hidden rounded-[var(--radius-card)] border border-line bg-elevated shadow-2xl',
+              'pop-wow overflow-hidden rounded-[26px]',
             )}
+            style={{ '--pc': '255 176 32', '--pc2': '255 0 51' } as CSSProperties}
           >
-            {/* ── หัวกล่อง ──────────────────────────────────────── */}
-            <div className="notify-head shrink-0 border-b border-line px-4 pb-2.5 pt-3">
-              <div className="flex items-center justify-between gap-3">
-                <span className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-ink">{ot('notify.title')}</span>
-                  {unread > 0 ? (
-                    <span className="rounded-full bg-accent px-1.5 text-[10px] font-bold leading-[17px] text-accent-ink">
-                      {unread > 99 ? '99+' : unread}
-                    </span>
-                  ) : null}
+            {/* ── หัวกล่อง: แถบไล่สีทอง-แดง + กระดิ่ง + จำนวนที่ยังไม่อ่าน ── */}
+            <div className="pop-hero relative shrink-0 overflow-hidden px-4 pb-3.5 pt-4">
+              <span aria-hidden="true" className="pop-blob pop-blob-a" />
+              <span aria-hidden="true" className="pop-blob pop-blob-b" />
+              <div className="relative flex items-center gap-3">
+                <span aria-hidden="true" className="pop-icon grid size-12 shrink-0 place-items-center rounded-2xl">
+                  <svg viewBox="0 0 24 24" className={cn('size-6', unread > 0 && 'bell-swing')} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10.3 21a2 2 0 0 0 3.4 0" />
+                  </svg>
                 </span>
-
+                <div className="min-w-0 flex-1">
+                  <p className="text-lg font-black leading-tight text-[var(--ck-shine)]">{ot('notify.title')}</p>
+                  <p className="text-xs font-medium text-[color-mix(in_srgb,var(--ck-shine)_85%,transparent)]">
+                    <Untranslated>{unread > 0 ? ot('notify.popUnread', { n: unread }) : ot('notify.popAllClear')}</Untranslated>
+                  </p>
+                </div>
                 {unread > 0 ? (
-                  /* ★ ทำเป็นปุ่มจริง ไม่ใช่ลิงก์ข้อความ — มันเปลี่ยนสถานะของข้อมูล
-                     ไม่ได้พาไปหน้าอื่น ★★ ลิงก์สีฟ้าเล็ก ๆ อ่านเป็น "ไปที่อื่น" */
-                  <button
-                    type="button"
-                    onClick={markAll}
-                    className={cn(
-                      'shrink-0 rounded-full bg-surface px-3 py-1 text-[11px] font-medium text-ink-soft',
-                      'transition-colors hover:bg-accent hover:text-accent-ink',
-                    )}
-                  >
-                    {ot('notify.markAll')}
+                  /* ★ ปุ่มจริง ไม่ใช่ลิงก์ — มันเปลี่ยนสถานะของข้อมูล ไม่ได้พาไปหน้าอื่น */
+                  <button type="button" onClick={markAll} className="pop-pill shrink-0 rounded-full px-3 py-1.5 text-[11px] font-bold transition-transform hover:scale-105">
+                    ✓ {ot('notify.markAll')}
                   </button>
                 ) : null}
               </div>
 
-              {/*
-                * ★★ ตัวกรอง "ยังไม่อ่าน" มาแทนการต้องกวาดตาหาจุดแดงเอง
-                *    ★ ขึ้นเฉพาะเมื่อมีของให้กรองจริง — ปุ่มที่กดแล้วได้
-                *      รายการว่างเปล่าคือปุ่มที่ไม่ควรมีอยู่
-                */}
+              {/* ★★ ตัวกรอง "ยังไม่อ่าน" — ขึ้นเฉพาะเมื่อมีของให้กรองจริง */}
               {unread > 0 ? (
-                <div className="mt-2.5 flex gap-1.5">
+                <div className="pop-seg relative mt-3 grid grid-cols-2 rounded-full p-1">
                   <Tab on={!onlyUnread} onClick={() => setOnlyUnread(false)}>
                     <Untranslated>{ot('notify.filterAll')}</Untranslated>
                     <Count>{items.length}</Count>
@@ -298,6 +292,17 @@ export function NotificationBell({ userId }: { userId: string }) {
                 ))
               )}
             </div>
+
+            {/* ── ท้าย: ตั้งค่าว่าจะรับเรื่องไหน ── */}
+            <div className="shrink-0 border-t border-line p-2.5">
+              <Link
+                href="/office/profile#prof-notify"
+                onClick={() => setOpen(false)}
+                className="pop-cta flex min-h-11 items-center justify-center gap-2 rounded-2xl text-sm font-bold"
+              >
+                ⚙️ <Untranslated>{ot('notify.settings')}</Untranslated>
+              </Link>
+            </div>
           </div>
         </>
       ) : null}
@@ -320,8 +325,8 @@ function Tab({
       onClick={onClick}
       aria-pressed={on}
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11.5px] transition-colors',
-        on ? 'bg-ink font-medium text-page' : 'bg-surface text-ink-soft hover:text-ink',
+        'inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full px-3 text-[12px] font-semibold transition-all',
+        on ? 'bg-[var(--ck-shine)] text-[var(--ck-shade)] shadow' : 'text-[color-mix(in_srgb,var(--ck-shine)_88%,transparent)] hover:bg-[color-mix(in_srgb,var(--ck-shine)_15%,transparent)]',
       )}
     >
       {children}
@@ -336,23 +341,10 @@ function Count({ children }: { children: React.ReactNode }) {
 function Empty({ text }: { text: string }) {
   return (
     <div className="px-4 py-12 text-center">
-      <span
-        aria-hidden="true"
-        className="mx-auto grid size-12 place-items-center rounded-2xl bg-surface text-ink-faint"
-      >
-        <svg
-          viewBox="0 0 24 24"
-          className="size-6"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10.3 21a2 2 0 0 0 3.4 0" />
-        </svg>
+      <span aria-hidden="true" className="pop-empty mx-auto block text-5xl">
+        🎉
       </span>
-      <p className="mt-3 text-sm text-ink-faint">
+      <p className="mt-3 text-sm font-medium text-ink-soft">
         <Untranslated>{text}</Untranslated>
       </p>
     </div>

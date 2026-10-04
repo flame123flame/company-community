@@ -5,6 +5,7 @@ import { apiFetch } from '@/lib/api/client'
 import { CardGrid, LinkCard } from '@/components/ui/Card'
 import { Untranslated, useOt } from '@/lib/i18n/office'
 import type { OfficeKey } from '@/lib/i18n/office-format'
+import { FunGuide } from './FunGuide'
 
 type Card = {
   href: string
@@ -63,7 +64,9 @@ export function GameMenu() {
       *    ★ หน้านี้เคยเขียน rounded-2xl border border-line bg-elevated/50 backdrop-blur-md เอง
       *      ซึ่งเป็นต้นเหตุที่การ์ดของแต่ละหน้าค่อย ๆ ต่างกัน
       */
-    <CardGrid cols={3} className="py-2">
+    <>
+    <FunGuide id="hub" art="hub" />
+    <CardGrid cols={3} className="py-2 mt-4">
       {cards.map((c) => {
         const isCheckers = c.href === '/office/fun/checkers'
         return (
@@ -99,5 +102,6 @@ export function GameMenu() {
         )
       })}
     </CardGrid>
+    </>
   )
 }

@@ -11,12 +11,14 @@ import { CheckersLobby } from './CheckersLobby'
 import { MiniBoard, ModeCard } from './CheckersIntro'
 import {
   CheckersBoard,
+  CheckersResult,
   localOutcome,
   newLocalGame,
   playLocal,
   useBotTurn,
   type LocalGame,
 } from './CheckersBoard'
+import { FunGuide } from './FunGuide'
 
 type Mode = 'BOT' | 'PASS' | 'ONLINE'
 
@@ -42,6 +44,9 @@ export function CheckersGame() {
 
   const result = localOutcome(game, forceCapture)
   const over = result.kind !== 'PLAYING'
+  /* ★ ส่งเครื่องกันเล่น: มีคนชนะเสมอ จึงฉลองเสมอ — ไม่มี "ฝั่งที่แพ้" ให้เศร้าแทน */
+  const resultTone: 'win' | 'lose' | 'draw' =
+    result.kind === 'WIN' && mode === 'BOT' && result.side === 'TOP' ? 'lose' : result.kind === 'WIN' ? 'win' : 'draw'
 
   /*
    * ★ ผู้เล่นเป็นฝ่ายล่างเสมอในโหมดบอท — กระดานจึงไม่ต้องหมุน
@@ -69,6 +74,8 @@ export function CheckersGame() {
   if (!mode) {
     return (
       <div className="py-2">
+        <FunGuide id="checkers" art="checkers" />
+        <div className="mt-6" />
         {/*
           * ★★★ สองคอลัมน์บนจอกว้าง — กระดานตัวอย่างซ้าย ตัวเลือกขวา
           *
@@ -223,42 +230,43 @@ export function CheckersGame() {
         forceCapture={forceCapture}
         onCommit={commit}
         lastMove={game.lastMove}
+        finished={over}
         disabled={over || botTurn}
         top={{ name: mode === 'BOT' ? `${ot('game.checkers.bot')} · ${botName}` : ot('game.checkers.playerTop') }}
         bottom={{ name: mode === 'BOT' ? ot('game.checkers.you') : ot('game.checkers.playerBottom') }}
       />
 
       {botTurn ? (
-        <p className="mt-3 text-center text-sm text-ink-soft">
+        <p className="mt-3 flex items-center justify-center gap-2 text-center text-sm text-ink-soft">
+          <span aria-hidden="true" className="ck-live text-accent" />
           <Untranslated>{ot('game.checkers.botThinking')}</Untranslated>
         </p>
       ) : null}
 
       {over ? (
-        <div className="mx-auto mt-4 max-w-md rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-5 text-center">
-          <p className="text-lg font-bold text-ink">
-            <Untranslated>
-              {result.kind === 'DRAW'
-                ? ot('game.checkers.draw')
-                : mode === 'BOT'
-                  ? result.side === 'BOTTOM'
-                    ? ot('game.checkers.youWin')
-                    : ot('game.checkers.youLose')
-                  : result.side === 'BOTTOM'
-                    ? ot('game.checkers.bottomWins')
-                    : ot('game.checkers.topWins')}
-            </Untranslated>
-          </p>
-
-          <div className="mt-4 flex flex-wrap justify-center gap-2">
-            <Button variant="primary" className="min-h-11" onClick={restart}>
-              <Untranslated>{ot('game.checkers.again')}</Untranslated>
-            </Button>
-            <Button variant="ghost" className="min-h-11" onClick={() => setMode(null)}>
-              <Untranslated>{ot('game.checkers.backToMenu')}</Untranslated>
-            </Button>
-          </div>
-        </div>
+        <CheckersResult
+          tone={resultTone}
+          board={game.board}
+          side={mode !== 'BOT' && result.kind === 'WIN' ? result.side : 'BOTTOM'}
+          title={
+            result.kind === 'DRAW'
+              ? ot('game.checkers.draw')
+              : mode === 'BOT'
+                ? result.side === 'BOTTOM'
+                  ? ot('game.checkers.youWin')
+                  : ot('game.checkers.youLose')
+                : result.side === 'BOTTOM'
+                  ? ot('game.checkers.bottomWins')
+                  : ot('game.checkers.topWins')
+          }
+        >
+          <Button variant="primary" className="min-h-12 text-base" onClick={restart}>
+            <Untranslated>{resultTone === 'lose' ? ot('game.checkers.revenge') : ot('game.checkers.again')}</Untranslated>
+          </Button>
+          <Button variant="secondary" className="min-h-11" onClick={() => setMode(null)}>
+            <Untranslated>{ot('game.checkers.backToMenu')}</Untranslated>
+          </Button>
+        </CheckersResult>
       ) : (
         <div className="mt-4 flex flex-wrap justify-center gap-2">
           <Button variant="ghost" className="min-h-11" onClick={restart}>

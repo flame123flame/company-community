@@ -7,6 +7,8 @@ import { ok, withErrorHandling } from '@/lib/http/respond'
 import { enforceRateLimit } from '@/lib/ratelimit'
 import { requireOfficeUser } from '@/lib/office/guard'
 import { directionsUrl, distanceTag, isOpenNow } from '@/lib/office/geo'
+import { CUISINES } from '@/lib/office/food'
+import { cuisineSchema, karaokeSchema, karaokeToStore, readKaraoke } from '@/lib/office/food-schema'
 
 export const dynamic = 'force-dynamic'
 
@@ -203,13 +205,13 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
    * ★ อ่านแบบล้มแล้วถอยได้ — ตารางมาจาก 0057 ซึ่งอาจยังไม่ได้รัน
    *   ★★ ร้านยังขึ้นครบ แค่ไม่มีรายการเมนู ซึ่งเท่ากับสถานะก่อนมีฟีเจอร์นี้
    */
-  const shopDishes = new Map<string, { name: string; price: number | null }[]>()
+  const shopDishes = new Map<string, { name: string; price: number | null; photo: string | null; photoUrl: string | null }[]>()
   {
     const ids = (rows ?? []).map((r) => r.id)
     if (ids.length > 0) {
       const { data: dishRows } = await admin
         .from('restaurant_dishes')
-        .select('restaurant_id, name, price_satang')
+        .select('restaurant_id, name, price_satang, photo_path')
         .in('restaurant_id', ids)
         .order('sort', { ascending: true })
       for (const row of dishRows ?? []) {
@@ -218,6 +220,8 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
         list.push({
           name: row.name,
           price: row.price_satang == null ? null : row.price_satang / 100,
+          photo: row.photo_path,
+          photoUrl: row.photo_path ? admin.storage.from('restaurants').getPublicUrl(row.photo_path).data.publicUrl : null,
         })
         shopDishes.set(row.restaurant_id, list)
       }
@@ -243,6 +247,9 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
       }
     }
   }
+
+  /* ── 0061 ── ราคาคาราโอเกะ — อ่านแยก ล้มได้โดยไม่กระทบหน้า */
+  const karaoke = await readKaraoke(admin, (rows ?? []).map((r) => r.id))
 
   const items = (rows ?? []).map((r) => ({
       id: r.id,
@@ -296,6 +303,7 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
       travelMinutes: r.travel_minutes ?? null,
       travelMode: (r.travel_mode ?? null) as 'walking' | 'driving' | null,
       openHours: (r.open_hours ?? null) as Record<string, [string, string] | null> | null,
+      karaoke: karaoke.get(r.id) ?? null,
       /* ── Phase 1: ชื่อแบบ snake_case ตามสเปก ─────────────────
          ★★ ใส่เพิ่ม ไม่ได้แทนของเดิม — travelMeters/travelMinutes ยังอยู่ครบ
             ★ หน้าเว็บที่ใช้ชื่อเดิมอยู่จึงไม่ต้องแก้อะไรเลย */
@@ -394,7 +402,11 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
     perPage: perPage > 0 ? perPage : total,
     pageCount: perPage > 0 ? Math.max(1, Math.ceil(total / perPage)) : 1,
     /** รายชื่อประเภทอาหารที่มีจริง — ใช้สร้างตัวกรองโดยไม่ต้อง hardcode */
-    cuisines: [...new Set((rows ?? []).map((r) => r.cuisine).filter(Boolean))].sort(),
+    /*
+     * ★★ 0061 — รายการประเภทตายตัว เรียงตามลำดับที่กำหนด ไม่ใช่ดึงจากข้อมูล
+     *    ★ ของเดิมรวบรวมจากค่าที่คนพิมพ์ ซึ่งงอกชิปใหม่ทุกครั้งที่สะกดต่างกัน
+     */
+    cuisines: [...CUISINES],
   })
 })
 
@@ -407,6 +419,8 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
 const dishSchema = z.object({
   name: z.string().trim().min(1).max(120),
   price: z.number().min(0).max(100000).optional().nullable(),
+  /* ── 0060 ── รูปของเมนู: path ที่ได้จาก /api/office/food/dish-photo */
+  photo: z.string().regex(/^dishes\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.(jpg|png|webp)$/).optional().nullable(),
 })
 
 const createSchema = z.object({
@@ -414,7 +428,9 @@ const createSchema = z.object({
   signatureDish: z.string().trim().min(1, 'common.required').max(120),
   /* ★ ไม่ส่งมาก็ได้ — ของเดิมส่งแค่ signatureDish ซึ่งยังทำงานเหมือนเดิม */
   dishes: z.array(dishSchema).max(20).optional(),
-  cuisine: z.string().trim().max(40).optional().nullable(),
+  /* ── 0061 ── ประเภทจากรายการตายตัว + ราคาคาราโอเกะ */
+  cuisine: cuisineSchema,
+  karaoke: karaokeSchema,
   priceRange: z.enum(['฿', '฿฿', '฿฿฿']).optional().nullable(),
   distance: z.enum(['WALK', 'DRIVE', 'DELIVERY']).optional().nullable(),
   mapUrl: z.url().startsWith('https://').max(500).optional().nullable().or(z.literal('')),
@@ -458,6 +474,12 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
    *    ★★ ถ้าขั้นนี้ล้ม ร้านยังถูกสร้างสำเร็จ แค่ไม่มีพิกัด ซึ่งเป็น
    *       สถานะที่ถูกต้องอยู่แล้วสำหรับร้านเก่าทุกแห่ง
    */
+  /* ── 0061 ── ราคาคาราโอเกะเขียนตรง ๆ เหมือนเวลาเปิด-ปิด (สิทธิ์ผ่าน add_restaurant แล้ว) */
+  const karaokeValue = karaokeToStore(body.cuisine, body.karaoke)
+  if (data?.id && karaokeValue) {
+    await admin.from('restaurants').update({ karaoke: karaokeValue } as never).eq('id', data.id)
+  }
+
   /* ★ เวลาเปิด-ปิดเขียนตรง ๆ ได้ ไม่ต้องผ่าน RPC — มันไม่กระทบอะไรนอกแถวตัวเอง */
   if (data?.id && body.openHours) {
     await admin.from('restaurants').update({ open_hours: body.openHours } as never).eq('id', data.id)

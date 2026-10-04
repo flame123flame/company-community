@@ -6,6 +6,7 @@ import { THEME_BOOT_SCRIPT } from '@/lib/theme'
 import { REVEAL_BOOT_SCRIPT } from '@/lib/reveal'
 import { ScrollReveal } from '@/components/ScrollReveal'
 import { I18nProvider } from '@/lib/i18n/client'
+import { ConfirmProvider } from '@/components/ConfirmProvider'
 import { getLocale, getT } from '@/lib/i18n/server'
 import { isRtl } from '@/lib/i18n/config'
 import { clientDict } from '@/lib/i18n/dict'
@@ -44,9 +45,9 @@ const robotoMono = Roboto_Mono({
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getT()
   return {
-    title: { default: 'AWA ROOM', template: '%s · AWA ROOM' },
+    title: { default: 'AWA Plaza', template: '%s · AWA Plaza' },
     description: t('meta.description'),
-    applicationName: 'AWA ROOM',
+    applicationName: 'AWA Plaza',
     robots: { index: false, follow: false },
   }
 }
@@ -132,7 +133,8 @@ export default async function RootLayout({ children }: LayoutProps<'/'>) {
         <div className="grain-layer" aria-hidden="true" />
         <ScrollReveal />
         <I18nProvider locale={locale} dict={clientDict(locale)}>
-          {children}
+          {/* ★ กล่องยืนยันกลางของทั้งเว็บ — ลบ · เพิ่ม · แก้ไข · ออกจากระบบ ใช้ useConfirm() */}
+          <ConfirmProvider>{children}</ConfirmProvider>
         </I18nProvider>
       </body>
     </html>

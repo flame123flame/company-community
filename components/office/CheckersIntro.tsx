@@ -2,7 +2,8 @@
 
 import { cn } from '@/lib/cn'
 import { Untranslated } from '@/lib/i18n/office'
-import { B_KING, B_MAN, EMPTY, SIZE, W_MAN, isDark, type Cell } from '@/lib/games/checkers'
+import { B_KING, B_MAN, EMPTY, SIZE, W_KING, W_MAN, isDark, type Cell } from '@/lib/games/checkers'
+import { Piece } from './CheckersBoard'
 
 /**
  * กระดานจิ๋วประดับหน้าเลือกโหมด
@@ -25,32 +26,27 @@ export function MiniBoard({ className }: { className?: string }) {
   for (const [r, c] of [[0, 1], [0, 5], [1, 2], [1, 6], [2, 3], [3, 0]] as const) put(r, c, W_MAN)
   for (const [r, c] of [[4, 5], [5, 2], [5, 6], [6, 1], [6, 5], [7, 4]] as const) put(r, c, B_MAN)
   put(7, 0, B_KING)
+  put(1, 0, W_KING)
 
   return (
-    <div
-      aria-hidden="true"
-      className={cn(
-        'grid aspect-square w-full grid-cols-8 overflow-hidden rounded-2xl border border-line',
-        className,
-      )}
-    >
-      {cells.map((cell, i) => (
-        <span
-          key={i}
-          className={cn('grid place-items-center', isDark(i) ? 'bg-ink/12' : 'bg-surface')}
-        >
-          {cell !== EMPTY ? (
+    <div aria-hidden="true" className={cn('ck-stage ck-tilt py-4', className)}>
+      <div className="ck-frame">
+        <div className="ck-board grid aspect-square w-full grid-cols-8 grid-rows-8 overflow-hidden" dir="ltr">
+          {cells.map((cell, i) => (
             <span
-              className={cn(
-                'size-[72%] rounded-full',
-                cell === B_MAN || cell === B_KING
-                  ? 'bg-accent shadow-[0_2px_6px_-2px] shadow-accent'
-                  : 'border border-line-strong bg-page',
-              )}
-            />
-          ) : null}
-        </span>
-      ))}
+              key={i}
+              className={cn('relative grid place-items-center', isDark(i) ? 'ck-sq-dark' : 'ck-sq-light')}
+            >
+              {/* ★ ไฮไลต์ตาที่เพิ่งเดิน + จุดปลายทาง ให้เห็นว่ากระดานจริงบอกอะไรบ้าง */}
+              {i === 4 * SIZE + 5 || i === 5 * SIZE + 4 ? (
+                <span className="ck-last absolute inset-0" />
+              ) : null}
+              {cell !== EMPTY ? <Piece cell={cell} /> : null}
+              {i === 3 * SIZE + 4 || i === 3 * SIZE + 6 ? <span className="ck-dot" /> : null}
+            </span>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }

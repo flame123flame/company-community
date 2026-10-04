@@ -26,10 +26,16 @@ const VARIANTS: Record<Variant, string> = {
   filled: 'bg-ink text-page hover:bg-ink/90',
 }
 
+/*
+ * ★★ มือถือสูงขึ้น (จุดแตะขั้นต่ำ ~44px) · จอ ≥640px ขนาดเดิมทุกประการ
+ *    ★ นิ้วไม่แม่นเท่าเมาส์ — ปุ่ม 32px บนมือถือคือปุ่มที่กดพลาดไปโดนข้าง ๆ
+ *    ★★ ห้ามส่ง h-* ทับผ่าน className — cn() แค่ต่อคลาส ไม่ตัดคลาสชนกัน
+ *       ใช้ min-h-* แทนเสมอ (min-height ชนะ height เสมอ ไม่ขึ้นกับลำดับใน CSS)
+ */
 const SIZES: Record<Size, string> = {
-  sm: 'h-8 px-3 text-[13px] gap-1.5',
-  md: 'h-9 px-4 text-sm gap-1.5',
-  lg: 'h-10 px-5 text-sm gap-2',
+  sm: 'h-10 min-w-10 px-3 text-[13px] gap-1.5 sm:h-8 sm:min-w-0',
+  md: 'h-11 px-4 text-sm gap-1.5 sm:h-9',
+  lg: 'h-11 px-5 text-sm gap-2 sm:h-10',
 }
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -87,7 +93,7 @@ export function IconButton({
       aria-label={label}
       title={label}
       className={cn(
-        'grid size-10 shrink-0 place-items-center rounded-full',
+        'grid size-11 shrink-0 place-items-center rounded-full sm:size-10',
         'text-ink transition-colors duration-100 hover:bg-surface',
         'disabled:opacity-40 disabled:pointer-events-none',
         className,

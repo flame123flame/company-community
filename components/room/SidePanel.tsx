@@ -155,7 +155,7 @@ export function SidePanel({
 
   return (
     <aside ref={panelRef} className="min-w-0 px-4 pb-24 lg:px-0 lg:pb-0">
-      <div className="overflow-hidden rounded-card border border-line">
+      <div className="room-panel overflow-hidden rounded-[24px] border border-line">
         {/* ── แท็บ ────────────────────────────────────────────── */}
         {/**
           * ★★ grid-cols-3 ไม่ใช่ flex-1
@@ -165,7 +165,7 @@ export function SidePanel({
           *    ดันตัวเองกว้างกว่าเพื่อน แล้วแถบทั้งแถบเบี้ยวทันที
           *    ★ grid สามช่องเท่ากันคือการประกาศว่า "เท่ากันเสมอ" ไม่ขึ้นกับเนื้อหา
           */}
-        <div className="grid grid-cols-3 border-b border-line bg-elevated" role="tablist">
+        <div className="room-tabs grid grid-cols-3 gap-1 border-b border-line bg-elevated p-1.5" role="tablist">
           <TabButton active={tab === 'queue'} onClick={() => switchTo('queue')}>
             {t('room.tabQueue')}
             <Count n={total} />
@@ -286,11 +286,9 @@ function TabButton({
       onClick={onClick}
       className={cn(
         // min-w-0 ให้ช่องยอมหดตามกริดได้ ไม่ใช่ดันตามความยาวข้อความ
-        'flex min-w-0 items-center justify-center gap-0.5 px-2 py-3 text-sm transition-colors',
-        // ★ เส้นใต้แท็บที่เลือก — สัญญาณเดียวกับที่ YouTube ใช้
-        active
-          ? 'border-b-2 border-ink font-medium text-ink'
-          : 'border-b-2 border-transparent text-ink-soft hover:text-ink',
+        'room-tab flex min-h-11 min-w-0 items-center justify-center gap-0.5 rounded-xl px-2 text-sm transition-colors',
+        // ★ แท็บที่เลือกเป็นแคปซูลลอยมีแถบไล่สีใต้ — เห็นชัดทั้งโทนสว่างและมืด
+        active ? 'room-tab-on font-bold text-ink' : 'text-ink-soft hover:bg-surface hover:text-ink',
       )}
     >
       {children}

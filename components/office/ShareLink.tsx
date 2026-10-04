@@ -84,8 +84,8 @@ export function ShareLink({
       className={cn(
         'inline-flex items-center gap-1.5 rounded-full transition-colors',
         compact
-          ? 'size-8 justify-center text-ink-soft hover:bg-surface hover:text-ink'
-          : 'h-9 bg-surface px-3.5 text-sm text-ink hover:bg-surface-hover',
+          ? 'size-11 justify-center text-ink-soft hover:bg-surface hover:text-ink sm:size-8'
+          : 'h-11 bg-surface px-3.5 text-sm text-ink hover:bg-surface-hover sm:h-9',
       )}
     >
       {done ? (

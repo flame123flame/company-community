@@ -43,12 +43,69 @@ export type Restaurant = {
   /** ── 0056 ── รูปของร้าน (ต่างจากรูปที่แนบมากับรีวิว) */
   photos?: { id: string; url: string }[]
   /** ── 0057 ── เมนูเด็ดหลายรายการ ราคาเป็นบาท (null = ไม่ได้กรอก) */
-  dishes?: { name: string; price: number | null }[]
+  dishes?: { name: string; price: number | null; photo?: string | null; photoUrl?: string | null }[]
+  /** ── 0061 ── ราคาคาราโอเกะ — มีเฉพาะร้านประเภท "คาราโอเกะ" */
+  karaoke?: KaraokePricing | null
 }
 
 export type RestaurantList = {
   items: Restaurant[]
   cuisines: string[]
+}
+
+/*
+ * ═══════════════════════════════════════════════════════════════════
+ * ประเภทร้าน — รายการตายตัว (0061)
+ * ═══════════════════════════════════════════════════════════════════
+ *
+ * ★★★ เดิมเป็นช่องพิมพ์อิสระ — ใครพิมพ์อะไรก็กลายเป็นชิปใหม่ในหน้าร้านเด็ด
+ *     ("อิตาเลียน" กับ "อิตาเลี่ยน" เป็นสองชิป) ★ เจ้าของระบบสั่งให้ตายตัว
+ *     โดยใช้ชุดที่มีอยู่ตอนนั้น + "คาราโอเกะ"
+ *
+ * ★★ ค่าที่เก็บในฐานข้อมูลคือข้อความไทยชุดนี้ตรง ๆ — เป็น "ข้อมูล" ไม่ใช่ป้ายแปลภาษา
+ *    ต้องตรงกับ check constraint ใน migration 0061 ทุกตัวอักษร
+ *    ★ เพิ่ม/เปลี่ยนชื่อ = แก้ที่นี่ + migration ใหม่ที่แก้ constraint และแปลงข้อมูลเดิม
+ */
+export const CUISINES = [
+  'ไทย',
+  'อีสาน',
+  'ใต้',
+  'จีน',
+  'ญี่ปุ่น',
+  'เวียดนาม',
+  'อิตาเลียน',
+  'ปิ้งย่าง',
+  'ชาบู',
+  'สุขภาพ',
+  'กาแฟ',
+  'คาราโอเกะ',
+] as const
+export type Cuisine = (typeof CUISINES)[number]
+export const KARAOKE: Cuisine = 'คาราโอเกะ'
+
+export const isCuisine = (v: string | null | undefined): v is Cuisine =>
+  v != null && (CUISINES as readonly string[]).includes(v)
+
+/**
+ * ราคาคาราโอเกะ (0061)
+ *
+ * ★ แพ็กเกจเหล้า = ราคาเหมา รวมเด็กเอ็นกี่คน (เช่น "เหล้า 1 กลม ฿1,600 ได้เด็ก 2 คน")
+ *   ★★ เด็กคนที่เกินจากที่รวมในแพ็กเกจคิดเป็นรายชั่วโมงตาม hostessPerHour
+ * ★ ห้อง (เช่น VIP) มีได้ทั้งราคาต่อชั่วโมงและราคาเหมาทั้งคืน — อย่างน้อยหนึ่งอย่าง
+ * ★ ราคาเป็นบาท (ทศนิยมได้) ตรวจซ้ำที่ server ด้วย zod
+ */
+export type KaraokePricing = {
+  /** ค่าเด็กเอ็นต่อชั่วโมงต่อคน — null = ไม่มีแยก (รวมในแพ็กเกจเหล้าเท่านั้น) */
+  hostessPerHour: number | null
+  packages: { name: string; price: number; hostesses: number }[]
+  rooms: { name: string; perHour: number | null; night: number | null }[]
+  note: string | null
+}
+
+/** ราคาเริ่มต้นแบบสั้นสำหรับการ์ด — แพ็กเกจที่ถูกที่สุด */
+export function karaokeFrom(k: KaraokePricing | null | undefined): number | null {
+  if (!k || k.packages.length === 0) return null
+  return Math.min(...k.packages.map((p) => p.price))
 }
 
 export const PRICE_OPTIONS: PriceRange[] = ['฿', '฿฿', '฿฿฿']

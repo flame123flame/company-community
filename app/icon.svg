@@ -1,5 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" rx="7" fill="#0f0f0f"/>
-  <rect x="4.6" y="4.6" width="22.8" height="22.8" rx="7" fill="none" stroke="#ff0033" stroke-width="3"/>
-  <path d="M13.6 11.4 L21.4 16 L13.6 20.6 Z" fill="#ff0033" stroke="#ff0033" stroke-width="1.5" stroke-linejoin="round"/>
+  <!-- AWA Plaza — ต้นแบบเดียวกับ LogoGlyph ใน components/Logo.tsx
+       favicon ใช้ CSS variable ไม่ได้ จึงเป็นค่าสีตรงของ --color-accent และ --aurora-2 -->
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff0033"/>
+      <stop offset="1" stop-color="#b42ab0"/>
+    </linearGradient>
+    <radialGradient id="s" cx="0.25" cy="0.15" r="0.75">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="32" height="32" rx="9.5" fill="url(#g)"/>
+  <rect width="32" height="32" rx="9.5" fill="url(#s)"/>
+  <path d="M8 22.4 L16 8.2 L24 22.4" fill="none" stroke="#fff" stroke-width="3.3" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="16" cy="17.6" r="2.35" fill="#fff"/>
+  <path d="M7.2 25.6 H24.8" stroke="#fff" stroke-opacity="0.55" stroke-width="2" stroke-linecap="round"/>
 </svg>

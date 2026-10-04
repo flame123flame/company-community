@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/Input'
 import { cn } from '@/lib/cn'
 import { officeErrorText } from '@/lib/i18n/office-format'
 import { useOt } from '@/lib/i18n/office'
+import { useConfirm } from '@/components/ConfirmProvider'
 import { ChatAvatar } from './ChatAvatar'
 
 /**
@@ -54,6 +55,7 @@ export function ChatGroupPanel({
   onLeft: () => void
 }) {
   const ot = useOt()
+  const confirm = useConfirm()
   const [name, setName] = useState(title)
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<string | null>(null)
@@ -80,6 +82,8 @@ export function ChatGroupPanel({
   }
 
   async function uploadAvatar(file: File) {
+    // ★ เปลี่ยนรูปกลุ่ม = แก้ข้อมูลกลุ่ม → ถามก่อน
+    if (!(await confirm({ kind: 'edit', subject: title }))) return
     setBusy(true)
     setError(null)
     try {
@@ -163,7 +167,10 @@ export function ChatGroupPanel({
               size="sm"
               loading={busy}
               disabled={!name.trim() || name.trim() === title}
-              onClick={() => void act({ action: 'group', title: name.trim() }, ot('chat.saved'))}
+              onClick={async () => {
+                if (!(await confirm({ kind: 'edit', subject: name.trim() }))) return
+                void act({ action: 'group', title: name.trim() }, ot('chat.saved'))
+              }}
             >
               {ot('common.save')}
             </Button>
@@ -198,8 +205,11 @@ export function ChatGroupPanel({
                     key={p.id}
                     type="button"
                     disabled={busy}
-                    onClick={() => void act({ action: 'addMembers', members: [p.id] })}
-                    className="h-8 rounded-full bg-elevated px-3 text-xs text-ink-soft transition-colors hover:bg-accent hover:text-accent-ink disabled:opacity-50"
+                    onClick={async () => {
+                      if (!(await confirm({ kind: 'create', subject: p.name }))) return
+                      void act({ action: 'addMembers', members: [p.id] })
+                    }}
+                    className="h-10 sm:h-8 rounded-full bg-elevated px-3 text-xs text-ink-soft transition-colors hover:bg-accent hover:text-accent-ink disabled:opacity-50"
                   >
                     + <span dir="auto">{p.name}</span>
                   </button>
@@ -229,8 +239,15 @@ export function ChatGroupPanel({
                 <button
                   type="button"
                   disabled={busy}
-                  onClick={() => {
-                    if (!window.confirm(ot('chat.removeConfirm', { name: m.name }))) return
+                  onClick={async () => {
+                    if (
+                      !(await confirm({
+                        kind: 'delete',
+                        subject: m.name,
+                        message: ot('chat.removeConfirm', { name: m.name }),
+                      }))
+                    )
+                      return
                     void act({ action: 'removeMember', userId: m.id })
                   }}
                   className="shrink-0 rounded-full px-2.5 py-1 text-xs text-ink-faint transition-colors hover:bg-danger/15 hover:text-danger"
@@ -245,8 +262,9 @@ export function ChatGroupPanel({
         <Button
           variant="ghost"
           className={cn('mt-6 w-full text-danger')}
-          onClick={() => {
-            if (!window.confirm(ot('chat.leaveConfirm'))) return
+          onClick={async () => {
+            if (!(await confirm({ kind: 'leave', subject: title, message: ot('chat.leaveConfirm') })))
+              return
             void apiFetch(`/api/office/chat/${roomId}`, { method: 'POST', body: { action: 'leave' } })
               .then(onLeft)
               .catch((e: unknown) =>

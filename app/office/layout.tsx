@@ -5,6 +5,9 @@ import { HeaderActions } from '@/components/HeaderActions'
 import { OfficeI18nProvider, type Ot } from '@/lib/i18n/office'
 import { getOt } from '@/lib/i18n/office-server'
 import { Logo } from '@/components/Logo'
+import { getT } from '@/lib/i18n/server'
+import { buildNav, type NavModule } from '@/lib/office/nav-data'
+import { ModuleNav } from '@/components/nav/ModuleNav'
 
 /**
  * โครงของทุกหน้าในระบบกิจกรรมออฟฟิศ (FR-X07)
@@ -36,6 +39,7 @@ export default async function OfficeLayout({ children }: LayoutProps<'/office'>)
    *       เหตุผลเดียวกับที่ด่านตรวจสิทธิ์อยู่ที่ layout
    */
   const { ot, dict } = await getOt()
+  const { t } = await getT()
 
   /*
    * ★ ยังไม่ได้เข้าระบบ → ส่งไปหน้าแรกของห้องเพลงซึ่งมีฟอร์มตั้งชื่อผู้ใช้อยู่แล้ว
@@ -66,6 +70,7 @@ export default async function OfficeLayout({ children }: LayoutProps<'/office'>)
         displayName={viewer.displayName}
         userId={viewer.id}
         avatarUrl={viewer.avatarUrl}
+        modules={buildNav(ot, t, viewer.isAdmin)}
       />
 
       {/* ★ ครอบแค่ children — แถบบนแปลเสร็จแล้วฝั่ง server ไม่ต้องใช้ context */}
@@ -94,25 +99,34 @@ function OfficeHeader({
   displayName,
   userId,
   avatarUrl,
+  modules,
 }: {
   ot: Ot
   isAdmin: boolean
   displayName: string
   userId: string
   avatarUrl: string | null
+  modules: NavModule[]
 }) {
   return (
-    <header className="sticky top-0 z-50 flex h-(--spacing-header) items-center gap-3 border-b border-line bg-page px-4">
+    <header className="app-header sticky top-0 z-50 flex h-(--spacing-header) items-center gap-2 px-3 sm:gap-3 sm:px-4">
       {/* ★ โลโก้กลับหน้ารวมของทั้งเว็บ ไม่ใช่หน้าแรกของโมดูล
           คนคาดหวังว่าโลโก้พากลับจุดเริ่มต้นเสมอ
           ★★ aria-label ชุดเดียวกับที่ AppHeader ใช้ ★ เดิมลิงก์นี้ไม่มีชื่อเลย
              — คนใช้ screen reader จะได้ยินแค่ "ลิงก์" แล้วไม่รู้ว่าพาไปไหน
              ★★ จับได้ตอนเทียบรายชื่อปุ่มในแถบบนของสองหน้าจากเบราว์เซอร์จริง */}
-      <Link href="/" className="flex items-center gap-2" aria-label={ot('nav.home')}>
-        <Logo />
+      <Link href="/" className="flex min-h-11 min-w-11 shrink-0 items-center gap-2" aria-label={ot('nav.home')}>
+        {/* ★ จอแคบกว่า 400px เหลือแค่ตรามาร์ค — "AWA Plaza" + ปุ่ม 5 ปุ่มกว้างเกินจอ
+             ★★ วัดได้: ที่ 375px โลโก้ตกเป็นสองบรรทัด · ที่ 320px รูปโปรไฟล์ถูกตัดไป 9px */}
+        <Logo wordmarkFrom="400" />
       </Link>
 
-      <div className="ms-auto flex items-center gap-1">
+      {/* ★ แถบเมนูโมดูล (จอกว้าง) — ทุกระบบอยู่บนแถบเดียว ชี้แล้วเห็นหน้าย่อย */}
+      <div className="flex min-w-0 flex-1 justify-center">
+        <ModuleNav modules={modules} label={ot('nav.modules')} />
+      </div>
+
+      <div className="ms-auto flex items-center gap-0.5 sm:gap-1">
         <HeaderActions
           userId={userId}
           displayName={displayName}
@@ -132,7 +146,7 @@ function SuspendedScreen({ ot }: { ot: Ot }) {
         <p className="mt-2 text-sm text-ink-soft">{ot('account.suspendedBody')}</p>
         <Link
           href="/"
-          className="mt-6 inline-flex h-9 items-center rounded-full bg-surface px-4 text-sm font-medium text-ink hover:bg-surface-hover"
+          className="mt-6 inline-flex h-11 sm:h-9 items-center rounded-full bg-surface px-4 text-sm font-medium text-ink hover:bg-surface-hover"
         >
           {ot('nav.music')}
         </Link>

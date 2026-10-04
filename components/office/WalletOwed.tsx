@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { apiFetch } from '@/lib/api/client'
 import { Button } from '@/components/ui/Button'
+import { useConfirm } from '@/components/ConfirmProvider'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Input } from '@/components/ui/Input'
 import { Toast, useToast } from '@/components/ui/Toast'
@@ -69,6 +70,7 @@ const HISTORY_PAGE = 10
  */
 export function WalletOwed() {
   const ot = useOt()
+  const confirm = useConfirm()
   const locale = useLocale()
   const { toast, showToast } = useToast()
 
@@ -745,8 +747,8 @@ export function WalletOwed() {
                     <div className="border-t border-line px-3 py-2">
                       <button
                         type="button"
-                        onClick={() => {
-                          if (!window.confirm(ot('wallet.owed.cancelAsk'))) return
+                        onClick={async () => {
+                          if (!(await confirm({ kind: 'delete', subject: g.otherName, message: ot('wallet.owed.cancelAsk') }))) return
                           for (const d of g.theirs) {
                             void act(d.id, { action: 'cancel' })
                           }
@@ -986,6 +988,7 @@ function OwedActions({
 }: {
   group: {
     otherId: string
+    otherName: string
     theirs: Debt[]
     waiting: Debt[]
   }
@@ -994,6 +997,7 @@ function OwedActions({
   onAct: (id: string, body: Record<string, unknown>, msg?: string) => void
   locale: string
 }) {
+  const confirm = useConfirm()
   const waiting = group.waiting.filter((d) => group.theirs.includes(d))
 
   if (waiting.length > 0) {
@@ -1004,7 +1008,9 @@ function OwedActions({
           variant="primary"
           className="min-h-11 flex-1"
           loading={busy === waiting[0]!.id}
-          onClick={() => {
+          onClick={async () => {
+            /* ★ ยืนยันรับเงิน = ปิดหนี้ — ถามก่อนเสมอ */
+            if (!(await confirm({ kind: 'edit', subject: group.otherName, title: `${ot('wallet.owed.confirmGot')} · ${group.otherName}`, confirmLabel: ot('wallet.owed.confirmGot') }))) return
             for (const d of waiting) onAct(d.id, { action: 'confirm' }, ot('wallet.owed.toastConfirmed'))
           }}
         >
@@ -1012,7 +1018,8 @@ function OwedActions({
         </Button>
         <button
           type="button"
-          onClick={() => {
+          onClick={async () => {
+            if (!(await confirm({ kind: 'edit', subject: group.otherName, title: `${ot('wallet.owed.notGot')} · ${group.otherName}`, confirmLabel: ot('wallet.owed.notGot') }))) return
             for (const d of waiting) onAct(d.id, { action: 'reject' }, ot('wallet.owed.toastRejected'))
           }}
           className="min-h-11 px-2 text-xs text-link hover:underline"

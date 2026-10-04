@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Toast, useToast } from '@/components/ui/Toast'
 import { Toggle } from '@/components/ui/Toggle'
+import { useConfirm } from '@/components/ConfirmProvider'
 import { DatePicker, todayIso } from '@/components/ui/DatePicker'
 import { Section } from '@/components/ui/Section'
 import { cuisineStyle } from '@/lib/office/cuisine'
@@ -62,6 +63,7 @@ export function WalletCreate() {
   const router = useRouter()
   const params = useSearchParams()
   const { toast, showToast } = useToast()
+  const confirm = useConfirm()
 
   const [recent, setRecent] = useState<Recent | null>(null)
   const [people, setPeople] = useState<Person[]>([])
@@ -294,6 +296,10 @@ export function WalletCreate() {
       return
     }
 
+    /* ★ ถามก่อนสร้างบิล — หลังตรวจช่องผ่านแล้ว ฟอร์มที่ผิดยังขึ้นแดงตามเดิมโดยไม่มีกล่อง */
+    const billTitle = title.trim() || shopName || ot('wallet.create.titleAuto', { date: billDate })
+    if (!(await confirm({ kind: 'create', subject: billTitle }))) return
+
     setBusy(true)
     setError(null)
     setFieldError({})
@@ -308,7 +314,7 @@ export function WalletCreate() {
         method: 'POST',
         body: {
           /* ★ ชื่อรายการไม่บังคับ — ตั้งให้เองจากร้านหรือวันที่ */
-          title: title.trim() || shopName || ot('wallet.create.titleAuto', { date: billDate }),
+          title: billTitle,
           total: toBaht(split.totalSatang),
           category,
           billDate,
@@ -1324,7 +1330,7 @@ function SaveButton({
   onClick: () => void
 }) {
   return (
-    <Button variant="primary" loading={busy} onClick={onClick} className="h-12 w-full text-base">
+    <Button variant="primary" loading={busy} onClick={onClick} className="min-h-12 w-full text-base">
       <Untranslated>
         {missing === 'amount'
           ? ot('wallet.create.needAmount')

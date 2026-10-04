@@ -20,6 +20,8 @@ import { displayNameSchema } from '@/lib/validation/schemas'
 import { useRouter } from 'next/navigation'
 import type { RoomPreview } from '@/types/room'
 import { useT } from '@/lib/i18n/client'
+import { Untranslated } from '@/lib/i18n/office'
+import { cn } from '@/lib/cn'
 import type { DictKey } from '@/lib/i18n/dict'
 
 /**
@@ -139,95 +141,112 @@ export function JoinGate({ preview }: { preview: RoomPreview }) {
         )}
       </div>
 
-      <main className="relative z-10 mx-auto flex w-full max-w-[460px] flex-col px-4 pb-16 pt-8 sm:pt-16">
-        <div className="overflow-hidden rounded-3xl border border-line bg-elevated/70 shadow-2xl backdrop-blur-xl">
-          {/* ── กำลังเล่นอยู่ ─────────────────────────────────── */}
-          {preview.nowPlaying ? (
-            <div className="relative aspect-[16/9] overflow-hidden">
-              {preview.nowPlaying.thumbnailUrl ? (
-                <>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={preview.nowPlaying.thumbnailUrl}
-                    alt=""
-                    className="size-full scale-105 object-cover"
-                  />
-                  <span className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/5" />
-                </>
-              ) : (
-                <span className="absolute inset-0 bg-surface" />
-              )}
+      <main className="relative z-10 mx-auto flex w-full max-w-[480px] flex-col px-4 pb-16 pt-6 sm:pt-12">
+        <div className="join-card overflow-hidden rounded-[30px]">
+          {/**
+            * ── เวที: แผ่นเสียงหมุน ฉลากกลางคือปกเพลงที่เล่นอยู่ ──────────
+            *
+            * ★★ บอก "ห้องนี้กำลังเปิดอะไร" ก่อนกด — ข้อมูลที่คนอยากรู้ที่สุด
+            *    ★ ไม่มีเพลง = ฉลากสีแบรนด์ แผ่นยังหมุน บอกว่าห้องพร้อมรับเพลงแรก
+            */}
+          <div className="join-stage relative overflow-hidden px-6 pb-5 pt-7 text-center">
+            <span aria-hidden="true" className="pop-blob pop-blob-a" />
+            <span aria-hidden="true" className="pop-blob pop-blob-b" />
+            <div aria-hidden="true" className="relative mx-auto size-[150px]">
+              <div className={cn('mus-vinyl absolute inset-0', !preview.nowPlaying && 'mus-vinyl-idle')}>
+                {preview.nowPlaying?.thumbnailUrl ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img src={preview.nowPlaying.thumbnailUrl} alt="" className="mus-vinyl-cover" />
+                ) : (
+                  <span className="mus-vinyl-label" />
+                )}
+              </div>
+            </div>
 
-              <span className="absolute start-3 top-3 flex items-center gap-1.5 rounded-full bg-black/55 px-2.5 py-1 backdrop-blur-sm">
-                <span className="flex h-3 items-end gap-[2px]">
-                  {[0, 1, 2].map((i) => (
-                    <span
-                      key={i}
-                      className="eq-bar w-[2px] rounded-full bg-live"
-                      style={{
-                        height: [6, 11, 8][i],
-                        animationDuration: `${[0.7, 0.95, 0.8][i]}s`,
-                        animationDelay: `${[0, 0.2, 0.35][i]}s`,
-                      }}
-                    />
-                  ))}
+            {preview.nowPlaying ? (
+              <div className="relative mt-4">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-[color-mix(in_srgb,var(--ck-shade)_30%,transparent)] px-2.5 py-1">
+                  <span className="flex h-3 items-end gap-[2px]">
+                    {[0, 1, 2].map((i) => (
+                      <span
+                        key={i}
+                        className="eq-bar w-[2px] rounded-full bg-[var(--ck-shine)]"
+                        style={{
+                          height: [6, 11, 8][i],
+                          animationDuration: `${[0.7, 0.95, 0.8][i]}s`,
+                          animationDelay: `${[0, 0.2, 0.35][i]}s`,
+                        }}
+                      />
+                    ))}
+                  </span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--ck-shine)]">
+                    {t('join.playing')}
+                  </span>
                 </span>
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-white">
-                  {t('join.playing')}
-                </span>
-              </span>
-
-              <div className="absolute inset-x-0 bottom-0 p-4">
-                <p dir="auto" className="line-clamp-2 text-[15px] font-medium leading-snug text-white drop-shadow">
+                <p dir="auto" className="mt-2 line-clamp-2 text-[15px] font-bold leading-snug text-[var(--ck-shine)]">
                   {preview.nowPlaying.title}
                 </p>
                 {preview.nowPlaying.channelTitle ? (
-                  <p dir="auto" className="mt-0.5 truncate text-xs text-white/70">
+                  <p dir="auto" className="mt-0.5 truncate text-xs text-[color-mix(in_srgb,var(--ck-shine)_75%,transparent)]">
                     {preview.nowPlaying.channelTitle}
                   </p>
                 ) : null}
               </div>
+            ) : null}
+          </div>
+
+          <div className="px-6 pb-6 pt-5 text-center">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-ink-faint">{t('join.eyebrow')}</p>
+            <h1 dir="auto" className="mus-title mt-1.5 text-[clamp(26px,7vw,34px)] font-black leading-tight">{preview.name}</h1>
+
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+              <span className="join-code rounded-full px-3 py-1.5 font-mono text-[13px] font-bold tracking-[0.3em]">
+                {preview.code}
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-surface px-3 py-1.5 text-xs text-ink-soft">
+                {preview.memberCount > 0 ? <span className="music-live" aria-hidden="true" /> : null}
+                {preview.memberCount > 0
+                  ? t('join.members', { n: preview.memberCount })
+                  : t('join.first')}
+              </span>
             </div>
-          ) : null}
 
-          <div className="p-6 text-center">
-            <p className="text-[11px] uppercase tracking-[0.25em] text-ink-faint">{t('join.eyebrow')}</p>
-            <h1 dir="auto" className="mt-2 text-2xl font-bold leading-tight">{preview.name}</h1>
-
-            <p className="mt-2 font-mono text-[13px] tracking-[0.35em] text-ink-soft">
-              {preview.code}
-            </p>
-
-            <p className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-surface px-3 py-1.5 text-xs text-ink-soft">
-              <svg viewBox="0 0 24 24" className="size-4" fill="currentColor" aria-hidden="true">
-                <path d="M9 13c-2.2 0-6.5 1.1-6.5 3.3V19h13v-2.7C15.5 14.1 11.2 13 9 13zm0-2a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zm7.5 2.2c1.1.8 1.9 1.8 1.9 3.1V19H22v-2.7c0-1.8-2.9-2.8-5.5-3.1zM15 11a3.5 3.5 0 1 0-1.1-6.8 5.5 5.5 0 0 1 0 6.6c.36.13.73.2 1.1.2z" />
-              </svg>
-              {preview.memberCount > 0
-                ? t('join.members', { n: preview.memberCount })
-                : t('join.first')}
-            </p>
+            {/* ★ เข้าไปแล้วทำอะไรได้ — สามอย่างที่คนถามบ่อยที่สุด ลดการต้องสอน */}
+            <ul className="mt-5 grid grid-cols-3 gap-2">
+              {(
+                [
+                  ['🎵', t('join.perk1')],
+                  ['💬', t('join.perk2')],
+                  ['⏭️', t('join.perk3')],
+                ] as const
+              ).map(([emoji, label], i) => (
+                <li
+                  key={emoji}
+                  className="join-perk flex flex-col items-center gap-1 rounded-2xl px-1.5 py-2.5"
+                  style={{ '--i': i } as React.CSSProperties}
+                >
+                  <span aria-hidden="true" className="text-xl leading-none">{emoji}</span>
+                  <span className="text-[11px] font-semibold leading-tight text-ink-soft">
+                    <Untranslated>{label}</Untranslated>
+                  </span>
+                </li>
+              ))}
+            </ul>
 
             {/**
-              * ★★ ไม่ถามชื่ออีกแล้วถ้าเคยตั้งไว้
-              *
-              *    ของเดิมมีช่องกรอกชื่อโผล่ทุกครั้งที่กดลิงก์ห้อง แม้จะเติมค่าเก่า
-              *    ให้แล้วก็ตาม — ผู้ใช้อ่านช่องกรอกว่า "ต้องกรอก" ไม่ใช่ "ยืนยัน"
-              *    จึงรู้สึกเหมือนถูกสร้างเป็นคนใหม่ทุกครั้ง
-              *
-              *    ★ ตอนนี้แสดง "คุณคือใคร" แทนการถาม และเปลี่ยนได้ถ้าอยากเปลี่ยน
-              *      ปุ่มเข้าร่วมยังอยู่เหมือนเดิมเพราะมันมีหน้าที่ปลดล็อกเสียง
-              *      ของเบราว์เซอร์ ไม่ใช่แค่ยืนยันชื่อ
+              * ★★ ไม่ถามชื่ออีกแล้วถ้าเคยตั้งไว้ — แสดง "คุณคือใคร" แทนการถาม
+              *    ปุ่มเข้าร่วมยังอยู่เพราะมันปลดล็อกเสียงของเบราว์เซอร์ ไม่ใช่แค่ยืนยันชื่อ
               */}
-            <form onSubmit={handleJoin} className="mt-6 space-y-3" noValidate>
-              <div className="flex items-center gap-3 rounded-2xl border border-line bg-page/50 px-3 py-2.5 text-start">
+            <form onSubmit={handleJoin} className="mt-5 space-y-3" noValidate>
+              <div className="flex items-center gap-3 rounded-2xl bg-surface px-3 py-2.5 text-start">
                 <Avatar
                   userId={profile?.displayName ?? 'me'}
                   name={profile?.displayName ?? '?'}
                   avatarUrl={profile?.avatarUrl ?? null}
-                  size={38}
+                  size={40}
                 />
                 <div className="min-w-0 flex-1">
-                  <p dir="auto" className="truncate text-sm font-medium">
+                  <p dir="auto" className="truncate text-sm font-bold">
                     {profile?.displayName ?? t('join.noName')}
                   </p>
                   <p dir="auto" className="truncate text-[11px] text-ink-faint">
@@ -238,13 +257,16 @@ export function JoinGate({ preview }: { preview: RoomPreview }) {
                   type="button"
                   onClick={() => setEditing(true)}
                   disabled={pending}
-                  className="shrink-0 rounded-full border border-line px-2.5 py-1 text-[11px] text-ink-soft transition-colors hover:bg-surface hover:text-ink"
+                  className="min-h-11 shrink-0 rounded-full bg-elevated px-3.5 text-xs font-medium text-ink-soft shadow-sm ring-1 ring-line transition-colors hover:text-ink"
                 >
                   {profile ? t('common.change') : t('join.setName')}
                 </button>
               </div>
 
-              <Button type="submit" variant="primary" size="lg" block loading={pending}>
+              <Button type="submit" variant="primary" size="lg" block loading={pending} className="join-cta h-14 sm:h-14 rounded-2xl text-base font-bold">
+                <svg viewBox="0 0 24 24" className="size-5" fill="currentColor" aria-hidden="true">
+                  <path d="M8 5.5v13l11-6.5z" />
+                </svg>
                 {t('join.submit')}
               </Button>
             </form>
@@ -255,14 +277,20 @@ export function JoinGate({ preview }: { preview: RoomPreview }) {
               </p>
             ) : null}
 
-            <p className="mt-4 text-[11px] leading-relaxed text-ink-faint">
+            <p className="mt-4 flex items-start justify-center gap-1.5 text-[11px] leading-relaxed text-ink-faint">
+              <svg viewBox="0 0 24 24" className="mt-px size-3.5 shrink-0" fill="currentColor" aria-hidden="true">
+                <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4z" />
+              </svg>
               {t('join.audioHint')}
             </p>
           </div>
         </div>
 
         <div className="mt-5 text-center">
-          <Link href="/" className="text-sm text-ink-soft transition-colors hover:text-ink">
+          <Link href="/" className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 text-sm text-ink-soft transition-colors hover:bg-surface hover:text-ink">
+            <svg viewBox="0 0 24 24" className="size-4 rtl:-scale-x-100" fill="currentColor" aria-hidden="true">
+              <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
+            </svg>
             {t('common.backHome')}
           </Link>
         </div>

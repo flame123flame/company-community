@@ -11,7 +11,7 @@ import { enforceRateLimit } from '@/lib/ratelimit'
 export const dynamic = 'force-dynamic'
 
 /*
- * ★★★ ห้ามเปลี่ยนตามชื่อแบรนด์ แม้เว็บจะเปลี่ยนชื่อเป็น AWA ROOM แล้ว
+ * ★★★ ห้ามเปลี่ยนตามชื่อแบรนด์ แม้เว็บจะเปลี่ยนชื่อเป็น AWA ROOM และ AWA Plaza แล้ว
  *
  *     ★ อีเมลของทุกบัญชีที่มีอยู่คือ "<username>@frameroom.invalid"
  *       ★★ เปลี่ยนค่านี้ = GoTrue หาบัญชีเดิมไม่เจอทุกบัญชี แล้วทุกคน

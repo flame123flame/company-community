@@ -129,6 +129,46 @@ export function playCelebrate(): void {
 }
 
 /**
+ * เสียงแพ้ — สามโน้ตไล่ลงแบบ "วา–วา–วาาา" แล้วโน้ตสุดท้ายเอื้อนลง
+ *
+ * ★ ตลกนิด ๆ ไม่ใช่เศร้าจริงจัง — เกมในออฟฟิศ แพ้แล้วต้องยิ้มได้
+ */
+export function playSad(): void {
+  const ac = audio()
+  if (!ac) return
+
+  const notes = [392.0, 369.99, 349.23, 329.63] // G4 F#4 F4 E4
+  notes.forEach((freq, i) => {
+    const osc = ac.createOscillator()
+    const gain = ac.createGain()
+    const at = ac.currentTime + i * 0.32
+    const last = i === notes.length - 1
+    const len = last ? 0.9 : 0.28
+
+    osc.type = 'triangle'
+    osc.frequency.setValueAtTime(freq, at)
+    /* ★ โน้ตสุดท้ายสั่นและหย่อนลง — ตัวที่ทำให้ฟังออกว่า "แพ้" */
+    if (last) {
+      const lfo = ac.createOscillator()
+      const depth = ac.createGain()
+      lfo.frequency.value = 6
+      depth.gain.value = 6
+      lfo.connect(depth).connect(osc.frequency)
+      lfo.start(at)
+      lfo.stop(at + len)
+      osc.frequency.exponentialRampToValueAtTime(freq * 0.9, at + len)
+    }
+    gain.gain.setValueAtTime(0.0001, at)
+    gain.gain.exponentialRampToValueAtTime(0.12, at + 0.03)
+    gain.gain.exponentialRampToValueAtTime(0.0001, at + len)
+
+    osc.connect(gain).connect(ac.destination)
+    osc.start(at)
+    osc.stop(at + len + 0.05)
+  })
+}
+
+/**
  * สั่นสั้น ๆ ตอนเปิดผล
  *
  * ★ iOS ไม่รองรับ navigator.vibrate เลย และจะไม่รองรับในอนาคตอันใกล้

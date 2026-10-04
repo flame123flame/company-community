@@ -127,7 +127,7 @@ async function followForCoords(start: URL): Promise<{ lat: number; lng: number }
         method: 'HEAD',
         redirect: 'manual',
         signal: controller.signal,
-        headers: { 'user-agent': 'Mozilla/5.0 (compatible; AWA-ROOM/1.0)' },
+        headers: { 'user-agent': 'Mozilla/5.0 (compatible; AWA-Plaza/1.0)' },
       })
 
       const location = res.headers.get('location')

@@ -5,14 +5,18 @@ import dynamic from 'next/dynamic'
 import type { OpenHours } from '@/lib/office/geo'
 import { OpenHoursField } from './OpenHoursField'
 import { apiFetch } from '@/lib/api/client'
+import { useConfirm } from '@/components/ConfirmProvider'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { cn } from '@/lib/cn'
 import { officeErrorText } from '@/lib/i18n/office-format'
-import { useOt } from '@/lib/i18n/office'
-import { DISTANCE_OPTIONS, PRICE_OPTIONS, distanceLabel } from '@/lib/office/food'
+import { Untranslated, useOt } from '@/lib/i18n/office'
+import { CUISINES, DISTANCE_OPTIONS, KARAOKE, PRICE_OPTIONS, distanceLabel, isCuisine, type Cuisine, type KaraokePricing } from '@/lib/office/food'
+import { cuisineStyle } from '@/lib/office/cuisine'
+import { KaraokeFields, emptyKaraoke, karaokeFromDraft, type KaraokeDraft } from './KaraokeFields'
 import { shrinkImage } from '@/lib/image/shrink'
 import { ShopPhotos, type ShopPhoto } from './ShopPhotos'
+import { DishPhotoSlot, type DishPhoto } from './DishPhotoSlot'
 import type { DistanceBand, PriceRange } from '@/types/database'
 
 type Similar = { id: string; name: string; signatureDish: string; similarity: number }
@@ -31,10 +35,12 @@ export type EditingShop = {
   lng?: number | null
   openHours?: OpenHours | null
   photos?: ShopPhoto[]
-  dishes?: { name: string; price: number | null }[]
+  dishes?: { name: string; price: number | null; photo?: string | null; photoUrl?: string | null }[]
+  karaoke?: KaraokePricing | null
 }
 
-type DishRow = { key: string; name: string; price: string }
+/** ★ photo = รูปที่อัปแล้ว (0060) — path ส่งไปกับเมนูตอนบันทึก · url ไว้โชว์ภาพย่อ */
+type DishRow = { key: string; name: string; price: string; photo: DishPhoto | null }
 
 /** เพดานเดียวกับที่ add_restaurant_photos บังคับในฐานข้อมูล */
 const MAX_PHOTOS = 10
@@ -73,6 +79,7 @@ export function AddRestaurantForm({
   editing?: EditingShop
 }) {
   const ot = useOt()
+  const confirm = useConfirm()
   const [name, setName] = useState(editing?.name ?? '')
   /*
    * ★★★ เมนูเด็ดเป็นหลายรายการ ไม่ใช่ช่องเดียว
@@ -89,12 +96,31 @@ export function AddRestaurantForm({
         key: `d${i}`,
         name: d.name,
         price: d.price == null ? '' : String(d.price),
+        photo: d.photo && d.photoUrl ? { path: d.photo, url: d.photoUrl } : null,
       }))
     }
     /* ★ ร้านเก่าที่ยังไม่มีรายการเมนู → ใช้ signature_dish เป็นแถวแรก */
-    return [{ key: 'd0', name: editing?.signatureDish ?? '', price: '' }]
+    return [{ key: 'd0', name: editing?.signatureDish ?? '', price: '', photo: null }]
   })
-  const [cuisine, setCuisine] = useState(editing?.cuisine ?? '')
+  /* ── 0061 ── ประเภทจากรายการตายตัว — ค่าเก่าที่ไม่อยู่ในรายการถือว่า "ไม่ระบุ" */
+  const [cuisine, setCuisine] = useState<Cuisine | null>(isCuisine(editing?.cuisine) ? editing.cuisine : null)
+  const [karaoke, setKaraoke] = useState<KaraokeDraft>(() => {
+    const k = editing?.karaoke
+    if (!k) return emptyKaraoke()
+    let n = 0
+    return {
+      hostessPerHour: k.hostessPerHour == null ? '' : String(k.hostessPerHour),
+      packages: k.packages.map((p) => ({ key: `p${n++}`, name: p.name, price: String(p.price), hostesses: String(p.hostesses) })),
+      rooms: k.rooms.map((r) => ({
+        key: `r${n++}`,
+        name: r.name,
+        perHour: r.perHour == null ? '' : String(r.perHour),
+        night: r.night == null ? '' : String(r.night),
+      })),
+      note: k.note ?? '',
+    }
+  })
+  const isKaraoke = cuisine === KARAOKE
   const [price, setPrice] = useState<PriceRange | null>(
     (editing?.priceRange as PriceRange | null) ?? null,
   )
@@ -150,6 +176,8 @@ export function AddRestaurantForm({
     [staged],
   )
   const [busy, setBusy] = useState(false)
+  /* ★ รูปเมนูที่กำลังอัปอยู่ — กดบันทึกระหว่างนี้ รูปที่ยังอัปไม่เสร็จจะหายไปเงียบ ๆ */
+  const [uploading, setUploading] = useState(0)
   const [error, setError] = useState<string | null>(null)
 
   const abortRef = useRef<AbortController | null>(null)
@@ -191,23 +219,30 @@ export function AddRestaurantForm({
   async function submit(event: React.FormEvent) {
     event.preventDefault()
     if (busy) return
+    /* ★ ฟอร์มเดียวใช้ทั้งเพิ่มและแก้ — ชนิดกล่องตามโหมด */
+    if (!(await confirm({ kind: editing ? 'edit' : 'create', subject: name.trim() || null }))) return
 
     setBusy(true)
     setError(null)
     try {
       /* ★ รายการที่มีชื่อจริงเท่านั้น — แถวว่างที่คนกดเพิ่มแล้วไม่กรอก ต้องไม่ถูกบันทึก */
       const cleanDishes = dishes
-        .map((d) => ({ name: d.name.trim(), price: d.price.trim() }))
+        .map((d) => ({ name: d.name.trim(), price: d.price.trim(), photo: d.photo?.path ?? null }))
         .filter((d) => d.name.length > 0)
-        .map((d) => ({ name: d.name, price: d.price === '' ? null : Number(d.price) }))
+        .map((d) => ({ name: d.name, price: d.price === '' ? null : Number(d.price), photo: d.photo }))
 
+      const karaokePayload = isKaraoke ? karaokeFromDraft(karaoke) : null
       const body = {
         name,
         /* ★★ signatureDish ยังส่งอยู่ — คอลัมน์นั้นเป็น not null และมีโค้ดเก่าอ่าน
              ★ ให้เป็นเมนูรายการแรกเสมอ ซึ่งตรงกับที่ RPC ซิงก์ให้ฝั่งฐานข้อมูล */
-        signatureDish: cleanDishes[0]?.name ?? '',
+        /* ★ ร้านคาราโอเกะไม่บังคับเมนู — ใช้ชื่อแพ็กเกจแรก (หรือคำว่าคาราโอเกะ) แทน
+             เพราะคอลัมน์ signature_dish ยังเป็น not null */
+        signatureDish:
+          cleanDishes[0]?.name ?? (isKaraoke ? (karaokePayload?.packages[0]?.name ?? KARAOKE) : ''),
         dishes: cleanDishes,
-        cuisine: cuisine.trim() || null,
+        cuisine,
+        karaoke: karaokePayload,
         priceRange: price,
         distance,
         mapUrl: mapUrl.trim() || null,
@@ -297,7 +332,7 @@ export function AddRestaurantForm({
         <div>
           <p className="mb-1.5 text-sm font-medium text-ink">
             {ot('food.form.dish')}
-            <span className="ms-0.5 text-accent">*</span>
+            {isKaraoke ? null : <span className="ms-0.5 text-accent">*</span>}
             <span className="ms-1.5 text-xs font-normal text-ink-faint">
               ({ot('food.form.priceOptional')})
             </span>
@@ -306,6 +341,15 @@ export function AddRestaurantForm({
           <div className="flex flex-col gap-2">
             {dishes.map((row, i) => (
               <div key={row.key} className="flex items-center gap-2">
+                <DishPhotoSlot
+                  photo={row.photo}
+                  dishName={row.name}
+                  onChange={(photo) =>
+                    setDishes((prev) => prev.map((d) => (d.key === row.key ? { ...d, photo } : d)))
+                  }
+                  onBusyChange={(on) => setUploading((n) => Math.max(0, n + (on ? 1 : -1)))}
+                  onError={setError}
+                />
                 <Input
                   radius="round"
                   value={row.name}
@@ -316,10 +360,10 @@ export function AddRestaurantForm({
                   }
                   maxLength={120}
                   placeholder={ot('food.form.dishPlaceholder')}
-                  required={i === 0}
+                  required={i === 0 && !isKaraoke}
                   className="min-w-0 flex-1"
                 />
-                <div className="relative w-28 shrink-0">
+                <div className="relative w-24 shrink-0 sm:w-28">
                   <span className="pointer-events-none absolute inset-y-0 start-3 grid place-items-center text-sm text-ink-faint">
                     ฿
                   </span>
@@ -368,7 +412,7 @@ export function AddRestaurantForm({
             <button
               type="button"
               onClick={() =>
-                setDishes((prev) => [...prev, { key: `d${Date.now()}`, name: '', price: '' }])
+                setDishes((prev) => [...prev, { key: `d${Date.now()}`, name: '', price: '', photo: null }])
               }
               className="mt-2 inline-flex min-h-11 items-center gap-1.5 rounded-full bg-surface px-4 text-[13px] text-ink transition-colors hover:bg-surface-hover"
             >
@@ -380,15 +424,46 @@ export function AddRestaurantForm({
           ) : null}
         </div>
 
+        {/*
+          * ── ประเภทร้าน (0061) — แตะเลือกจากรายการตายตัว ไม่ต้องพิมพ์ ──
+          * ★ ไม่ห่อด้วย <label> (Field) — ปุ่มหลายปุ่มในป้ายเดียว แตะที่ว่างแล้วไปกดปุ่มแรก
+          * ★ แตะซ้ำ = ยกเลิก (ไม่ระบุประเภท)
+          */}
+        <div>
+          <p className="text-sm font-medium text-ink">
+            {ot('food.form.cuisine')}
+            <span className="ms-1.5 text-xs font-normal text-ink-faint">({ot('link.optional')})</span>
+          </p>
+          <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+            {CUISINES.map((c) => {
+              const style = cuisineStyle(c, c)
+              return (
+                <button
+                  key={c}
+                  type="button"
+                  aria-pressed={cuisine === c}
+                  onClick={() => setCuisine(cuisine === c ? null : c)}
+                  className="mkt-cat flex min-h-[4.25rem] flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2"
+                >
+                  {c === KARAOKE ? (
+                    <span aria-hidden="true" className="mkt-cat-emoji text-xl leading-none">🎤</span>
+                  ) : (
+                    <svg viewBox="0 0 24 24" className="mkt-cat-emoji size-5" style={{ color: `rgb(${style.tint})` }} fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d={style.icon} />
+                    </svg>
+                  )}
+                  <span className="text-[12px] font-medium text-ink">
+                    <Untranslated>{c}</Untranslated>
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {isKaraoke ? <KaraokeFields value={karaoke} onChange={setKaraoke} /> : null}
+
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label={ot('food.form.cuisine')} hint={ot('link.optional')}>
-            <Input radius="round"
-              value={cuisine}
-              onChange={(e) => setCuisine(e.target.value)}
-              maxLength={40}
-              placeholder={ot('food.kindPlaceholder')}
-            />
-          </Field>
 
           <Field label={ot('food.form.price')} hint={ot('link.optional')}>
             <ChipRow
@@ -438,7 +513,7 @@ export function AddRestaurantForm({
           </p>
         ) : null}
 
-        <Button type="submit" variant="primary" size="lg" loading={busy} block>
+        <Button type="submit" variant="primary" size="lg" loading={busy} disabled={busy || uploading > 0} block>
           {editing ? ot('common.save') : ot('food.form.submit')}
         </Button>
       </div>

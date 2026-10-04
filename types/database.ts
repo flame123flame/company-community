@@ -563,6 +563,8 @@ export type Database = {
           travel_mode: 'walking' | 'driving' | null
           /** {"mon":["09:00","18:00"], "sun":null, …} */
           open_hours: Record<string, [string, string] | null> | null
+          /** ── 0061 ── ราคาคาราโอเกะ (ดู KaraokePricing ใน lib/office/food.ts) */
+          karaoke: import('@/lib/office/food').KaraokePricing | null
           maybe_closed: boolean
           created_at: string
           updated_at: string
@@ -588,6 +590,7 @@ export type Database = {
           map_url?: string | null
           note?: string | null
           maybe_closed?: boolean
+          karaoke?: import('@/lib/office/food').KaraokePricing | null
         }
         Relationships: []
       }
@@ -779,6 +782,8 @@ export type Database = {
           price_satang: number | null
           sort: number
           created_at: string
+          /** 0060 — path ใน bucket restaurants (dishes/…) */
+          photo_path: string | null
         }
         Insert: {
           restaurant_id: string
@@ -1570,7 +1575,7 @@ export type Database = {
       /* ── พิกัดและระยะทาง (0050) ─────────────────────────────────── */
       /* ── 0057 ── */
       set_restaurant_dishes: {
-        /** p_dishes: [{"name":"…","price":60}, …] — price เป็นบาท ไม่บังคับ */
+        /** p_dishes: [{"name":"…","price":60,"photo":"dishes/…"}, …] — price เป็นบาท · photo ไม่บังคับ (0060) */
         Args: { p_actor: string; p_shop: string; p_dishes: unknown }
         /** จำนวนเมนูหลังบันทึก */
         Returns: number

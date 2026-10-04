@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import type { CSSProperties } from 'react'
 import { apiFetch } from '@/lib/api/client'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -8,10 +9,12 @@ import Link from 'next/link'
 import { useLocale } from '@/lib/i18n/client'
 import { priceLabel, statusLabel, type ListingKind, type ListingStatus } from '@/lib/office/market'
 import { ChatAvatar } from './ChatAvatar'
+import { FunGuide } from './FunGuide'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/cn'
 import { officeErrorText } from '@/lib/i18n/office-format'
 import { Untranslated, useOt, type Ot } from '@/lib/i18n/office'
+import { useConfirm } from '@/components/ConfirmProvider'
 
 type Thread = {
   id: string
@@ -327,70 +330,94 @@ export function MarketChat({ initialListing }: { initialListing?: string }) {
   }
 
   /* ── กล่องข้อความ ──────────────────────────────────────────── */
+  const unreadTotal = threads.reduce((n, t) => n + t.unread, 0)
   return (
-    <div className="max-w-3xl py-2">
+    <div className="py-2">
+      <FunGuide id="marketChat" art="chat" />
 
-      <div className="mt-4 flex flex-col gap-2">
-        {threads.length === 0 ? (
-          <p className="py-8 text-center text-sm text-ink-faint">{ot('market.chat.noThreads')}</p>
-        ) : (
-          /*
-            * ★★★ แถวห้องมีรูปคน + รูปของ + ข้อความล่าสุด
-            *
-            *     ★ เดิมมีแค่ชื่อประกาศกับบรรทัด "จากผู้ซื้อ X" ★★ ซึ่งบอก
-            *       ไม่ได้เลยว่าคุยค้างไว้ตรงไหน — ต้องเปิดทีละห้องเพื่อจะรู้
-            *     ★ รูปของทางขวาตอบ "เรื่องชิ้นไหน" ได้เร็วกว่าชื่อ โดยเฉพาะ
-            *       เมื่อมีหลายห้องจากคนขายคนเดียวกัน
-            */
-          threads.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => void openThread(t.id)}
-              className={cn(
-                'flex items-center gap-3 rounded-2xl border p-3 text-start transition-colors',
-                t.unread > 0
-                  ? 'border-accent/35 bg-accent/5 hover:bg-accent/10'
-                  : 'border-line bg-elevated/60 backdrop-blur-md hover:bg-surface',
-              )}
-            >
-              <ChatAvatar name={t.withName} url={t.withAvatar} size={44} />
+      <div className="mt-6 grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <section className="mkt-panel rounded-3xl p-3 sm:p-4">
+          <div className="flex items-center gap-2 px-1 pb-3">
+            <h2 className="text-base font-bold text-ink">
+              <Untranslated>{ot('market.chat.inboxTitle')}</Untranslated>
+            </h2>
+            <span className="rounded-full bg-surface px-2 py-0.5 text-[11px] font-semibold tabular-nums text-ink-soft">
+              {threads.length}
+            </span>
+            {unreadTotal > 0 ? (
+              <span className="ms-auto inline-flex items-center gap-1.5 rounded-full bg-accent px-2.5 py-1 text-[11px] font-bold text-accent-ink">
+                <span aria-hidden="true" className="ck-live" />
+                <Untranslated>{ot('market.chat.unreadN', { n: unreadTotal })}</Untranslated>
+              </span>
+            ) : null}
+          </div>
 
-              <div className="min-w-0 flex-1">
-                <div className="flex items-baseline gap-2">
-                  <p dir="auto" className="min-w-0 flex-1 truncate text-[14.5px] font-semibold text-ink">
-                    {t.withName}
-                  </p>
-                  <span className="shrink-0 text-[10.5px] text-ink-faint">
-                    {shortWhen(ot, t.lastAt)}
+          {threads.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-line-strong px-6 py-10 text-center">
+              <span aria-hidden="true" className="text-5xl">💬</span>
+              <p className="mt-3 text-sm font-semibold text-ink">{ot('market.chat.noThreads')}</p>
+              <p className="mt-1 text-xs leading-relaxed text-ink-soft">
+                <Untranslated>{ot('market.chat.noThreadsHint')}</Untranslated>
+              </p>
+            </div>
+          ) : (
+            /*
+              * ★★★ แถวห้องมีรูปคน + รูปของ + ข้อความล่าสุด
+              *     ★ รูปของทางขวาตอบ "เรื่องชิ้นไหน" ได้เร็วกว่าชื่อ
+              */
+            <div className="flex flex-col gap-1.5">
+              {threads.map((t, i) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => void openThread(t.id)}
+                  style={{ '--i': Math.min(i, 12) } as CSSProperties}
+                  className={cn(
+                    'mkt-card-in flex items-center gap-3 rounded-2xl p-3 text-start transition-colors',
+                    t.unread > 0
+                      ? 'bg-accent/8 ring-1 ring-accent/35 hover:bg-accent/12'
+                      : 'hover:bg-surface',
+                  )}
+                >
+                  <span className="relative shrink-0">
+                    <ChatAvatar name={t.withName} url={t.withAvatar} size={48} />
+                    {t.unread > 0 ? (
+                      <span className="absolute -end-0.5 -top-0.5 grid min-w-5 place-items-center rounded-full bg-accent px-1 text-[10px] font-bold text-accent-ink ring-2 ring-elevated">
+                        {t.unread > 9 ? '9+' : t.unread}
+                      </span>
+                    ) : null}
                   </span>
-                </div>
-                <p dir="auto" className="mt-0.5 truncate text-[12.5px] text-ink-soft">
-                  {/* ★ "คุณ: " นำหน้าข้อความของเรา — รูปทรงที่แอปแชททุกตัวใช้
-                        ★★ ไม่งั้นอ่านไม่ออกว่าใครพูดประโยคสุดท้าย */}
-                  {t.lastText ? `${t.lastMine ? ot('market.youSaid') : ''}${t.lastText}` : t.title}
-                </p>
-                <p dir="auto" className="mt-0.5 truncate text-[11px] text-ink-faint">
-                  {t.title}
-                </p>
-              </div>
 
-              {t.cover ? (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img src={t.cover} alt="" className="size-11 shrink-0 rounded-xl object-cover" />
-              ) : null}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline gap-2">
+                      <p dir="auto" className={cn('min-w-0 flex-1 truncate text-[15px] text-ink', t.unread > 0 ? 'font-bold' : 'font-semibold')}>
+                        {t.withName}
+                      </p>
+                      <span className={cn('shrink-0 text-[11px]', t.unread > 0 ? 'font-semibold text-accent' : 'text-ink-faint')}>
+                        {shortWhen(ot, t.lastAt)}
+                      </span>
+                    </div>
+                    <p dir="auto" className={cn('mt-0.5 truncate text-[13px]', t.unread > 0 ? 'font-medium text-ink' : 'text-ink-soft')}>
+                      {/* ★ "คุณ: " นำหน้าข้อความของเรา — อ่านออกว่าใครพูดประโยคสุดท้าย */}
+                      {t.lastText ? `${t.lastMine ? ot('market.youSaid') : ''}${t.lastText}` : t.title}
+                    </p>
+                    <p dir="auto" className="mt-1 inline-flex max-w-full items-center gap-1 truncate rounded-full bg-surface px-2 py-0.5 text-[11px] text-ink-faint">
+                      🏷️ <span className="truncate">{t.title}</span>
+                    </p>
+                  </div>
 
-              {t.unread > 0 ? (
-                <span className="grid size-5 shrink-0 place-items-center rounded-full bg-accent text-[11px] font-bold text-accent-ink">
-                  {t.unread > 9 ? '9+' : t.unread}
-                </span>
-              ) : null}
-            </button>
-          ))
-        )}
+                  {t.cover ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img src={t.cover} alt="" className="size-14 shrink-0 rounded-2xl object-cover ring-1 ring-line" />
+                  ) : null}
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <SearchAlerts />
       </div>
-
-      <SearchAlerts />
     </div>
   )
 }
@@ -398,6 +425,7 @@ export function MarketChat({ initialListing }: { initialListing?: string }) {
 /** คำค้นแจ้งเตือน (FR-D09) — อยู่หน้าเดียวกับกล่องข้อความเพราะเป็น "ของที่ตามหา" */
 function SearchAlerts() {
   const ot = useOt()
+  const confirm = useConfirm()
   const [items, setItems] = useState<{ id: string; keyword: string }[]>([])
   const [typed, setTyped] = useState('')
   const [busy, setBusy] = useState(false)
@@ -419,6 +447,15 @@ function SearchAlerts() {
   }, [load])
 
   async function toggle(keyword: string, on: boolean) {
+    // ★ เพิ่ม/ลบคำแจ้งเตือน = เพิ่ม/ลบรายการ → ยืนยันก่อน (แชทไม่ถาม)
+    if (
+      !(await confirm({
+        kind: on ? 'create' : 'delete',
+        subject: keyword,
+        confirmLabel: on ? ot('market.alert.add') : ot('market.alert.remove'),
+      }))
+    )
+      return
     setBusy(true)
     setError(null)
     try {
@@ -433,12 +470,20 @@ function SearchAlerts() {
   }
 
   return (
-    <div className="mt-6 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-4">
-      <p className="text-sm font-medium text-ink">{ot('market.alert.title')}</p>
-      <p className="mt-0.5 text-xs text-ink-faint">{ot('market.alert.hint')}</p>
+    <section className="mkt-panel rounded-3xl p-4 sm:p-5 lg:sticky lg:top-[calc(var(--spacing-header)+16px)]">
+      <div className="flex items-start gap-3">
+        <span aria-hidden="true" className="grid size-11 shrink-0 place-items-center rounded-2xl bg-[color-mix(in_srgb,var(--ck-gold)_22%,var(--color-elevated))] text-xl">
+          🔔
+        </span>
+        <span className="min-w-0">
+          <span className="block text-[15px] font-bold text-ink">{ot('market.alert.title')}</span>
+          <span className="mt-0.5 block text-xs leading-relaxed text-ink-soft">{ot('market.alert.hint')}</span>
+        </span>
+      </div>
 
-      <div className="mt-3 flex items-center gap-2">
-        <Input radius="round"
+      <div className="mt-4 flex items-center gap-2">
+        <Input
+          radius="round"
           value={typed}
           onChange={(e) => setTyped(e.target.value)}
           onKeyDown={(e) => {
@@ -450,9 +495,12 @@ function SearchAlerts() {
           placeholder={ot('market.alert.placeholder')}
           maxLength={40}
           aria-label={ot('market.alert.add')}
+          className="min-w-0 flex-1"
         />
         <Button
           size="sm"
+          variant="primary"
+          className="min-h-11"
           loading={busy}
           disabled={typed.trim().length < 2}
           onClick={() => void toggle(typed.trim(), true)}
@@ -462,19 +510,24 @@ function SearchAlerts() {
       </div>
 
       {items.length === 0 ? (
-        <p className="mt-2 text-xs text-ink-faint">{ot('market.alert.empty')}</p>
+        <p className="mt-3 rounded-2xl bg-surface/70 px-3 py-2.5 text-xs text-ink-faint">{ot('market.alert.empty')}</p>
       ) : (
-        <div className="mt-2 flex flex-wrap gap-1.5">
+        <div className="mt-3 flex flex-wrap gap-2">
           {items.map((a) => (
-            <button
-              key={a.id}
-              type="button"
-              onClick={() => void toggle(a.keyword, false)}
-              className="h-7 rounded-full bg-surface px-2.5 text-xs text-ink transition-colors hover:bg-danger/15 hover:text-danger"
-              title={ot('market.alert.remove')}
-            >
-              {a.keyword} ✕
-            </button>
+            <span key={a.id} className="inline-flex items-center gap-1 rounded-full bg-surface ps-3 text-[13px] font-medium text-ink">
+              🔍 <span dir="auto" className="max-w-40 truncate">{a.keyword}</span>
+              <button
+                type="button"
+                onClick={() => void toggle(a.keyword, false)}
+                aria-label={`${ot('market.alert.remove')} ${a.keyword}`}
+                title={ot('market.alert.remove')}
+                className="grid size-11 place-items-center rounded-full text-ink-faint transition-colors hover:text-danger sm:size-9"
+              >
+                <svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+                  <path d="M6 6l12 12M18 6 6 18" />
+                </svg>
+              </button>
+            </span>
           ))}
         </div>
       )}
@@ -484,8 +537,8 @@ function SearchAlerts() {
           {error}
         </p>
       ) : null}
-      <p className="mt-2 text-[11px] text-ink-faint">{ot('market.alert.max')}</p>
-    </div>
+      <p className="mt-3 text-[11px] text-ink-faint">{ot('market.alert.max')}</p>
+    </section>
   )
 }
 

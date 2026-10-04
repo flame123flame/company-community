@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { renderSVG } from 'uqr'
 import { apiFetch } from '@/lib/api/client'
 import { Button } from '@/components/ui/Button'
+import { useConfirm } from '@/components/ConfirmProvider'
 import { useLocale } from '@/lib/i18n/client'
 import { officeErrorText } from '@/lib/i18n/office-format'
 import { Untranslated, useOt } from '@/lib/i18n/office'
@@ -12,6 +13,7 @@ import { formatBaht } from '@/lib/office/wallet'
 import { promptPayPayload } from '@/lib/office/promptpay'
 import { shrinkImage } from '@/lib/image/shrink'
 import { ChatAvatar } from './ChatAvatar'
+import { SlipDrop } from './SlipDrop'
 
 export type PayTarget = {
   /** หนี้ทุกใบที่ปุ่มนี้ครอบคลุม — ยอดสุทธิที่หักลบแล้วมีหลายใบ */
@@ -52,12 +54,12 @@ export function PaySheet({
 }) {
   const ot = useOt()
   const locale = useLocale()
+  const confirm = useConfirm()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [slipPath, setSlipPath] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
-  const fileRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -114,8 +116,9 @@ export function PaySheet({
     URL.revokeObjectURL(url)
   }
 
-  async function uploadSlip(file: File) {
+  async function uploadSlip(file: File): Promise<boolean> {
     setUploading(true)
+    setError(null)
     try {
       const small = await shrinkImage(file, 1280)
       const form = new FormData()
@@ -126,8 +129,10 @@ export function PaySheet({
         | { ok: false; error: { message: string } }
       if (!payload.ok) throw new Error(payload.error.message)
       setSlipPath(payload.data.path)
+      return true
     } catch (e) {
       setError(officeErrorText(e, ot))
+      return false
     } finally {
       setUploading(false)
     }
@@ -135,6 +140,8 @@ export function PaySheet({
 
   async function markPaid() {
     if (busy) return
+    /* ★ ถามก่อนแจ้งว่าจ่ายแล้ว — กดแล้วหนี้ทุกใบในยอดนี้เปลี่ยนสถานะ */
+    if (!(await confirm({ kind: 'edit', subject: `${target.otherName} ฿${formatBaht(locale, target.amount)}` }))) return
     setBusy(true)
     setError(null)
 
@@ -189,7 +196,7 @@ export function PaySheet({
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       {/* ★ มุมบนโค้ง มุมล่างตรงบนมือถือ — รูปทรงของแผ่นที่เลื่อนขึ้นจากขอบจอ */}
-      <div className="w-full max-w-md overflow-y-auto rounded-t-3xl border border-line bg-elevated p-5 pb-7 sm:max-h-[90dvh] sm:rounded-3xl">
+      <div className="w-full max-w-md max-h-[92dvh] overflow-y-auto overscroll-contain rounded-t-3xl border border-line bg-elevated p-5 pb-[max(1.75rem,env(safe-area-inset-bottom))] sm:max-h-[90dvh] sm:rounded-3xl">
         <div className="flex items-center gap-3">
           <ChatAvatar name={target.otherName} url={target.otherAvatar} size={44} />
           <div className="min-w-0 flex-1">
@@ -261,6 +268,15 @@ export function PaySheet({
           </p>
         )}
 
+        {/*
+          * ── แนบสลิป (ไม่บังคับ) ─────────────────────────────────
+          * ★★ อยู่ก่อนปุ่ม "จ่ายแล้ว" — ลำดับจริงคือ โอน → ได้สลิป → แนบ → กดยืนยัน
+          *    ★ เดิมเป็นลิงก์เล็กใต้ปุ่ม คนกดยืนยันไปก่อนแล้วไม่ได้แนบเลย
+          */}
+        <div className="mt-4">
+          <SlipDrop onFile={uploadSlip} onRemove={() => setSlipPath(null)} disabled={busy} />
+        </div>
+
         {error ? (
           <p role="alert" className="mt-3 text-center text-xs text-danger">
             {error}
@@ -271,35 +287,15 @@ export function PaySheet({
         <Button
           variant="primary"
           loading={busy}
+          disabled={uploading}
           onClick={markPaid}
-          className="mt-4 h-12 w-full text-base"
+          className="mt-4 min-h-12 w-full text-base"
         >
           <Untranslated>{ot('wallet.owed.paidIt')}</Untranslated>
         </Button>
         <p className="mt-1.5 text-center text-[11px] text-ink-faint">
           <Untranslated>{ot('wallet.owed.markPaidHint')}</Untranslated>
         </p>
-
-        {/* ── แนบสลิป (ไม่บังคับ) ──────────────────────────────── */}
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          className="hidden"
-          onChange={(e) => {
-            const f = e.target.files?.[0]
-            if (f) void uploadSlip(f)
-            e.target.value = ''
-          }}
-        />
-        <button
-          type="button"
-          onClick={() => fileRef.current?.click()}
-          disabled={uploading}
-          className="mx-auto mt-3 block min-h-11 px-3 text-xs text-link hover:underline disabled:opacity-50"
-        >
-          {slipPath ? ot('wallet.pay.changeSlip') : ot('wallet.pay.attachSlip')}
-        </button>
       </div>
     </div>,
     document.body,

@@ -8,6 +8,7 @@ import { rememberProfile, signInWithUsername } from '@/lib/auth/session'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { cn } from '@/lib/cn'
+import { splitList } from '@/lib/i18n/office-format'
 import { COMPANY_VALUE } from '@/lib/office/company'
 import {
   USERNAME_MAX,
@@ -19,7 +20,7 @@ import {
   DEPT_OTHER,
   resolveDepartment,
 } from '@/lib/office/departments'
-import { useOt } from '@/lib/i18n/office'
+import { Untranslated, useOt } from '@/lib/i18n/office'
 
 /**
  * ฟอร์มสมัครใช้งานระบบ
@@ -132,6 +133,27 @@ export function RegisterForm() {
 
   const ready = Object.values(fieldError).every((v) => v === null)
 
+  /*
+   * ── ความคืบหน้า ───────────────────────────────────────────────
+   *
+   * ★★ นับเฉพาะช่องที่ "กรอกแล้วผ่าน" ไม่ใช่ช่องที่ไม่มี error
+   *    ★ ฟอร์มเปล่า: ยืนยันรหัส '' === รหัส '' และเบอร์ว่างก็ผ่าน
+   *      ถ้านับจาก error ล้วน ๆ จะขึ้น 29% ตั้งแต่ยังไม่ได้พิมพ์สักตัว
+   */
+  const okUser = fieldError.username === null
+  const okPass = fieldError.password === null
+  const okConfirm = confirm.length > 0 && fieldError.confirm === null
+  const okNick = fieldError.nickname === null
+  const okDept = fieldError.department === null
+  const okTerms = fieldError.terms === null
+  const progress = [okUser, okPass, okConfirm, okNick, okDept, okTerms]
+  const pct = Math.round((progress.filter(Boolean).length / progress.length) * 100)
+  const secDone: readonly [boolean, boolean, boolean] = [
+    okUser && okPass && okConfirm,
+    okNick && okDept && fieldError.phone === null,
+    okTerms,
+  ]
+
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     if (busy) return
@@ -226,13 +248,89 @@ export function RegisterForm() {
        *       ไม่ใช่แค่ตัวบังคับ
        */
       noValidate
-      className="mx-auto w-full max-w-[640px] px-4 pb-16 pt-8"
+      className="mx-auto grid w-full max-w-[1120px] items-start gap-6 px-4 pb-16 pt-6 sm:pt-8 lg:grid-cols-[360px_minmax(0,1fr)] lg:gap-10"
     >
-      <h1 className="text-[30px] font-bold tracking-tight text-ink">{ot('reg.title')}</h1>
-      <p className="mt-1.5 text-sm text-ink-soft">{ot('reg.lead')}</p>
+      {/*
+        * ── แผงข้าง: บอกว่าสมัครแล้วได้อะไร + กรอกไปถึงไหนแล้ว ──────────
+        *
+        * ★★ ฟอร์มมีเก้าช่องในสามส่วน — คนอยากรู้ว่า "อีกเท่าไหร่จะเสร็จ"
+        *    ★ วงแหวนเปอร์เซ็นต์กับรายการสามส่วนตอบได้ในแวบเดียว
+        *    ★ จอกว้างติดอยู่กับที่ขณะเลื่อนฟอร์ม · มือถืออยู่บนสุดก่อนฟอร์ม
+        */}
+      <aside className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-24">
+        <div className="reg-hero relative overflow-hidden rounded-[28px] p-6">
+          <span aria-hidden="true" className="pop-blob pop-blob-a" />
+          <span aria-hidden="true" className="pop-blob pop-blob-b" />
+          <span className="pop-pill relative inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold">
+            ✨ <Untranslated>{ot('reg.heroBadge')}</Untranslated>
+          </span>
+          <h1 className="relative mt-3 text-[clamp(28px,6vw,36px)] font-black leading-[1.1] tracking-tight text-[var(--ck-shine)]">
+            {ot('reg.title')}
+          </h1>
+          <p className="relative mt-2 text-sm leading-relaxed text-[color-mix(in_srgb,var(--ck-shine)_85%,transparent)]">
+            {ot('reg.lead')}
+          </p>
+          <ul className="relative mt-4 flex flex-wrap gap-1.5">
+            {splitList(ot('reg.getList')).map((m) => (
+              <li key={m} className="pop-pill rounded-full px-2.5 py-1 text-[11.5px] font-medium">
+                <Untranslated>{m}</Untranslated>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="reg-progress rounded-[24px] p-5">
+          <div className="flex items-center gap-4">
+            <span
+              className="reg-ring grid size-16 shrink-0 place-items-center rounded-full"
+              style={{ '--p': `${pct * 3.6}deg` } as CSSProperties}
+              role="img"
+              aria-label={ot('reg.progress', { n: pct })}
+            >
+              <span className="grid size-12 place-items-center rounded-full bg-elevated text-sm font-black tabular-nums text-ink">
+                {pct}%
+              </span>
+            </span>
+            <div className="min-w-0">
+              <p className="text-base font-black text-ink">
+                <Untranslated>{ot('reg.progressTitle')}</Untranslated>
+              </p>
+              <p className="text-xs text-ink-soft">
+                <Untranslated>{pct === 100 ? ot('reg.progressDone') : ot('reg.progress', { n: pct })}</Untranslated>
+              </p>
+            </div>
+          </div>
+          <ol className="mt-4 flex flex-col gap-1.5">
+            {[ot('reg.secAccount'), ot('reg.secEmployee'), ot('reg.secRequest')].map((title, i) => (
+              <li key={title}>
+                <a
+                  href={`#reg-sec-${i + 1}`}
+                  className={cn('reg-step flex min-h-11 items-center gap-3 rounded-2xl px-3', secDone[i] && 'reg-step-done')}
+                >
+                  <span className="reg-step-num grid size-7 shrink-0 place-items-center rounded-full text-xs font-black">
+                    {secDone[i] ? (
+                      <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="m5 12 5 5 9-10" />
+                      </svg>
+                    ) : (
+                      i + 1
+                    )}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">{title}</span>
+                  <span className="shrink-0 text-[11px] font-medium text-ink-faint">
+                    <Untranslated>{secDone[i] ? ot('reg.stepDone') : ot('reg.stepTodo')}</Untranslated>
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </aside>
+
+      <div className="min-w-0">
 
       {/* ═══ 1 · ข้อมูลบัญชี ═══════════════════════════════════════ */}
-      <Section n={1} title={ot('reg.secAccount')}>
+      <Section n={1} title={ot('reg.secAccount')} tint="255 0 51" done={secDone[0]}>
         <Field
           label={ot('reg.username')}
           required
@@ -295,7 +393,7 @@ export function RegisterForm() {
       </Section>
 
       {/* ═══ 2 · ข้อมูลพนักงาน ═════════════════════════════════════ */}
-      <Section n={2} title={ot('reg.secEmployee')}>
+      <Section n={2} title={ot('reg.secEmployee')} tint="10 132 255" done={secDone[1]}>
         {/*
           * ★★★ ชื่อเล่นช่องเดียว ไม่มีรหัสพนักงาน ไม่มีชื่อ-นามสกุลจริง
           *
@@ -418,7 +516,7 @@ export function RegisterForm() {
       </Section>
 
       {/* ═══ 3 · ข้อมูลการสมัคร ════════════════════════════════════ */}
-      <Section n={3} title={ot('reg.secRequest')}>
+      <Section n={3} title={ot('reg.secRequest')} tint="175 82 222" done={secDone[2]}>
         <Field label={ot('reg.purpose')} hint={ot('reg.purposeHint')}>
           <textarea
             value={purpose}
@@ -512,7 +610,7 @@ export function RegisterForm() {
         *       "ยังขาดตรงนี้" ไม่ใช่การเงียบ
         *     ★★ และ onBlur ยังทำให้ช่องที่ผ่านไปแล้วเตือนทันทีโดยไม่ต้องรอกด
         */}
-      <Button type="submit" variant="primary" size="lg" block loading={busy} className="mt-5">
+      <Button type="submit" variant="primary" size="lg" block loading={busy} className="join-cta mt-6 h-14 sm:h-14 rounded-2xl text-base font-bold">
         {busy ? ot('reg.working') : ot('reg.submit')}
       </Button>
 
@@ -532,6 +630,7 @@ export function RegisterForm() {
           {ot('reg.signIn')}
         </Link>
       </p>
+      </div>
     </form>
   )
 }
@@ -618,20 +717,42 @@ function TermsDialog({ onClose, onAgree }: { onClose: () => void; onAgree: () =>
   )
 }
 
-function Section({ n, title, children }: { n: number; title: string; children: ReactNode }) {
+function Section({
+  n,
+  title,
+  tint,
+  done,
+  children,
+}: {
+  n: number
+  title: string
+  /** rgb สามตัวเลข — สีประจำส่วน ให้ตาแยกสามส่วนออกจากกันได้ก่อนอ่าน */
+  tint: string
+  /** ส่วนนี้กรอกครบแล้ว — หัวส่วนขึ้นเครื่องหมายถูก */
+  done: boolean
+  children: ReactNode
+}) {
   return (
     <section
-      className="mt-5 rounded-3xl border border-line bg-elevated/60 p-5 backdrop-blur-md sm:p-6"
-      style={{ '--tint': '255 0 51' } as CSSProperties}
+      id={`reg-sec-${n}`}
+      className={cn('reg-sec relative mt-5 scroll-mt-24 overflow-hidden rounded-[28px] p-5 first:mt-0 sm:p-7', done && 'reg-sec-done')}
+      style={{ '--tint': tint, '--i': n } as CSSProperties}
     >
-      <div className="flex items-center gap-2.5">
-        <span className="grid size-7 shrink-0 place-items-center rounded-full bg-accent text-[13px] font-bold text-accent-ink">
-          {n}
+      <span aria-hidden="true" className="mus-act-glow" />
+      <div className="relative flex items-center gap-3">
+        <span className="mus-act-icon grid size-10 shrink-0 place-items-center rounded-2xl text-base font-black">
+          {done ? (
+            <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="m5 12 5 5 9-10" />
+            </svg>
+          ) : (
+            n
+          )}
         </span>
-        <h2 className="text-[15px] font-semibold text-ink">{title}</h2>
+        <h2 className="text-lg font-black text-ink">{title}</h2>
       </div>
 
-      <div className="mt-4 flex flex-col gap-4">{children}</div>
+      <div className="relative mt-5 flex flex-col gap-4">{children}</div>
     </section>
   )
 }

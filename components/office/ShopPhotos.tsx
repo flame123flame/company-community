@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { cn } from '@/lib/cn'
+import { useConfirm } from '@/components/ConfirmProvider'
 import { officeErrorText } from '@/lib/i18n/office-format'
 import { Untranslated, useOt } from '@/lib/i18n/office'
 import { shrinkImage } from '@/lib/image/shrink'
@@ -42,6 +43,7 @@ export function ShopPhotos({
   compact?: boolean
 }) {
   const ot = useOt()
+  const confirm = useConfirm()
   const fileRef = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -50,11 +52,14 @@ export function ShopPhotos({
   const room = MAX_PHOTOS - photos.length
 
   async function upload(files: FileList) {
+    /* ★ คัดลอกรายชื่อไฟล์ก่อนรอกล่องยืนยัน — ช่อง input ถูกล้างค่าไปแล้ว */
+    const picked = [...files]
+    if (!(await confirm({ kind: 'create', subject: ot('food.photos.title') }))) return
     setBusy(true)
     setError(null)
     try {
       /* ★ slice ตามที่เหลือจริง — เลือกมา 10 ใบตอนมีอยู่แล้ว 7 ใบ ต้องขึ้นแค่ 3 */
-      for (const file of [...files].slice(0, Math.max(0, room))) {
+      for (const file of picked.slice(0, Math.max(0, room))) {
         const small = await shrinkImage(file, 1600)
         const form = new FormData()
         form.append('file', small)
@@ -76,6 +81,7 @@ export function ShopPhotos({
   }
 
   async function remove(photoId: string) {
+    if (!(await confirm({ kind: 'delete' }))) return
     setBusy(true)
     try {
       await fetch(`/api/office/food/restaurants/${shopId}/photos`, {
@@ -236,7 +242,8 @@ export function ShopPhotos({
  * ★ เลื่อนซ้าย/ขวาได้ด้วยปุ่มและคีย์บอร์ด ★★ รูปอาหารเป็นของที่คนดูต่อเนื่อง
  *   การต้องปิดแล้วเปิดใหม่ทีละใบคือการทำให้แกลเลอรีไม่เป็นแกลเลอรี
  */
-function Lightbox({
+/** ดูรูปเต็มจอ — ใช้ร่วมกับรูปเมนูในหน้ารายละเอียดร้าน */
+export function Lightbox({
   photos,
   index,
   onIndex,

@@ -17,6 +17,7 @@ import {
 } from '@/lib/lobby/appearance'
 import { SPRITE_H, SPRITE_W, spriteSheet } from '@/lib/lobby/sprite'
 import { useT } from '@/lib/i18n/client'
+import { useConfirm } from '@/components/ConfirmProvider'
 
 /**
  * ห้องแต่งตัว
@@ -42,6 +43,7 @@ export function AvatarStudio({
   onClose: () => void
 }) {
   const t = useT()
+  const confirm = useConfirm()
   const mounted = useMounted()
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -62,7 +64,8 @@ export function AvatarStudio({
 
   useEffect(() => {
     const esc = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
+      // ★ Esc ที่กล่องยืนยันกินไปแล้ว (preventDefault) ไม่ต้องปิดสตูดิโอตามไปด้วย
+      if (event.key === 'Escape' && !event.defaultPrevented) onClose()
     }
     window.addEventListener('keydown', esc)
     return () => window.removeEventListener('keydown', esc)
@@ -74,6 +77,7 @@ export function AvatarStudio({
   }
 
   async function save() {
+    if (!(await confirm({ kind: 'edit' }))) return
     setSaving(true)
     try {
       await apiFetch('/api/profile/appearance', { method: 'POST', body: value })

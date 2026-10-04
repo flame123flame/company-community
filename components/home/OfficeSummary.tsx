@@ -157,7 +157,7 @@ export function OfficeSummary({
   if (cards.length === 0) return null
 
   return (
-    <section className="mx-auto w-full max-w-[1120px] px-4 pt-8">
+    <div className="mx-auto w-full max-w-[1120px] px-4">
       <div className={cn('hero-stagger grid gap-3', gridFor(cards.length))}>
         {cards.map((c) => (
           <Link
@@ -312,7 +312,7 @@ export function OfficeSummary({
           </Link>
         ))}
       </div>
-    </section>
+    </div>
   )
 }
 

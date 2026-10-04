@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/Button'
 import { Untranslated, useOt } from '@/lib/i18n/office'
 import { apiFetch } from '@/lib/api/client'
 import { officeErrorText } from '@/lib/i18n/office-format'
-import { TypingRace, TypingBoard } from './TypingRace'
+import { TypingRace, TypingBoard, RACE_ROOM_KEY } from './TypingRace'
+import { useMounted } from '@/hooks/useMounted'
 import {
   TypingCounter,
   compare,
@@ -15,6 +16,7 @@ import {
   type TextLang,
   type TextLength,
 } from '@/lib/games/typing'
+import { FunGuide } from './FunGuide'
 
 const PREF_KEY = 'frameroom:typing-prefs'
 
@@ -51,6 +53,16 @@ export function TypingPractice() {
    *        ส่วนการแข่งเป็นของที่ตั้งใจไปทำ จึงยอมให้อยู่หลังหนึ่งแตะได้
    */
   const [raceRoom, setRaceRoom] = useState<string | null>(null)
+  /*
+   * ★★ ห้องที่แข่งค้างอยู่ (จำไว้ในเครื่อง) — รีโหลด/เน็ตหลุด/ปิดแอปแล้วกลับมาเข้าห้องเดิม
+   *    ★ เดิมห้องอยู่ใน state อย่างเดียว รีโหลดแล้วหลุดออกมาหน้าเมนู และเข้าห้องเดิม
+   *      ด้วยรหัสก็ไม่ได้เพราะห้องเริ่มแข่งไปแล้ว — แพ้รอบนั้นไปเลย
+   *    ★ อ่านหลัง mount เท่านั้น (server ไม่มี storage — hydrate ต้องตรงกัน)
+   */
+  const mounted = useMounted()
+  const [savedDismissed, setSavedDismissed] = useState(false)
+  const savedRoom = mounted && !savedDismissed ? readRaceRoom() : null
+  const activeRoom = raceRoom ?? savedRoom
   const [joining, setJoining] = useState(false)
   const [codeInput, setCodeInput] = useState('')
   const [showJoin, setShowJoin] = useState(false)
@@ -176,11 +188,15 @@ export function TypingPractice() {
   const done = finishedAt !== null
   const isNewBest = done && best !== null && stats.wpm >= best
 
-  if (raceRoom) {
+  if (activeRoom) {
     return (
       <TypingRace
-        roomId={raceRoom}
-        onExit={() => setRaceRoom(null)}
+        roomId={activeRoom}
+        onExit={() => {
+          writeRaceRoom(null)
+          setSavedDismissed(true)
+          setRaceRoom(null)
+        }}
         lang={prefs.lang}
         length={prefs.length}
       />
@@ -194,6 +210,8 @@ export function TypingPractice() {
         method: 'POST',
         body: { action: 'join', code, lang: prefs.lang, length: prefs.length },
       })
+      writeRaceRoom(res.roomId)
+      setSavedDismissed(false)
       setRaceRoom(res.roomId)
     } catch (e) {
       setError(officeErrorText(e, ot))
@@ -206,7 +224,9 @@ export function TypingPractice() {
   const pct = Math.min(100, (progress.correct / total) * 100)
 
   return (
-    <div className="grid gap-6 py-2 lg:grid-cols-[minmax(0,1fr)_320px]">
+    <div className="py-2">
+    <FunGuide id="typing" art="typing" />
+    <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
       <div>
       {/* ── ตัวเลือก ─────────────────────────────────────────────── */}
       <div className="flex flex-wrap gap-1.5">
@@ -402,6 +422,7 @@ export function TypingPractice() {
         <ScoringNote />
       </aside>
     </div>
+    </div>
   )
 }
 
@@ -567,4 +588,21 @@ function MyTypingStats({ lang, refreshKey }: { lang: TextLang; refreshKey: numbe
       </div>
     </div>
   )
+}
+
+function readRaceRoom(): string | null {
+  try {
+    return window.localStorage.getItem(RACE_ROOM_KEY)
+  } catch {
+    return null
+  }
+}
+
+function writeRaceRoom(id: string | null) {
+  try {
+    if (id) window.localStorage.setItem(RACE_ROOM_KEY, id)
+    else window.localStorage.removeItem(RACE_ROOM_KEY)
+  } catch {
+    /* storage ปิด — แข่งได้ แค่รีโหลดแล้วไม่ได้กลับเข้าห้องเดิม */
+  }
 }

@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/cn'
 import { officeErrorText } from '@/lib/i18n/office-format'
 import { Untranslated, useOt } from '@/lib/i18n/office'
+import { useConfirm } from '@/components/ConfirmProvider'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import type { Board, Move, Side } from '@/lib/games/checkers'
-import { CheckersBoard } from './CheckersBoard'
+import { CheckersBoard, CheckersResult } from './CheckersBoard'
 
 /** เวลาต่อตา (วินาที) — ตามข้อกำหนด */
 const TURN_SECONDS = 60
@@ -52,6 +53,7 @@ export function CheckersOnline({
   onRematch?: (gameId: string) => void
 }) {
   const ot = useOt()
+  const confirm = useConfirm()
   const [game, setGame] = useState<OnlineGame | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -153,6 +155,7 @@ export function CheckersOnline({
 
   const over = game.status === 'FINISHED'
   const opponentName = game.mySide === 'BOTTOM' ? game.top.name : game.bottom.name
+  const iWon = game.winnerId === (game.mySide === 'BOTTOM' ? game.bottom.id : game.top.id)
 
   return (
     <div className="py-2">
@@ -163,6 +166,7 @@ export function CheckersOnline({
         forceCapture={game.forceCapture}
         onCommit={commit}
         lastMove={game.lastMove}
+        finished={over}
         disabled={over || busy || !game.myTurn}
         top={{ name: game.top.name }}
         bottom={{ name: game.bottom.name }}
@@ -213,48 +217,50 @@ export function CheckersOnline({
 
       {/* ── จบเกม ───────────────────────────────────────────────── */}
       {over ? (
-        <div className="mx-auto mt-4 max-w-md rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-5 text-center">
-          <p className="text-lg font-bold text-ink">
+        <CheckersResult
+          tone={game.endReason === 'DRAW' ? 'draw' : iWon ? 'win' : 'lose'}
+          board={game.board}
+          side={game.mySide ?? 'BOTTOM'}
+          title={
+            game.endReason === 'DRAW'
+              ? ot('game.checkers.draw')
+              : iWon
+                ? ot('game.checkers.youWin')
+                : ot('game.checkers.youLose')
+          }
+          note={
+            game.endReason && game.endReason !== 'WIN' && game.endReason !== 'DRAW'
+              ? game.endReason === 'RESIGN'
+                ? ot('game.checkers.byResign')
+                : ot('game.checkers.byTimeout')
+              : null
+          }
+        >
+          {/* ★ ท้าคนเดิมทันที — สลับฝั่งให้ที่ server ไม่งั้นคนเดิมเดินก่อนทุกเกม */}
+          <Button
+            variant="primary"
+            className="min-h-12 text-base"
+            loading={busy}
+            onClick={async () => {
+              try {
+                const res = await apiFetch<{ gameId: string }>('/api/office/games/checkers', {
+                  method: 'POST',
+                  body: { action: 'rematch', gameId },
+                })
+                onRematch?.(res.gameId)
+              } catch (e) {
+                setError(officeErrorText(e, ot))
+              }
+            }}
+          >
             <Untranslated>
-              {game.endReason === 'DRAW'
-                ? ot('game.checkers.draw')
-                : game.winnerId === (game.mySide === 'BOTTOM' ? game.bottom.id : game.top.id)
-                  ? ot('game.checkers.youWin')
-                  : ot('game.checkers.youLose')}
+              {game.endReason !== 'DRAW' && !iWon ? ot('game.checkers.revenge') : ot('game.checkers.again')}
             </Untranslated>
-          </p>
-          {game.endReason && game.endReason !== 'WIN' && game.endReason !== 'DRAW' ? (
-            <p className="mt-1 text-xs text-ink-faint">
-              <Untranslated>
-                {game.endReason === 'RESIGN' ? ot('game.checkers.byResign') : ot('game.checkers.byTimeout')}
-              </Untranslated>
-            </p>
-          ) : null}
-          <div className="mt-4 flex flex-wrap justify-center gap-2">
-            {/* ★ ท้าคนเดิมทันที — สลับฝั่งให้ที่ server ไม่งั้นคนเดิมเดินก่อนทุกเกม */}
-            <Button
-              variant="primary"
-              className="min-h-11"
-              loading={busy}
-              onClick={async () => {
-                try {
-                  const res = await apiFetch<{ gameId: string }>('/api/office/games/checkers', {
-                    method: 'POST',
-                    body: { action: 'rematch', gameId },
-                  })
-                  onRematch?.(res.gameId)
-                } catch (e) {
-                  setError(officeErrorText(e, ot))
-                }
-              }}
-            >
-              <Untranslated>{ot('game.checkers.again')}</Untranslated>
-            </Button>
-            <Button variant="ghost" className="min-h-11" onClick={onExit}>
-              <Untranslated>{ot('game.checkers.backToMenu')}</Untranslated>
-            </Button>
-          </div>
-        </div>
+          </Button>
+          <Button variant="secondary" className="min-h-11" onClick={onExit}>
+            <Untranslated>{ot('game.checkers.backToMenu')}</Untranslated>
+          </Button>
+        </CheckersResult>
       ) : (
         /* ── เมนู ⋯ : ขอเสมอ · ยอมแพ้ ───────────────────────── */
         <div className="mt-4 flex justify-center">
@@ -288,9 +294,16 @@ export function CheckersOnline({
                 {/* ★★ ยอมแพ้ต้องยืนยัน — กดพลาดแล้วย้อนไม่ได้ */}
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={async () => {
                     setMenuOpen(false)
-                    if (!window.confirm(ot('game.checkers.resignAsk'))) return
+                    if (
+                      !(await confirm({
+                        kind: 'danger',
+                        message: ot('game.checkers.resignAsk'),
+                        confirmLabel: ot('game.checkers.resign'),
+                      }))
+                    )
+                      return
                     void send({ action: 'end', gameId, kind: 'RESIGN' })
                   }}
                   className="flex min-h-11 w-full items-center border-t border-line px-3 text-start text-[13px] text-danger hover:bg-surface"

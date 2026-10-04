@@ -7,6 +7,7 @@ import { LanguageToggle } from '@/components/LanguageToggle'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { Logo } from '@/components/Logo'
 import { useT } from '@/lib/i18n/client'
+import { Untranslated } from '@/lib/i18n/office'
 import type { DictKey } from '@/lib/i18n/dict'
 
 /**
@@ -224,7 +225,7 @@ export function SignInScreen() {
         {/* ── ซ้าย: เว็บนี้คืออะไร ──────────────────────────────── */}
         <div className="text-center lg:text-start">
           <div className="hero-in flex justify-center lg:justify-start">
-            <Logo />
+            <Logo size="lg" />
           </div>
 
           {/* ★ ป้ายเล็กมาก่อนพาดหัว — บอก "ที่นี่คือที่ไหน" ในบรรทัดเดียว
@@ -242,7 +243,7 @@ export function SignInScreen() {
           {/* ★ ใหญ่ขึ้นกว่าเดิมและโตตามจอด้วย clamp
               ★★ พาดหัวคือสิ่งเดียวที่คนอ่านแน่ ๆ ก่อนตัดสินใจว่าจะอ่านต่อไหม */}
           <h1
-            className="hero-in mt-4 text-[clamp(30px,5.2vw,46px)] font-bold leading-[1.12] tracking-tight"
+            className="hero-in mt-4 text-[clamp(34px,6vw,60px)] font-black leading-[1.08] tracking-tight"
             style={{ '--d': '130ms' } as CSSProperties}
           >
             {t('hub.hero1')}
@@ -318,6 +319,28 @@ export function SignInScreen() {
         {/* ★ วงแสงจาง ๆ หลังการ์ด — บอกว่า "เริ่มตรงนี้" โดยไม่ต้องมีลูกศร */}
         <div className="relative flex justify-center lg:justify-end">
           <span className="signin-ring" aria-hidden="true" />
+          {/**
+            * ★ ป้ายลอยรอบการ์ด — ตัวอย่างสิ่งที่ทำได้หลังเข้าระบบ
+            *   ★★ อยู่นอกขอบการ์ด และขึ้นเฉพาะจอ ≥1400px — แคบกว่านั้นไม่มีที่ว่างข้างการ์ด
+            *      แล้วมันจะไปทับช่องกรอก ซึ่งคืองานเดียวของหน้านี้ (เห็นจากภาพจริงที่ 1440)
+            */}
+          {(
+            [
+              ['🍜', 'auth.float1', 'start-0 top-20 -translate-x-[85%] rtl:translate-x-[85%]', '0s'],
+              ['💸', 'auth.float2', 'end-0 top-36 translate-x-[85%] rtl:-translate-x-[85%]', '1.2s'],
+              ['🎵', 'auth.float3', 'start-0 top-[74%] -translate-x-[85%] rtl:translate-x-[85%]', '2.4s'],
+            ] as const
+          ).map(([emoji, key, pos, dl]) => (
+            <span
+              key={key}
+              aria-hidden="true"
+              className={`signin-float absolute z-20 hidden items-center gap-2 rounded-2xl px-3 py-2 text-xs font-semibold text-ink min-[1400px]:flex ${pos}`}
+              style={{ '--dl': dl } as CSSProperties}
+            >
+              <span className="text-lg leading-none">{emoji}</span>
+              <Untranslated>{t(key)}</Untranslated>
+            </span>
+          ))}
           <SignInForm variant="page" onDone={() => router.refresh()} />
         </div>
       </div>

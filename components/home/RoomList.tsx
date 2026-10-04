@@ -109,9 +109,15 @@ export function RoomList() {
         *   "ห้องที่เปิดอยู่" เฉย ๆ ไม่ได้ให้ข้อมูลอะไรที่รายการด้านล่างไม่ได้บอก
         *   ส่วน "3 ห้อง · 7 คนกำลังฟัง" ตอบคำถามว่า "ที่นี่มีคนอยู่ไหม" ทันที
         */}
-      <div className="mb-3 flex items-end justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-medium">{t('rooms.title')}</h2>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <span aria-hidden="true" className="mus-act-icon grid size-11 shrink-0 place-items-center rounded-2xl" style={{ '--tint': '175 82 222' } as React.CSSProperties}>
+            <svg viewBox="0 0 24 24" className="size-5" fill="currentColor">
+              <path d="M3 5h18v4H3zM3 11h18v8H3zm4 2v4h2v-4zm4 0v4h2v-4z" />
+            </svg>
+          </span>
+        <div className="min-w-0">
+          <h2 className="text-xl font-black">{t('rooms.title')}</h2>
           <p className="mt-0.5 text-xs text-ink-soft">
             {rooms === null
               ? t('rooms.loading')
@@ -123,6 +129,7 @@ export function RoomList() {
                     t('rooms.summaryIdle', { rooms: rooms.length })}
           </p>
         </div>
+        </div>
         {/**
           * ★ ทางไปลอบบี้อยู่ตรงนี้ด้วย ไม่ใช่แค่บนหัวหน้า
           *   คนที่เลื่อนลงมาดูรายการแล้วไม่เจอห้องที่ถูกใจ คือคนที่อยากเดินดู
@@ -131,9 +138,8 @@ export function RoomList() {
         <Link
           href="/lobby"
           className={cn(
-            'flex shrink-0 items-center gap-1.5 rounded-full border border-line px-3 py-1.5',
-            'text-[11px] text-ink-soft transition-colors',
-            'hover:border-line-strong hover:bg-surface hover:text-ink',
+            'mus-perk flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3.5',
+            'text-xs font-semibold transition-transform hover:-translate-y-0.5',
           )}
         >
           <svg viewBox="0 0 24 24" className="size-3.5" fill="currentColor" aria-hidden="true">
@@ -211,7 +217,7 @@ export function RoomList() {
                *    ★★ ซึ่งนั่นคือ "แก้ดีไซน์เดิม" ทั้งที่โจทย์ห้ามไว้ —
                *       และเป็นชนิดที่ไม่มีใครจับได้จนกว่าจะเอาสองรุ่นมาวางเทียบกัน
                */
-              'group block overflow-hidden rounded-2xl border border-line',
+              'mus-room group block overflow-hidden rounded-2xl border border-line',
               'bg-elevated/60 backdrop-blur-md transition-all',
               'hover:-translate-y-1 hover:border-line-strong',
               'hover:shadow-[0_18px_40px_-22px] hover:shadow-accent/50',

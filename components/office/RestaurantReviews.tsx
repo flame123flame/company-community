@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import { apiFetch } from '@/lib/api/client'
+import { useConfirm } from '@/components/ConfirmProvider'
 import { Button } from '@/components/ui/Button'
 import { Stars, StarInput } from './Stars'
 import { cn } from '@/lib/cn'
@@ -34,6 +35,7 @@ export type Review = {
 
 export function RestaurantReviews({
   shopId,
+  shopName,
   shopLat,
   shopLng,
   /**
@@ -47,6 +49,8 @@ export function RestaurantReviews({
   onSeedUsed,
 }: {
   shopId: string
+  /** ชื่อร้าน — ขึ้นในกล่องยืนยัน */
+  shopName?: string | null
   /** พิกัดร้าน — ไม่มีก็รีวิวได้ แค่ติดป้าย "รีวิวที่ร้าน" ให้ไม่ได้ */
   shopLat?: number | null
   shopLng?: number | null
@@ -54,6 +58,7 @@ export function RestaurantReviews({
   onSeedUsed?: () => void
 }) {
   const ot = useOt()
+  const confirm = useConfirm()
   const [items, setItems] = useState<Review[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -85,7 +90,7 @@ export function RestaurantReviews({
   }, [load])
 
   async function remove(id: string) {
-    if (!window.confirm(ot('food.review.deleteAsk'))) return
+    if (!(await confirm({ kind: 'delete', subject: shopName, message: ot('food.review.deleteAsk') }))) return
     try {
       await apiFetch(`/api/office/food/reviews?id=${encodeURIComponent(id)}`, { method: 'DELETE' })
       await load()
@@ -110,6 +115,7 @@ export function RestaurantReviews({
       {composing || editing ? (
         <ReviewComposer
           shopId={shopId}
+          shopName={shopName}
           shopLat={shopLat}
           shopLng={shopLng}
           existing={editing}
@@ -268,6 +274,7 @@ type Pending = {
 
 function ReviewComposer({
   shopId,
+  shopName,
   shopLat,
   shopLng,
   existing,
@@ -276,6 +283,7 @@ function ReviewComposer({
   onDone,
 }: {
   shopId: string
+  shopName?: string | null
   shopLat?: number | null
   shopLng?: number | null
   existing: Review | null
@@ -284,6 +292,7 @@ function ReviewComposer({
   onDone: () => void
 }) {
   const ot = useOt()
+  const confirm = useConfirm()
   const [rating, setRating] = useState(existing?.rating ?? seedRating ?? 0)
   const [body, setBody] = useState(existing?.body ?? '')
   const [photos, setPhotos] = useState<Pending[]>(
@@ -387,6 +396,8 @@ function ReviewComposer({
       setError(ot('food.review.stillUploading'))
       return
     }
+    /* ★ รีวิวใหม่ = เพิ่ม · มีรีวิวเดิม = แก้ไข */
+    if (!(await confirm({ kind: existing ? 'edit' : 'create', subject: shopName }))) return
 
     setSaving(true)
     try {

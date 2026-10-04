@@ -107,6 +107,19 @@ export class TypingCounter {
     return p
   }
 
+  /** สถานะทั้งหมด — เก็บลง sessionStorage ให้รีโหลดกลางแข่งแล้วพิมพ์ต่อได้ */
+  snapshot(): { maxReached: number; firstTryCorrect: number; keystrokes: number } {
+    return { maxReached: this.maxReached, firstTryCorrect: this.firstTryCorrect, keystrokes: this.keystrokes }
+  }
+
+  static restore(s: { maxReached: number; firstTryCorrect: number; keystrokes: number }): TypingCounter {
+    const c = new TypingCounter()
+    c.maxReached = s.maxReached
+    c.firstTryCorrect = s.firstTryCorrect
+    c.keystrokes = s.keystrokes
+    return c
+  }
+
   stats(elapsedMs: number) {
     return {
       wpm: wpm(this.maxReached, elapsedMs),
@@ -270,8 +283,15 @@ export function pickText(
    */
   if (length === 'short') return one
 
-  const second = pool[Math.floor(rnd() * pool.length)] as string
-  const third = pool[Math.floor(rnd() * pool.length)] as string
+  /*
+   * ★★ หยิบแบบไม่ซ้ำ — ประโยคเดิมต้องไม่โผล่สองครั้งในข้อความเดียว
+   *    ★ เดิมสุ่มทั้งสามประโยคแยกกันอิสระ คลัง ~50 ประโยคจึงได้ประโยคซ้ำ
+   *      ราว 6% ของข้อความกลาง — เจอจริงตอนทดสอบ ("การจัดโต๊ะทำงาน…" สองรอบ)
+   */
+  const rest = pool.filter((s) => s !== one)
+  const second = rest[Math.floor(rnd() * rest.length)] as string
+  const rest2 = rest.filter((s) => s !== second)
+  const third = rest2[Math.floor(rnd() * rest2.length)] as string
   const joiner = lang === 'th' ? ' ' : ' '
   return [one, second, third].join(joiner)
 }

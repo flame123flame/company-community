@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { getOt } from '@/lib/i18n/office-server'
 import { WalletOwed } from '@/components/office/WalletOwed'
+import { FunGuide } from '@/components/office/FunGuide'
 
 /* ★ ชื่อแท็บก็ต้องตามภาษา — generateMetadata อ่าน cookie ได้เหมือน component */
 export async function generateMetadata(): Promise<Metadata> {
@@ -9,5 +10,12 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default function WalletOwedPage() {
-  return <WalletOwed />
+  return (
+    <>
+      <FunGuide id="walletOwed" art="owed" />
+      <div className="mt-6">
+        <WalletOwed />
+      </div>
+    </>
+  )
 }

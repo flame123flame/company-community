@@ -9,11 +9,13 @@ import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/cn'
 import { useLocale } from '@/lib/i18n/client'
 import { useOnlinePeople } from './useOnlinePeople'
-import { useOt, type Ot } from '@/lib/i18n/office'
+import { Untranslated, useOt, type Ot } from '@/lib/i18n/office'
 import { ChatAvatar } from './ChatAvatar'
+import { useConfirm } from '@/components/ConfirmProvider'
 import { ChatGroupPanel } from './ChatGroupPanel'
 import { useChatTyping } from './useChatTyping'
-import { ChatStats, ChatWelcome } from './ChatSideExtras'
+import { ChatUnreadCard, ChatWelcome } from './ChatSideExtras'
+import { FunGuide } from './FunGuide'
 import { ReactionPeople } from './ReactionPeople'
 
 /**
@@ -106,6 +108,7 @@ type Thread = {
 
 export function OfficeChat() {
   const ot = useOt()
+  const confirm = useConfirm()
   /* ★ วันที่หัวกลุ่มข้อความต้องเขียนด้วยปฏิทินและเดือนของภาษาที่คนอ่านเลือก
      ★★ เดิมตรึงไว้ที่ 'th-TH' — คนญี่ปุ่นจะเห็นเดือนเป็นตัวหนังสือไทย
         ปนอยู่กลางหน้าญี่ปุ่น ซึ่งอ่านไม่ออกและไม่มีใครรู้ว่ามาจากไหน */
@@ -488,7 +491,7 @@ export function OfficeChat() {
    */
   async function removeMessage(m: Message) {
     if (!openId) return
-    if (!window.confirm(ot('chat.deleteConfirm'))) return
+    if (!(await confirm({ kind: 'delete', message: ot('chat.deleteConfirm') }))) return
 
     try {
       await apiFetch(`/api/office/chat/${openId}`, {
@@ -568,6 +571,7 @@ export function OfficeChat() {
 
   async function createGroup() {
     if (!groupTitle.trim() || picked.size === 0) return
+    if (!(await confirm({ kind: 'create', subject: groupTitle.trim() }))) return
     try {
       const d = await apiFetch<{ roomId: string }>('/api/office/chat', {
         method: 'POST',
@@ -591,17 +595,42 @@ export function OfficeChat() {
      *    ★ สองบานที่ต้องอ่านพร้อมกันบีบอยู่ใน 1000px แล้วฟองข้อความขึ้น
      *      บรรทัดละไม่กี่คำ ★★ แชทคือหน้าเดียวในระบบที่ยิ่งกว้างยิ่งใช้ง่าย
      */
-    <div className="page-wide grid gap-4 py-2 lg:grid-cols-[23rem_1fr]">
+    <div className="page-wide py-2">
+      {/* ★ แผงอธิบายโผล่เฉพาะตอนยังไม่ได้เปิดห้อง — เปิดห้องแล้วทุกพื้นที่เป็นของบทสนทนา */}
+      {!openId ? <FunGuide id="officeChat" art="talk" /> : null}
+    {/* ★ minmax(0,1fr) — คอลัมน์เดียวบนมือถือต้องไม่ขยายตามเนื้อหาจนล้นจอ */}
+    <div className={cn('grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[23rem_minmax(0,1fr)]', !openId && 'mt-6')}>
       {/* ═══ รายการห้อง ═══════════════════════════════════════════ */}
-      <aside className={cn('flex flex-col gap-3', openId && 'hidden lg:flex')}>
-        <div className="flex items-center gap-2">
-          <Button size="sm" className="flex-1" onClick={() => setComposer('dm')}>
-            {ot('chat.newDm')}
-          </Button>
-          <Button size="sm" variant="secondary" className="flex-1" onClick={() => setComposer('group')}>
-            {ot('chat.newGroup')}
-          </Button>
+      <aside className={cn('flex min-w-0 flex-col gap-3', openId && 'hidden lg:flex')}>
+        {/* ★★ ทางเริ่มคุยสองทาง เป็นการ์ดใหญ่มีคำอธิบาย — ไม่ใช่ปุ่มเทาสองปุ่มที่อ่านไม่ออกว่าต่างกันยังไง */}
+        <div className="grid grid-cols-2 gap-2">
+          {(
+            [
+              ['dm', '💬', ot('chat.newDm'), ot('chat.newDmHint')],
+              ['group', '👥', ot('chat.newGroup'), ot('chat.newGroupHint')],
+            ] as const
+          ).map(([kind, emoji, title, hint]) => (
+            <button
+              key={kind}
+              type="button"
+              aria-pressed={composer === kind}
+              onClick={() => setComposer(composer === kind ? 'none' : kind)}
+              className="chat-start flex min-h-[4.5rem] items-center gap-2.5 rounded-2xl p-3 text-start"
+            >
+              <span aria-hidden="true" className="grid size-10 shrink-0 place-items-center rounded-xl bg-surface text-xl">
+                {emoji}
+              </span>
+              <span className="min-w-0">
+                <span className="block text-[13.5px] font-bold text-ink">{title}</span>
+                <span className="block text-[11px] leading-snug text-ink-faint">
+                  <Untranslated>{hint}</Untranslated>
+                </span>
+              </span>
+            </button>
+          ))}
         </div>
+
+        <ChatUnreadCard rooms={rooms} />
 
         {/* ── ตัวเลือกคนคุย / สร้างกลุ่ม ────────────────────────── */}
         {composer !== 'none' ? (
@@ -828,8 +857,6 @@ export function OfficeChat() {
           )}
         </div>
 
-        {/* ★ ของสองอย่างนี้ไม่ใช่ของประดับ — เติมพื้นที่ว่างด้วยสิ่งที่กดต่อได้ */}
-        <ChatStats rooms={rooms} />
       </aside>
 
       {/* ═══ ห้องแชท ═══════════════════════════════════════════════ */}
@@ -840,7 +867,7 @@ export function OfficeChat() {
         )}
       >
         {!openId || !thread ? (
-          <ChatWelcome />
+          <ChatWelcome onNewDm={() => setComposer('dm')} onNewGroup={() => setComposer('group')} />
         ) : (
           <>
             {/* ★ แผงข้อมูลกลุ่มทับอยู่ข้างบน ปิดแล้วเจอบทสนทนาที่เดิมเป๊ะ */}
@@ -1391,6 +1418,7 @@ export function OfficeChat() {
           }}
         />
       ) : null}
+    </div>
     </div>
   )
 }

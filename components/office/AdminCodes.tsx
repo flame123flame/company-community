@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiFetch } from '@/lib/api/client'
 import { Button } from '@/components/ui/Button'
+import { useConfirm } from '@/components/ConfirmProvider'
 import { Input } from '@/components/ui/Input'
 import { cn } from '@/lib/cn'
 import { officeErrorText } from '@/lib/i18n/office-format'
@@ -20,6 +21,7 @@ type Row = {
 /** หน้าจัดการรหัสพนักงาน (FR-X09 · หัวข้อ 8.6) */
 export function AdminCodes() {
   const ot = useOt()
+  const confirm = useConfirm()
   const [rows, setRows] = useState<Row[]>([])
   const [query, setQuery] = useState('')
   const [newCode, setNewCode] = useState('')
@@ -43,6 +45,9 @@ export function AdminCodes() {
 
   async function addCodes(codes: string[]) {
     if (codes.length === 0) return
+    /* ★ ชื่อในกล่องยืนยัน = รหัสสามตัวแรก + จำนวนที่เหลือ (นำเข้า CSV ทีละมาก ๆ) */
+    const subject = codes.slice(0, 3).join(', ') + (codes.length > 3 ? ` +${codes.length - 3}` : '')
+    if (!(await confirm({ kind: 'create', subject }))) return
     setBusy(true)
     setError(null)
     setMessage(null)
@@ -62,6 +67,9 @@ export function AdminCodes() {
   }
 
   async function setStatus(code: string, status: EmployeeCodeStatus) {
+    /* ★ ปิดรหัส (ลาออก) = เสี่ยง · เปิดกลับ = แก้ไข */
+    const who = rows.find((r) => r.code === code)?.claimedName
+    if (!(await confirm({ kind: status === 'RESIGNED' ? 'danger' : 'edit', subject: who ? `${code} · ${who}` : code }))) return
     setBusy(true)
     setError(null)
     try {

@@ -6,6 +6,7 @@ import { Spinner } from '@/components/ui/Spinner'
 import { playerErrorMessage, type PlayerStateValue, type YouTubePlayer } from '@/types/youtube'
 import { useT } from '@/lib/i18n/client'
 import type { DictKey } from '@/lib/i18n/dict'
+import { Untranslated } from '@/lib/i18n/office'
 
 /**
  * กรอบวิดีโอ 16:9
@@ -91,12 +92,16 @@ export function YouTubeEmbed({
       ) : null}
 
       {status === 'ready' && !videoId ? (
-        <div className="absolute inset-0 grid place-items-center bg-black">
-          <div className="text-center">
-            <svg viewBox="0 0 24 24" className="mx-auto size-12 text-ink-faint" fill="currentColor" aria-hidden="true">
-              <path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z" />
-            </svg>
-            <p className="mt-2 text-sm text-ink-soft">{t('player.queueEmpty')}</p>
+        /* ★★ ห้องว่าง = เวทีรอเพลงแรก ไม่ใช่จอดำ — แผ่นเสียงหมุนรอ และบอกว่าต้องทำอะไรต่อ */
+        <div className="mus-empty absolute inset-0 grid place-items-center overflow-hidden px-6 text-center">
+          <div className="relative">
+            <div aria-hidden="true" className="mus-vinyl mus-vinyl-idle relative mx-auto size-[clamp(72px,18vw,150px)]">
+              <span className="mus-vinyl-label" />
+            </div>
+            <p className="mt-[clamp(10px,2.4vw,20px)] text-[clamp(15px,2.4vw,22px)] font-black text-ink">{t('player.queueEmpty')}</p>
+            <p className="mx-auto mt-1 hidden max-w-[440px] text-[13px] leading-relaxed text-ink-soft sm:block">
+              <Untranslated>{t('player.queueEmptyHint')}</Untranslated>
+            </p>
           </div>
         </div>
       ) : null}

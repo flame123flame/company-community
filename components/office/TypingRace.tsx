@@ -1,11 +1,12 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { apiFetch } from '@/lib/api/client'
+import { apiFetch, ApiClientError } from '@/lib/api/client'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/cn'
 import { officeErrorText } from '@/lib/i18n/office-format'
 import { Untranslated, useOt } from '@/lib/i18n/office'
+import { useConfirm } from '@/components/ConfirmProvider'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { TypingCounter, compare, toChars, type TextLang } from '@/lib/games/typing'
 
@@ -34,6 +35,39 @@ type Room = {
 /** ส่งความคืบหน้าทุกกี่มิลลิวินาที */
 const PUSH_MS = 700
 
+/** เวลาแข่งสูงสุด — ไม่ต่ำกว่า 90 วิ · ข้อความยาวได้เวลามากขึ้น
+ *  ★ คนที่หลุดไปแล้วไม่กลับมาต้องไม่ทำให้ห้องค้างตลอดกาล */
+const raceLimitMs = (chars: number) => Math.max(90_000, chars * 1200)
+
+type Final = { elapsed: number; wpm: number; accuracy: number }
+type Saved = {
+  typed: string
+  counter: ReturnType<TypingCounter['snapshot']>
+  final: Final | null
+}
+
+/** ★ ห้องที่กำลังแข่ง — หน้าเมนูใช้พากลับเข้าห้องหลังรีโหลด/เน็ตหลุด */
+export const RACE_ROOM_KEY = 'typing:raceRoom'
+
+const roundStoreKey = (roomId: string, round: string) => `typing-race:${roomId}:${round}`
+
+function readRound(roomId: string, round: string): Saved | null {
+  try {
+    const raw = window.sessionStorage.getItem(roundStoreKey(roomId, round))
+    return raw ? (JSON.parse(raw) as Saved) : null
+  } catch {
+    return null
+  }
+}
+
+function writeRound(roomId: string, round: string, saved: Saved) {
+  try {
+    window.sessionStorage.setItem(roundStoreKey(roomId, round), JSON.stringify(saved))
+  } catch {
+    /* storage ปิด — เล่นได้ แค่รีโหลดแล้วต้องพิมพ์ใหม่ */
+  }
+}
+
 /**
  * ห้องแข่งพิมพ์ดีด
  *
@@ -54,6 +88,7 @@ export function TypingRace({
   length?: 'short' | 'medium'
 }) {
   const ot = useOt()
+  const confirm = useConfirm()
   const [room, setRoom] = useState<Room | null>(null)
   const [players, setPlayers] = useState<Player[]>([])
   const [typed, setTyped] = useState('')
@@ -65,19 +100,60 @@ export function TypingRace({
   const composingRef = useRef(false)
   const pushedAtRef = useRef(0)
   const finishedRef = useRef(false)
+  const autoFiredRef = useRef(false)
+  /* ★ ผลตอนพิมพ์จบ — ตรึงไว้ ไม่คำนวณใหม่จากนาฬิกาที่ยังเดินอยู่
+       ★★ เดิมหน้าผลคิด WPM จากเวลาที่เดินต่อหลังจบ — วัดได้ 175 → 133 ภายใน 4 วิ */
+  const [final, setFinal] = useState<Final | null>(null)
+  /* ★ ต่างของนาฬิกาเครื่องกับ server — นาฬิกามือถือเพี้ยนได้เป็นวินาที */
+  const [skew, setSkew] = useState(0)
+  /* ★ รอบที่หน้าจอนี้กำลังแสดง (createdAt + ข้อความ) — เปลี่ยน = เริ่มรอบใหม่ */
+  const roundRef = useRef<string | null>(null)
+  /* ★ onExit มาจากหน้าแม่เป็นฟังก์ชันใหม่ทุก render — เก็บใน ref ไม่ให้ load ถูกสร้างใหม่วนไป */
+  const onExitRef = useRef(onExit)
+  useEffect(() => {
+    onExitRef.current = onExit
+  }, [onExit])
+
+  /** ล้าง (หรือกู้คืน) สถานะในเครื่องเมื่อเจอรอบใหม่ */
+  const enterRound = useCallback(
+    (round: string) => {
+      roundRef.current = round
+      const saved = readRound(roomId, round)
+      counterRef.current = saved ? TypingCounter.restore(saved.counter) : new TypingCounter()
+      prevLenRef.current = saved ? toChars(saved.typed).length : 0
+      finishedRef.current = !!saved?.final
+      autoFiredRef.current = false
+      setTyped(saved?.typed ?? '')
+      setFinal(saved?.final ?? null)
+    },
+    [roomId],
+  )
 
   const load = useCallback(async () => {
     try {
-      const res = await apiFetch<{ room: Room; players: Player[] }>(
+      const res = await apiFetch<{ room: Room; players: Player[]; serverNow?: string }>(
         `/api/office/games/typing?room=${encodeURIComponent(roomId)}`,
       )
+      if (res.serverNow) setSkew(Date.parse(res.serverNow) - Date.now())
+      /*
+       * ★★★ รอบใหม่ (มีคนกด "แข่งอีกรอบ") → ทุกเครื่องล้างสถานะเอง
+       *     ★ เดิมล้างเฉพาะเครื่องคนที่กด — อีกคนยังค้างหน้าผลรอบก่อน
+       *       ช่องพิมพ์ถูกปิด แล้วเล่นรอบสองไม่ได้เลย (เจอตอนทดสอบสองเครื่อง)
+       */
+      const round = `${res.room.createdAt ?? ''}|${res.room.text.length}|${res.room.text.slice(0, 24)}`
+      if (round !== roundRef.current) enterRound(round)
       setRoom(res.room)
       setPlayers(res.players)
       setError(null)
     } catch (e) {
+      /* ★ ห้องหายไปแล้ว / ไม่ได้อยู่ในห้องนี้ → กลับเมนู ไม่ค้างหน้าโหลด */
+      if (e instanceof ApiClientError && (e.status === 404 || e.status === 403)) {
+        onExitRef.current()
+        return
+      }
       setError(officeErrorText(e, ot))
     }
-  }, [roomId])
+  }, [roomId, enterRound])
 
   useEffect(() => {
     void load()
@@ -104,6 +180,24 @@ export function TypingRace({
     }
   }, [roomId, load])
 
+  /*
+   * ★★★ ถามซ้ำเป็นจังหวะ — Realtime เป็นทางเร็ว ไม่ใช่ทางเดียว
+   *     ★ ทดสอบสองเครื่อง: อีกคนกด "แข่งอีกรอบ" แล้วหน้าจอเราไม่รู้ตัวเลย
+   *       (ค้างหน้าผลรอบก่อน) เพราะไม่มี event มาถึง ★★ แบบเดียวกับห้องสุ่มกลุ่ม
+   *     ★ หยุดถามเมื่อแท็บถูกซ่อน — ไม่ยิงทิ้งไว้ข้ามคืน
+   */
+  useEffect(() => {
+    const tick = () => {
+      if (document.visibilityState === 'visible') void load()
+    }
+    const id = window.setInterval(tick, 2500)
+    document.addEventListener('visibilitychange', tick)
+    return () => {
+      window.clearInterval(id)
+      document.removeEventListener('visibilitychange', tick)
+    }
+  }, [load])
+
   /* นาฬิกาเดิน */
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 120)
@@ -120,7 +214,6 @@ export function TypingRace({
    *          ★★ server ตรวจเวลาเองและปฏิเสธคำสั่งที่มาเร็วเกิน
    *             การยิงซ้ำจึงไม่ทำให้อะไรพัง
    */
-  const autoFiredRef = useRef(false)
   useEffect(() => {
     if (!room || room.status !== 'WAITING' || players.length < 2) return
     if (autoFiredRef.current) return
@@ -138,11 +231,15 @@ export function TypingRace({
       })
   }, [room, players.length, roomId, load, now])
 
+  /* ★ ทุกการเทียบเวลาใช้ "เวลาของ server" — ทุกเครื่องเริ่ม/หมดเวลาพร้อมกัน */
+  const serverNow = now + skew
   const startAt = room?.startedAt ? Date.parse(room.startedAt) : null
+  const limitMs = raceLimitMs(toChars(room?.text ?? '').length)
+  const timeUp = startAt !== null && serverNow >= startAt + limitMs
   /** ยังนับถอยหลังอยู่ไหม — บวก 1 เพราะ 0.4 วินาทีที่เหลือก็ยังไม่ถึงเวลา */
-  const countdown = startAt !== null && now < startAt ? Math.ceil((startAt - now) / 1000) : 0
-  const racing = startAt !== null && now >= startAt && room?.status !== 'FINISHED'
-  const elapsed = startAt !== null && now >= startAt ? now - startAt : 0
+  const countdown = startAt !== null && serverNow < startAt ? Math.ceil((startAt - serverNow) / 1000) : 0
+  const racing = startAt !== null && serverNow >= startAt && room?.status !== 'FINISHED' && !timeUp
+  const elapsed = startAt !== null && serverNow >= startAt ? Math.min(serverNow - startAt, limitMs) : 0
 
   /* ★ ถึงเวลาแล้วโฟกัสช่องพิมพ์ให้เลย — ไม่ต้องให้กดอีกทีเพื่อเรียกคีย์บอร์ด */
   useEffect(() => {
@@ -158,6 +255,9 @@ export function TypingRace({
     try {
       if (final) {
         finishedRef.current = true
+        const frozen: Final = { elapsed, wpm: s.wpm, accuracy: s.accuracy }
+        setFinal(frozen)
+        if (roundRef.current) writeRound(roomId, roundRef.current, { typed, counter: counterRef.current.snapshot(), final: frozen })
         await apiFetch('/api/office/games/typing', {
           method: 'POST',
           body: {
@@ -188,6 +288,8 @@ export function TypingRace({
     const delta = Math.max(1, toChars(value).length - prevLenRef.current)
     prevLenRef.current = toChars(value).length
     const p = counterRef.current.update(room?.text ?? '', value, delta)
+    /* ★ เก็บทุกตัว — รีโหลดกลางแข่งแล้วพิมพ์ต่อจากเดิมได้ */
+    if (roundRef.current) writeRound(roomId, roundRef.current, { typed: value, counter: counterRef.current.snapshot(), final: null })
 
     if (p.done) {
       void push(true)
@@ -211,7 +313,9 @@ export function TypingRace({
 
   const chars = toChars(room.text)
   const total = chars.length || 1
-  const done = finishedRef.current || room.status === 'FINISHED'
+  const done = final !== null || room.status === 'FINISHED' || timeUp
+  /* ★ ผลที่โชว์บนหน้าจบ: ตรึงตอนพิมพ์จบ · หมดเวลาก่อนจบ = ค่า ณ เส้นตาย */
+  const shown = final ?? { elapsed, wpm: stats.wpm, accuracy: stats.accuracy }
   const ranked = [...players].sort((a, b) => b.progress - a.progress || b.wpm - a.wpm)
 
   return (
@@ -269,7 +373,8 @@ export function TypingRace({
               <div
                 className={cn('h-full rounded-full transition-all', p.finished ? 'bg-link' : 'bg-accent')}
                 style={{
-                  width: `${Math.min(100, ((p.me ? stats.correct : p.progress) / total) * 100)}%`,
+                  /* ★ จบแล้ว = เต็มแถบ — server เก็บความคืบหน้าล่าสุดที่ส่งทัน (เคยค้าง 97%) */
+                  width: `${p.finished ? 100 : Math.min(100, ((p.me ? stats.correct : p.progress) / total) * 100)}%`,
                 }}
               />
             </div>
@@ -344,9 +449,9 @@ export function TypingRace({
       {/* ── จบ ──────────────────────────────────────────────────── */}
       {done ? (
         <div className="mt-4 rounded-2xl border border-line bg-elevated/50 backdrop-blur-md p-5 text-center">
-          <p className="text-2xl font-bold text-ink">{stats.wpm} WPM</p>
+          <p className="text-2xl font-bold text-ink">{shown.wpm} WPM</p>
           <p className="mt-0.5 text-sm text-ink-soft">
-            {ot('game.typing.accuracy')} {stats.accuracy}% · {(elapsed / 1000).toFixed(1)}s
+            {ot('game.typing.accuracy')} {shown.accuracy}% · {(shown.elapsed / 1000).toFixed(1)}s
           </p>
           <div className="mt-4 flex flex-wrap justify-center gap-2">
             {/*
@@ -361,12 +466,7 @@ export function TypingRace({
                   method: 'POST',
                   body: { action: 'rematch', roomId, lang, length },
                 }).catch(() => undefined)
-                /* ★ ล้างสถานะในเครื่องให้ตรงกับห้องที่เพิ่งถูกรีเซ็ต */
-                finishedRef.current = false
-                counterRef.current = new TypingCounter()
-                prevLenRef.current = 0
-                autoFiredRef.current = false
-                setTyped('')
+                /* ★ load() เห็นรอบใหม่แล้วล้างสถานะเอง — ทางเดียวกับเครื่องของคนอื่นในห้อง */
                 await load()
               }}
             >
@@ -389,6 +489,8 @@ export function TypingRace({
           <button
             type="button"
             onClick={async () => {
+              /* ★ ออกกลางห้อง (รอ/กำลังแข่ง) ต้องยืนยัน — จบรอบแล้วกลับเมนูไม่ต้องถาม */
+              if (!(await confirm({ kind: 'leave', subject: room?.code }))) return
               await apiFetch('/api/office/games/typing', { method: 'POST', body: { action: 'leave', roomId } }).catch(() => undefined)
               onExit()
             }}

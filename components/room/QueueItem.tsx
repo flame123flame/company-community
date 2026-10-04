@@ -5,6 +5,7 @@ import { formatDuration } from '@/lib/youtube/duration'
 import { cn } from '@/lib/cn'
 import type { QueueItemDto } from '@/types/room'
 import { useT } from '@/lib/i18n/client'
+import { useConfirm } from '@/components/ConfirmProvider'
 
 /**
  * แถวคิว — กดเพื่อเล่นเพลงนั้นทันที แบบ playlist ของ YouTube
@@ -54,6 +55,7 @@ export function QueueItem({
   rowRef?: (id: string, el: HTMLElement | null) => void
 }) {
   const t = useT()
+  const confirm = useConfirm()
   const clickable = canPlay && !playing
 
   return (
@@ -166,8 +168,9 @@ export function QueueItem({
         <button
           type="button"
           // ★ กัน click ทะลุไปสั่งเล่นเพลง — ปุ่มลบอยู่ในแถวที่ตัวมันเองก็กดได้
-          onClick={(e) => {
+          onClick={async (e) => {
             e.stopPropagation()
+            if (!(await confirm({ kind: 'delete', subject: item.title }))) return
             onRemove(item.id)
           }}
           disabled={removing}

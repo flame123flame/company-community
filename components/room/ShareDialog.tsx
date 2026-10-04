@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { cn } from '@/lib/cn'
 import { useT } from '@/lib/i18n/client'
+import { useConfirm } from '@/components/ConfirmProvider'
 
 /**
  * กล่องแชร์ห้อง — QR + ลิงก์ + เปลี่ยนชื่อห้อง
@@ -43,6 +44,7 @@ export function ShareDialog({
   onToast: (text: string, tone?: 'success' | 'error') => void
 }) {
   const t = useT()
+  const confirm = useConfirm()
   const [name, setName] = useState(roomName)
   const [saving, setSaving] = useState(false)
   const boxRef = useRef<HTMLDivElement>(null)
@@ -72,10 +74,13 @@ export function ShareDialog({
     : ''
 
   useEffect(() => {
+    /* ★ ระหว่างกล่องยืนยันเปิดอยู่ (portal แยก นอก boxRef) — Esc/คลิกเป็นของกล่องนั้น ไม่ใช่สั่งปิดกล่องแชร์ */
+    const confirmOpen = () => document.querySelector('.cfm-root') !== null
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape' && !confirmOpen()) onClose()
     }
     const onDown = (e: MouseEvent | TouchEvent) => {
+      if (confirmOpen()) return
       if (!boxRef.current?.contains(e.target as Node)) onClose()
     }
     document.addEventListener('keydown', onKey)
@@ -100,6 +105,7 @@ export function ShareDialog({
   async function save() {
     const value = name.trim()
     if (!value || value === roomName) return
+    if (!(await confirm({ kind: 'edit', subject: value }))) return
     setSaving(true)
     try {
       await onRename(value)

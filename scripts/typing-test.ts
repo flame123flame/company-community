@@ -120,5 +120,22 @@ check(
 check(pickText('en', 'medium', seeded).length > pickText('en', 'short', seeded).length, 'กลางยาวกว่าสั้น')
 check(TEXTS.th.includes(pickText('th', 'short', seeded)), 'ข้อความสั้นมาจากคลังจริง')
 
+/*
+ * ★★ ข้อความกลางห้ามมีประโยคซ้ำ
+ *    เคยสุ่มสามประโยคแยกกันอิสระ — ได้ "การจัดโต๊ะทำงาน…" สองรอบในข้อความเดียว
+ *    ★ เลขสุ่มที่ทำให้ซ้ำแน่ ๆ (ค่าเดิมทุกครั้ง) + สุ่มจริง 2,000 รอบ
+ */
+for (const lang of ['th', 'en'] as const) {
+  const same = pickText(lang, 'medium', seeded)
+  const parts = TEXTS[lang].filter((t) => same.includes(t))
+  check(parts.length === 3, `${lang}: เลขสุ่มเดิมทุกครั้งยังได้ 3 ประโยคไม่ซ้ำ`, `${parts.length} ประโยค`)
+  let dup = 0
+  for (let i = 0; i < 2000; i++) {
+    const t = pickText(lang, 'medium')
+    if (TEXTS[lang].some((s) => t.split(s).length > 2)) dup++
+  }
+  check(dup === 0, `${lang}: สุ่ม 2,000 ครั้งไม่มีประโยคซ้ำ`, `ซ้ำ ${dup} ครั้ง`)
+}
+
 console.log(`\n\x1b[1mผ่าน ${pass} · ล้ม ${fail}\x1b[0m`)
 process.exit(fail ? 1 : 0)

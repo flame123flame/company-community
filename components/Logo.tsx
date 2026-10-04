@@ -1,76 +1,70 @@
 'use client'
 
 /*
- * ★ ต้องเป็น client component เพราะสโลแกนใต้โลโก้ต้องเปลี่ยนตามภาษา
- *   โลโก้ถูกใช้ทั้งจากฝั่ง server (SetupRequired) และ client (แถบบน)
- *   ★ การติด 'use client' ไว้ที่นี่ทำให้ทั้งสองทางใช้ได้เหมือนกัน —
- *     I18nProvider อยู่ใน root layout จึงครอบถึงทุกที่ที่โลโก้ไปโผล่อยู่แล้ว
+ * ★ client component เพราะตรามาร์คใช้ useId (gradient ไม่ซ้ำกัน) และจำว่าเล่นอินโทรไปแล้ว
+ *   ★ ไม่มีสโลแกนใต้ชื่ออีกแล้ว — เจ้าของสั่งเอาข้อความกรรมสิทธิ์ใต้โลโก้ออกทั้งระบบ (4 ต.ค. 2026)
  */
+import { useEffect, useId, useState } from 'react'
 import { cn } from '@/lib/cn'
-import { useT } from '@/lib/i18n/client'
 
 /**
- * ตรามาร์คของ AWA ROOM — กรอบสี่เหลี่ยมมนที่มีสามเหลี่ยม play อยู่ข้างใน
+ * ตรามาร์คของ AWA Plaza
  *
- * ★★ ทำไมเปลี่ยนจากแคปซูลแดงทึบมาเป็นกรอบ
+ * ★★★ "A" ที่ไม่มีขีดกลาง แต่มีจุดอยู่ใต้ยอดแทน ยืนอยู่บนเส้นพื้น
  *
- *    ของเดิมเป็นสี่เหลี่ยมมนสีแดงทึบ + สามเหลี่ยมขาว ซึ่งพูดตามตรงคือ
- *    โลโก้ YouTube ที่เปลี่ยนสัดส่วนเล็กน้อย — คนเห็นแล้วอ่านว่า "YouTube"
- *    ไม่ใช่ "แบรนด์นี้"
+ *     ★ อ่านได้สองชั้นพร้อมกัน:
+ *       1. ตัว A ของ AWA — เห็นปุ๊บรู้ว่าเป็นของบริษัทไหน
+ *       2. ★★ หลังคาศาลา + จุดนัดพบ + ลานพื้น = "พลาซ่า" ที่คนมารวมกัน
+ *          ซึ่งคือสิ่งที่เว็บนี้เป็น: ที่เดียวที่ทุกระบบของออฟฟิศมาอยู่รวมกัน
  *
- *    มีปัญหาสองชั้นพร้อมกัน:
- *      1. ข้อกำหนดของ YouTube API ห้ามทำให้เข้าใจผิดว่าเว็บนี้คือ YouTube
- *         หรือได้รับการรับรองจาก YouTube — ท้ายหน้าแรกเราเขียนว่า
- *         "ไม่เกี่ยวข้องกับ YouTube" แต่โลโก้กลับบอกตรงกันข้าม
- *      2. ★ แบรนด์ที่เป็นของเราเอง ไม่ควรหน้าตาเหมือนของคนอื่น
+ *     ★ เลิกใช้สามเหลี่ยม play ของชื่อเดิม (AWA ROOM)
+ *       ★★ ห้องฟังเพลงเป็นแค่หนึ่งในหกโมดูลแล้ว ตรามาร์คที่พูดเรื่องวิดีโอ
+ *          บอกผิดว่าเว็บนี้คืออะไร — และยังเฉียดโลโก้ YouTube อยู่ดี
  *
- *    ★ ตัวใหม่เล่นกับชื่อโดยตรง: "Frame" = กรอบ
- *      กรอบเส้นขอบ (ไม่ทึบ) + สามเหลี่ยม play ข้างใน = "กรอบที่มีอะไรเล่นอยู่"
- *      ซึ่งคือสิ่งที่แอปนี้เป็นพอดี และไม่ไปทับกับใคร
+ *     ★ พื้นแผ่นไล่สีแดงแบรนด์ → ม่วง (ชุดเดียวกับพาดหัว text-aurora)
+ *       สีมาจาก token ทั้งหมด เปลี่ยนตามธีมได้เอง
  */
-export function Logo({ className, compact = false }: { className?: string; compact?: boolean }) {
-  const t = useT()
+export function Logo({
+  className,
+  compact = false,
+  wordmarkFrom,
+  size = 'md',
+}: {
+  className?: string
+  compact?: boolean
+  /** โชว์ตัวหนังสือเฉพาะจอที่กว้างอย่างน้อยเท่านี้ (px) — แถบที่ปุ่มเยอะใช้ */
+  wordmarkFrom?: '400'
+  /** lg = หน้าเข้าสู่ระบบ ที่โลโก้เป็นพระเอกของคอลัมน์ */
+  size?: 'md' | 'lg'
+}) {
+  const lg = size === 'lg'
   return (
-    <span className={cn('inline-flex items-center gap-2', className)}>
-      <LogoGlyph className="size-[26px] shrink-0" />
+    <span className={cn('logo-root inline-flex items-center', lg ? 'gap-3' : 'gap-2', className)}>
+      <LogoGlyph className={cn('shrink-0', lg ? 'size-[44px]' : 'size-[28px]')} />
 
       {/**
         * ★★★ เขียนคลาสทั้งชุดแยกสองทาง ไม่ใช่ต่อ 'hidden' ทับของเดิม
-        *
         *     cn() ในโปรเจกต์นี้คือ join เฉย ๆ ไม่มีตรรกะตัดคลาสที่ชนกัน
-        *     ★ 'flex' กับ 'hidden' จึงอยู่บน element เดียวกันทั้งคู่ แล้วผู้ชนะ
-        *       ตัดสินด้วยลำดับใน CSS ที่ Tailwind สร้าง ไม่ใช่ลำดับที่เราเขียน
-        *
-        *     ★★ เคยพลาดมาแล้วจริง: ใส่ 'hidden sm:inline-flex' ให้ <Logo/>
-        *        เพื่อซ่อนบนมือถือ แต่มันไม่ยอมหาย — วัดได้ว่าลิงก์ยังกว้าง
-        *        205px ทั้งที่ควรเหลือ 62px ★ แก้โดยไม่ให้มีสองคลาสชนกันเลย
+        *     ★ 'flex' กับ 'hidden' บน element เดียวกัน ผู้ชนะตัดสินด้วยลำดับใน CSS
+        *       ที่ Tailwind สร้าง ไม่ใช่ลำดับที่เราเขียน (เคยพลาดมาแล้ว)
         */}
       <span
         className={
           compact
-            ? 'hidden min-w-0 flex-col justify-center leading-none sm:flex'
-            : 'flex min-w-0 flex-col justify-center leading-none'
+            ? 'hidden min-w-0 items-center sm:flex'
+            : wordmarkFrom === '400'
+              ? 'hidden min-w-0 items-center min-[400px]:flex'
+              : 'flex min-w-0 items-center'
         }
       >
-        <span className="text-[20px] font-medium leading-none tracking-[-0.5px]">
-          AWA<span className="text-ink-soft"> ROOM</span>
-        </span>
-
-        {/**
-         * ★★ ข้อความกรรมสิทธิ์ซ่อนบนจอแคบ ไม่ใช่ย่อขนาดลง
-         *
-         *    แถบบนสูง 56px และต้องใส่ โลโก้ + ช่องค้นหา + ปุ่มขวาให้ครบ
-         *    ที่ 390px การเพิ่มข้อความ 30 ตัวอักษรเข้าไปจะเบียดจนช่องค้นหา
-         *    ไม่เหลือที่ — ซึ่งเป็นปัญหาเดิมที่เพิ่งแก้ไปตอนทำ responsive
-         *
-         *    ★ การ "ย่อให้เล็กลง" แก้ไม่ได้เพราะตัวอักษรที่เล็กกว่า 10px
-         *      อ่านไม่ออกอยู่ดี — เท่ากับกินที่โดยไม่มีใครได้อะไร
-         *      ซ่อนไปเลยแล้วให้ท้ายหน้าแรกรับหน้าที่ประกาศแทนตรงกว่า
-         *
-         *    โผล่ที่ ≥1024px ซึ่งเป็นจุดที่วัดแล้วช่องค้นหายังได้ความกว้างเต็ม
-         */}
-        <span className="mt-0.75 hidden whitespace-nowrap text-[10px] font-normal leading-none tracking-normal text-ink-faint lg:block">
-          {t('header.tagline')}
+        {/* ★ AWA หนักทึบ · Plaza ไล่สีและมีแสงวิ่งผ่าน ชุดเดียวกับตรามาร์ค */}
+        <span
+          className={cn(
+            'whitespace-nowrap font-black leading-none',
+            lg ? 'text-[30px] tracking-[-1px]' : 'text-[20px] tracking-[-0.6px]',
+          )}
+        >
+          AWA<span className="logo-plaza font-bold"> Plaza</span>
         </span>
       </span>
     </span>
@@ -82,32 +76,92 @@ export function LogoMark({ className }: { className?: string }) {
   return <LogoGlyph className={cn('size-9', className)} />
 }
 
+/*
+ * ★★ อินโทร (วาดตัว A · จุดเด้ง · ลากพื้น) เล่นครั้งเดียวต่อการเปิดเว็บ
+ *    ★ แถบบนถูกสร้างใหม่ทุกครั้งที่เปลี่ยนหน้า — ถ้าเล่นทุกครั้ง โลโก้จะ
+ *      กะพริบวาดใหม่ทุกคลิก ซึ่งน่ารำคาญกว่าน่าดู
+ *    ★ ค่าเริ่มต้นตรงกันทั้ง server และรอบ hydrate (true) จึงไม่มี hydration mismatch
+ */
+let introPlayed = false
+
 /**
- * ★ วาดด้วย SVG ล้วน ไม่ผสม div + svg เหมือนของเดิม
- *   ทำให้ย่อขยายได้ทุกขนาดโดยสัดส่วนไม่เพี้ยน และเอาไปทำ favicon ต่อได้เลย
+ * ตรามาร์คแบบมีชีวิต — SVG ล้วน + CSS animation (ดูกฎ .logo-* ใน globals.css)
+ *
+ *   ★ แผ่นพื้นไล่สีที่ค่อย ๆ เปลี่ยนโทน แดง → ม่วง → ฟ้า แล้วกลับ
+ *   ★ แสงสะท้อนกวาดผ่านแผ่นทุกไม่กี่วินาที
+ *   ★ จุดนัดพบส่งคลื่นวงกลมออกเป็นระยะ — "มีคนมารวมกันอยู่ตรงนี้"
+ *   ★ ชี้แล้วแผ่นเอียงเด้ง
+ *   ★★ ผู้ใช้ที่ตั้ง "ลดการเคลื่อนไหว" เห็นโลโก้นิ่งสมบูรณ์ ไม่ใช่ครึ่ง ๆ กลาง ๆ
+ *
+ * ★ id ของ gradient/clip ต้องไม่ซ้ำ — หน้าเดียวมีโลโก้ได้หลายตัว
  */
 function LogoGlyph({ className }: { className?: string }) {
+  const id = useId()
+  const [intro] = useState(() => !introPlayed)
+  useEffect(() => {
+    introPlayed = true
+  }, [])
+  const g = `lg-g-${id}`
+  const s = `lg-s-${id}`
+  const c = `lg-c-${id}`
+  const sh = `lg-sh-${id}`
   return (
-    <svg viewBox="0 0 32 32" className={className} aria-hidden="true">
-      {/* กรอบ — เส้นขอบหนา ไม่ทึบ คือจุดที่แยกจากโลโก้ YouTube ชัดที่สุด */}
-      <rect
-        x="2.6"
-        y="2.6"
-        width="26.8"
-        height="26.8"
-        rx="8.5"
-        fill="none"
-        stroke="var(--color-accent)"
-        strokeWidth="3.2"
-      />
-      {/* สามเหลี่ยม play — ปลายมนให้เข้ากับมุมมนของกรอบ */}
-      <path
-        d="M13 10.8 L22 16 L13 21.2 Z"
-        fill="var(--color-accent)"
-        strokeLinejoin="round"
-        stroke="var(--color-accent)"
-        strokeWidth="1.6"
-      />
+    <svg viewBox="0 0 32 32" className={cn('logo-mark', intro && 'logo-intro', className)} aria-hidden="true">
+      <defs>
+        <linearGradient id={g} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" className="logo-stop-a" />
+          <stop offset="1" className="logo-stop-b" />
+        </linearGradient>
+        <radialGradient id={s} cx="0.25" cy="0.12" r="0.8">
+          <stop offset="0" stopColor="var(--ck-shine)" stopOpacity="0.4" />
+          <stop offset="1" stopColor="var(--ck-shine)" stopOpacity="0" />
+        </radialGradient>
+        <linearGradient id={sh} x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="var(--ck-shine)" stopOpacity="0" />
+          <stop offset="0.5" stopColor="var(--ck-shine)" stopOpacity="0.55" />
+          <stop offset="1" stopColor="var(--ck-shine)" stopOpacity="0" />
+        </linearGradient>
+        <clipPath id={c}>
+          <rect width="32" height="32" rx="9.5" />
+        </clipPath>
+      </defs>
+
+      <g className="logo-tile">
+        <rect width="32" height="32" rx="9.5" fill={`url(#${g})`} />
+        <rect width="32" height="32" rx="9.5" fill={`url(#${s})`} />
+
+        <g clipPath={`url(#${c})`}>
+          {/* คลื่นจากจุดนัดพบ — สองวงสลับจังหวะ */}
+          <circle className="logo-ripple" cx="16" cy="17.6" r="2.35" fill="none" stroke="var(--ck-shine)" strokeWidth="1" />
+          <circle className="logo-ripple logo-ripple-2" cx="16" cy="17.6" r="2.35" fill="none" stroke="var(--ck-shine)" strokeWidth="1" />
+          {/* แสงสะท้อนกวาดผ่าน */}
+          <rect className="logo-sheen" x="-14" y="-8" width="12" height="48" fill={`url(#${sh})`} transform="rotate(20 16 16)" />
+        </g>
+
+        {/* หลังคา / ตัว A */}
+        <path
+          className="logo-a"
+          pathLength={1}
+          d="M8 22.4 L16 8.2 L24 22.4"
+          fill="none"
+          stroke="var(--ck-shine)"
+          strokeWidth="3.3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        {/* จุดนัดพบ — แทนขีดกลางของ A */}
+        <circle className="logo-dot" cx="16" cy="17.6" r="2.35" fill="var(--ck-shine)" />
+        {/* ลานพื้น */}
+        <path
+          className="logo-ground"
+          pathLength={1}
+          d="M7.2 25.6 H24.8"
+          stroke="var(--ck-shine)"
+          strokeOpacity="0.55"
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
+      </g>
     </svg>
   )
 }

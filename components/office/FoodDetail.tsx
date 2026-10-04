@@ -9,9 +9,10 @@ import { cn } from '@/lib/cn'
 import { officeErrorText } from '@/lib/i18n/office-format'
 import { Untranslated, useOt } from '@/lib/i18n/office'
 import { cuisineStyle } from '@/lib/office/cuisine'
-import { ShopPhotos } from './ShopPhotos'
+import { Lightbox, ShopPhotos } from './ShopPhotos'
 import { Stars, StarInput } from './Stars'
-import { distanceLabel } from '@/lib/office/food'
+import { distanceLabel, type KaraokePricing } from '@/lib/office/food'
+import { KaraokePrices } from './KaraokeFields'
 import { RestaurantReviews } from './RestaurantReviews'
 import { directionsUrl, distanceParts, searchUrl } from '@/lib/office/geo'
 
@@ -44,7 +45,9 @@ type Restaurant = {
   rating?: number | null
   ratingCount?: number
   /* ── 0057 ── เมนูเด็ดหลายรายการ */
-  dishes?: { name: string; price: number | null }[]
+  dishes?: { name: string; price: number | null; photo?: string | null; photoUrl?: string | null }[]
+  /** ── 0061 ── ราคาคาราโอเกะ */
+  karaoke?: KaraokePricing | null
   travelMinutes?: number | null
   travelMode?: 'walking' | 'driving' | null
 }
@@ -72,6 +75,8 @@ export function FoodDetail({ id }: { id: string }) {
     myVisitsThisMonth: number
   } | null>(null)
   const [loading, setLoading] = useState(true)
+  /* ★ รูปเมนูที่เปิดดูเต็มจออยู่ (ลำดับในรายการรูปเมนู) */
+  const [dishView, setDishView] = useState<number | null>(null)
   const [gone, setGone] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -161,6 +166,10 @@ export function FoodDetail({ id }: { id: string }) {
   /* ★ ไอคอน/สีประจำประเภท และระยะทาง — ชุดเดียวกับหน้ารายการร้าน */
   const style = cuisineStyle(r.name, r.cuisine)
   const dist = distanceParts(r.travelMeters)
+  /* ★ รูปเมนูทั้งหมดของร้าน — lightbox เลื่อนไปรูปเมนูถัดไปได้ */
+  const dishPhotos = (r.dishes ?? [])
+    .filter((d) => d.photoUrl)
+    .map((d) => ({ id: d.name, url: d.photoUrl! }))
 
   return (
     /*
@@ -212,6 +221,9 @@ export function FoodDetail({ id }: { id: string }) {
           </span>
           <span className="min-w-0">{r.name}</span>
         </h2>
+
+        {/* ── ราคาคาราโอเกะ (0061) — มาก่อนเมนู เพราะเป็นสิ่งที่คนเปิดร้านแบบนี้มาดู ── */}
+        {r.karaoke ? <KaraokePrices k={r.karaoke} /> : null}
         {/*
           * ── เมนูเด็ด ──────────────────────────────────────────
           * ★★ หน้ารายละเอียดโชว์ครบทุกรายการ ต่างจากการ์ดที่โชว์สามรายการแรก
@@ -221,8 +233,20 @@ export function FoodDetail({ id }: { id: string }) {
         {(r.dishes?.length ?? 0) > 0 ? (
           <ul className="mt-2 flex flex-col divide-y divide-line rounded-xl border border-line bg-surface/40">
             {r.dishes!.map((d) => (
-              <li key={d.name} className="flex items-baseline justify-between gap-3 px-3 py-2">
-                <span dir="auto" className="min-w-0 text-[13.5px] text-ink">
+              <li key={d.name} className="flex items-center justify-between gap-3 px-3 py-2">
+                {/* ★ รูปเมนู (0060) — แตะแล้วดูเต็มจอ เลื่อนดูรูปเมนูอื่นต่อได้ */}
+                {d.photoUrl ? (
+                  <button
+                    type="button"
+                    onClick={() => setDishView(dishPhotos.findIndex((p) => p.url === d.photoUrl))}
+                    aria-label={d.name}
+                    className="size-12 shrink-0 overflow-hidden rounded-lg ring-1 ring-line"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element -- รูปจาก Storage ที่ไม่ได้ตั้ง remotePatterns */}
+                    <img src={d.photoUrl} alt="" loading="lazy" className="size-full object-cover" />
+                  </button>
+                ) : null}
+                <span dir="auto" className="min-w-0 flex-1 text-[13.5px] text-ink">
                   {d.name}
                 </span>
                 {d.price != null ? (
@@ -233,7 +257,7 @@ export function FoodDetail({ id }: { id: string }) {
               </li>
             ))}
           </ul>
-        ) : r.signatureDish ? (
+        ) : r.signatureDish && !r.karaoke ? (
           <p dir="auto" className="mt-0.5 text-sm text-ink-soft">
             {r.signatureDish}
           </p>
@@ -402,11 +426,16 @@ export function FoodDetail({ id }: { id: string }) {
         */}
       <RestaurantReviews
         shopId={id}
+        shopName={r.name}
         shopLat={r.lat ?? null}
         shopLng={r.lng ?? null}
         seedRating={seedRating}
         onSeedUsed={() => setSeedRating(null)}
       />
+
+      {dishView !== null && dishPhotos[dishView] ? (
+        <Lightbox photos={dishPhotos} index={dishView} onIndex={setDishView} onClose={() => setDishView(null)} />
+      ) : null}
 
       <Toast toast={toast} />
     </div>

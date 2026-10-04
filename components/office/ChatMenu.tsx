@@ -96,8 +96,9 @@ export function ChatMenu({ meId }: { meId: string }) {
         aria-label={ot('chat.title')}
         aria-expanded={open}
         aria-haspopup="menu"
+        style={{ '--hc': '48 209 176' } as React.CSSProperties}
         className={cn(
-          'relative grid size-9 shrink-0 place-items-center rounded-full transition-colors',
+          'hdr-btn relative grid size-11 shrink-0 place-items-center rounded-full transition-colors sm:size-9',
           open ? 'bg-surface text-ink' : 'text-ink-soft hover:bg-surface hover:text-ink',
         )}
       >
@@ -106,7 +107,7 @@ export function ChatMenu({ meId }: { meId: string }) {
         </svg>
         {/* ★ ป้ายตัวเลขอยู่บนไอคอน ไม่ใช่ข้าง ๆ — แถบบนไม่มีที่ให้กว้างขึ้น */}
         {unread > 0 ? (
-          <span className="absolute -end-0.5 -top-0.5 grid min-w-[18px] place-items-center rounded-full bg-accent px-1 text-[10px] font-bold leading-[18px] text-accent-ink">
+          <span className="hdr-badge absolute -end-0.5 -top-0.5 grid min-w-[18px] place-items-center rounded-full bg-accent px-1 text-[10px] font-bold leading-[18px] text-accent-ink">
             {unread > 99 ? '99+' : unread}
           </span>
         ) : null}
@@ -115,90 +116,115 @@ export function ChatMenu({ meId }: { meId: string }) {
       {open ? (
         <div
           role="menu"
-          /* ★ ตำแหน่งกับความกว้างคุมจาก .chat-pop ใน globals.css
-               ★★ เพราะมันต่างกันระหว่างจอแคบกับจอกว้าง ซึ่ง utility เขียนรวม
-                  ในบรรทัดเดียวแล้วอ่านไม่ออกว่าอันไหนชนะอันไหน */
-          className={cn(
-            'chat-pop z-50 overflow-hidden',
-            'rounded-2xl border border-line bg-elevated/95 shadow-2xl backdrop-blur-xl',
-          )}
+          /* ★ ตำแหน่งกับความกว้างคุมจาก .chat-pop ใน globals.css (มือถือ fixed · จอกว้าง absolute) */
+          className="chat-pop pop-wow z-50 flex max-h-[min(36rem,calc(100dvh-80px))] flex-col overflow-hidden rounded-[26px]"
+          style={{ '--pc': '48 209 176', '--pc2': '10 132 255' } as React.CSSProperties}
         >
-          <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
-            <p className="text-sm font-semibold text-ink">{ot('chat.title')}</p>
-            <Link
-              href="/office/chat"
-              onClick={() => setOpen(false)}
-              className="text-xs text-link hover:underline"
-            >
-              {ot('chat.seeAll')}
-            </Link>
+          {/* ── หัว: แถบไล่สี + จำนวนที่ยังไม่อ่าน + คนออนไลน์ ── */}
+          <div className="pop-hero relative shrink-0 overflow-hidden px-4 pb-4 pt-4">
+            <span aria-hidden="true" className="pop-blob pop-blob-a" />
+            <span aria-hidden="true" className="pop-blob pop-blob-b" />
+            <div className="relative flex items-center gap-3">
+              <span aria-hidden="true" className="pop-icon grid size-12 shrink-0 place-items-center rounded-2xl">
+                <svg viewBox="0 0 24 24" className="size-6" fill="currentColor">
+                  <path d="M20 2H4a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z" />
+                </svg>
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-lg font-black leading-tight text-[var(--ck-shine)]">{ot('chat.title')}</p>
+                <p className="text-xs font-medium text-[color-mix(in_srgb,var(--ck-shine)_85%,transparent)]">
+                  {unread > 0 ? ot('chat.popUnread', { n: unread }) : ot('chat.popAllRead')}
+                </p>
+              </div>
+              {online.size > 0 ? (
+                <span className="pop-pill inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold">
+                  <span aria-hidden="true" className="who-dot-on relative size-2 rounded-full" />
+                  {ot('chat.popOnline', { n: online.size })}
+                </span>
+              ) : null}
+            </div>
+            <div className="relative mt-3 grid grid-cols-2 gap-2">
+              <Link href="/office/chat" onClick={() => setOpen(false)} className="pop-action flex min-h-10 items-center justify-center gap-1.5 rounded-xl text-[12.5px] font-bold">
+                💬 {ot('chat.newDm')}
+              </Link>
+              <Link href="/office/chat" onClick={() => setOpen(false)} className="pop-action flex min-h-10 items-center justify-center gap-1.5 rounded-xl text-[12.5px] font-bold">
+                👥 {ot('chat.newGroup')}
+              </Link>
+            </div>
           </div>
 
-          <div className="max-h-[22rem] overflow-y-auto overscroll-contain">
+          {/* ── รายการห้อง ── */}
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2">
             {rooms === null ? (
-              <p className="px-4 py-8 text-center text-xs text-ink-faint">{ot('common.loading')}</p>
+              Array.from({ length: 4 }, (_, i) => (
+                <div key={i} className="flex items-center gap-3 px-2 py-2.5">
+                  <span className="mkt-skel size-11 shrink-0 rounded-full" />
+                  <span className="flex-1 space-y-1.5">
+                    <span className="mkt-skel block h-3 w-1/2 rounded-full" />
+                    <span className="mkt-skel block h-2.5 w-3/4 rounded-full" />
+                  </span>
+                </div>
+              ))
             ) : rooms.length === 0 ? (
-              <div className="px-4 py-8 text-center">
-                <p className="text-xs text-ink-soft">{ot('chat.empty')}</p>
-                <Link
-                  href="/office/chat"
-                  onClick={() => setOpen(false)}
-                  className="mt-2 inline-block text-xs font-medium text-link hover:underline"
-                >
-                  {ot('chat.newDm')}
-                </Link>
+              <div className="px-4 py-10 text-center">
+                <span aria-hidden="true" className="text-4xl">💬</span>
+                <p className="mt-2 text-sm text-ink-soft">{ot('chat.empty')}</p>
               </div>
             ) : (
-              rooms.map((r) => (
-                <Link
-                  key={r.id}
-                  href={`/office/chat?room=${r.id}`}
-                  onClick={() => setOpen(false)}
-                  className="flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-surface"
-                >
-                  <span className="who-ava">
-                    <ChatAvatar name={r.title} url={r.avatar} group={r.kind === 'GROUP'} size={40} />
-                    {/* ★ จุดออนไลน์เฉพาะแชทส่วนตัว — กลุ่มไม่มี "คนเดียว" ให้บอก */}
-                    {r.kind === 'DM' && r.peer_id ? (
-                      <span
-                        className={cn('who-dot', online.has(r.peer_id) && 'who-dot-on')}
-                        aria-hidden="true"
-                      />
-                    ) : null}
-                  </span>
+              rooms.map((r, i) => {
+                const hot = r.unread > 0 && !r.muted
+                return (
+                  <Link
+                    key={r.id}
+                    href={`/office/chat?room=${r.id}`}
+                    onClick={() => setOpen(false)}
+                    style={{ '--i': Math.min(i, 10) } as React.CSSProperties}
+                    className={cn('pop-row flex items-center gap-3 rounded-2xl px-2.5 py-2.5', hot && 'pop-row-hot')}
+                  >
+                    <span className="who-ava">
+                      <ChatAvatar name={r.title} url={r.avatar} group={r.kind === 'GROUP'} size={44} />
+                      {/* ★ จุดออนไลน์เฉพาะแชทส่วนตัว — กลุ่มไม่มี "คนเดียว" ให้บอก */}
+                      {r.kind === 'DM' && r.peer_id ? (
+                        <span className={cn('who-dot', online.has(r.peer_id) && 'who-dot-on')} aria-hidden="true" />
+                      ) : null}
+                    </span>
 
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-baseline justify-between gap-2">
-                      <span
-                        dir="auto"
-                        className={cn(
-                          'min-w-0 truncate text-[13.5px]',
-                          r.unread > 0 ? 'font-semibold text-ink' : 'text-ink',
-                        )}
-                      >
-                        {r.title}
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-baseline justify-between gap-2">
+                        <span dir="auto" className={cn('min-w-0 truncate text-[14px] text-ink', hot ? 'font-bold' : 'font-medium')}>
+                          {r.title}
+                          {r.kind === 'GROUP' ? <span className="ms-1 text-[11px] font-normal text-ink-faint">{r.members}</span> : null}
+                        </span>
+                        <span className={cn('shrink-0 text-[10.5px]', hot ? 'font-bold text-[rgb(var(--pc))]' : 'text-ink-faint')}>
+                          {shortWhen(ot, r.last_message_at)}
+                        </span>
                       </span>
-                      <span className="shrink-0 text-[10.5px] text-ink-faint">
-                        {shortWhen(ot, r.last_message_at)}
+                      <span className="mt-0.5 flex items-center gap-2">
+                        <span dir="auto" className={cn('min-w-0 flex-1 truncate text-[12px]', hot ? 'font-medium text-ink' : 'text-ink-faint')}>
+                          {r.muted ? '🔕 ' : ''}
+                          {r.last_text || ot('chat.noMessage')}
+                        </span>
+                        {hot ? (
+                          <span className="pop-count grid h-5 min-w-5 shrink-0 place-items-center rounded-full px-1.5 text-[10.5px] font-black">
+                            {r.unread > 99 ? '99+' : r.unread}
+                          </span>
+                        ) : null}
                       </span>
                     </span>
-                    <span
-                      dir="auto"
-                      className={cn(
-                        'mt-0.5 block truncate text-[11.5px]',
-                        r.unread > 0 ? 'text-ink-soft' : 'text-ink-faint',
-                      )}
-                    >
-                      {r.last_text || ot('chat.noMessage')}
-                    </span>
-                  </span>
-
-                  {r.unread > 0 && !r.muted ? (
-                    <span className="size-2.5 shrink-0 rounded-full bg-accent" aria-hidden="true" />
-                  ) : null}
-                </Link>
-              ))
+                  </Link>
+                )
+              })
             )}
+          </div>
+
+          {/* ── ท้าย: ไปหน้าแชทเต็ม ── */}
+          <div className="shrink-0 border-t border-line p-2.5">
+            <Link href="/office/chat" onClick={() => setOpen(false)} className="pop-cta flex min-h-11 items-center justify-center gap-2 rounded-2xl text-sm font-bold">
+              {ot('chat.popOpenAll')}
+              <svg viewBox="0 0 24 24" className="size-4 rtl:-scale-x-100" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M5 12h14M13 6l6 6-6 6" />
+              </svg>
+            </Link>
           </div>
         </div>
       ) : null}

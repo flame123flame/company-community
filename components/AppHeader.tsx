@@ -226,7 +226,7 @@ export function AppHeader({
   }
 
   return (
-    <header className="sticky top-0 z-30 h-header bg-page">
+    <header className="app-header sticky top-0 z-50 h-header">
       {/**
        * ★ เขียนไว้ตรงนี้เพื่อให้ state ของการค้นหาทั้งหมดอยู่ที่เดียวกัน
        *   (ช่องค้นหา · ประวัติ · dropdown · เสียง) แต่ตัวมันเอง portal ออกไป
@@ -307,8 +307,10 @@ export function AppHeader({
             </span>
           </Link>
         ) : (
-          <Link href="/" className="shrink-0" aria-label={t('common.backHome')}>
-            <Logo />
+          <Link href="/" className="flex min-h-11 min-w-11 shrink-0 items-center" aria-label={t('common.backHome')}>
+            {/* ★ จอแคบกว่า 400px ซ่อนตัวอักษร เหลือไอคอน — ไม่งั้นรูปโปรไฟล์ขวาสุดถูกตัด
+                 (ชุดเดียวกับแถบบนของ /office) */}
+            <Logo wordmarkFrom="400" />
           </Link>
         )}
 

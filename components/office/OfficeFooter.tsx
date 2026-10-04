@@ -36,19 +36,19 @@ export function OfficeFooter() {
           columnClass(pathname),
         )}
       >
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+        <div className="flex flex-wrap items-center gap-x-5 sm:gap-y-2">
           <Link
             href="/"
-            className="text-[13px] font-semibold text-ink transition-opacity hover:opacity-70"
+            className="inline-flex min-h-11 items-center text-[13px] font-semibold text-ink transition-opacity hover:opacity-70 sm:min-h-0"
           >
-            AWA ROOM
+            AWA Plaza
           </Link>
 
           {links.map((s) => (
             <Link
               key={s.href}
               href={s.href}
-              className="text-xs text-ink-faint transition-colors hover:text-ink"
+              className="inline-flex min-h-11 min-w-11 items-center text-xs text-ink-soft transition-colors hover:text-ink sm:min-h-0"
             >
               {ot(s.labelKey)}
             </Link>

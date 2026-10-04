@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiFetch } from '@/lib/api/client'
 import { Button } from '@/components/ui/Button'
+import { useConfirm } from '@/components/ConfirmProvider'
 import { Input } from '@/components/ui/Input'
 import { officeErrorText } from '@/lib/i18n/office-format'
 import { Untranslated, useOt } from '@/lib/i18n/office'
@@ -23,6 +24,7 @@ type Settings = {
 /** หน้าตั้งค่าระบบ (FR-X09 · หัวข้อ 8.6) */
 export function AdminSettings() {
   const ot = useOt()
+  const confirm = useConfirm()
   const [settings, setSettings] = useState<Settings>({})
   const [saving, setSaving] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -45,7 +47,16 @@ export function AdminSettings() {
     void load()
   }, [load])
 
-  async function save(key: string, value: unknown) {
+  /** ★ คืน false เมื่อกดยกเลิกในกล่องยืนยัน — แผนที่จะได้ไม่ปิดเองทั้งที่ยังไม่ได้บันทึก */
+  async function save(key: string, value: unknown): Promise<boolean> {
+    const LABEL: Record<string, string> = {
+      report_threshold: ot('admin.settings.reportThreshold'),
+      no_repeat_days: ot('admin.settings.noRepeatDays'),
+      reminder_days: ot('admin.settings.reminderDays'),
+      office_latlng: ot('admin.office.latlng'),
+      lottery_next_draw: ot('admin.settings.lotteryDate'),
+    }
+    if (!(await confirm({ kind: 'edit', subject: LABEL[key] ?? key }))) return false
     setSaving(key)
     setError(null)
     setSaved(null)
@@ -64,6 +75,7 @@ export function AdminSettings() {
     } finally {
       setSaving(null)
     }
+    return true
   }
 
   return (
@@ -149,7 +161,8 @@ export function AdminSettings() {
                   disabled={!draftLatLng}
                   onClick={() => {
                     if (!draftLatLng) return
-                    void save('office_latlng', draftLatLng).then(() => {
+                    void save('office_latlng', draftLatLng).then((done) => {
+                      if (!done) return
                       setMapOpen(false)
                       setDraftLatLng(null)
                     })
