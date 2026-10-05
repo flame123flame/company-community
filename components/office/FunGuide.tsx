@@ -10,7 +10,7 @@ export type GuideArt =
   | 'owed' | 'bill' | 'chart' | 'qr'
   | 'market' | 'post' | 'mine' | 'chat'
   | 'picks' | 'spin' | 'talk' | 'idcard'
-  | 'vinyl' | 'stage'
+  | 'vinyl' | 'stage' | 'connect4' | 'quiz'
 
 /*
  * ★★ จำว่า "ซ่อนคำอธิบาย" ไว้ในเครื่อง — ของสะดวกส่วนตัว ไม่ใช่ข้อมูลสำคัญ
@@ -578,6 +578,61 @@ function Art({ kind }: { kind: GuideArt }) {
           <span className="guide-person absolute bottom-8 start-2 grid size-12 place-items-center rounded-2xl bg-elevated text-2xl shadow-md ring-1 ring-line" style={{ '--dl': '1.2s' } as CSSProperties}>
             📷
           </span>
+        </div>
+      )
+    case 'quiz':
+      return (
+        <div className="absolute inset-0 grid place-items-center">
+          <div className="guide-tag w-56 rounded-3xl p-3" style={{ '--dl': '0s' } as CSSProperties}>
+            <div className="flex items-center gap-2">
+              <span className="quiz-ring grid size-10 place-items-center rounded-full" style={{ '--p': '250deg' } as CSSProperties}>
+                <span className="grid size-[30px] place-items-center rounded-full bg-elevated text-xs font-black text-ink">12</span>
+              </span>
+              <span className="h-2.5 flex-1 rounded-full bg-ink/70" />
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-1.5">
+              {(['red', 'blue', 'gold', 'green'] as const).map((tone, k) => (
+                <span key={tone} className={cn('quiz-choice grid h-11 place-items-center rounded-xl text-base font-black', `quiz-tone-${tone}`, k === 1 && 'quiz-choice-correct')}>
+                  {['▲', '◆', '●', '■'][k]}
+                </span>
+              ))}
+            </div>
+          </div>
+          {(
+            [
+              ['🙋', '2%', '6%', '0s'],
+              ['🎉', '82%', '10%', '0.6s'],
+              ['🏆', '78%', '74%', '1.2s'],
+              ['⚡', '4%', '76%', '1.8s'],
+            ] as const
+          ).map(([e, x, y, d]) => (
+            <span key={e} className="guide-person absolute grid size-12 place-items-center rounded-2xl bg-elevated text-2xl ring-1 ring-line" style={{ left: x, top: y, '--dl': d } as CSSProperties}>
+              {e}
+            </span>
+          ))}
+        </div>
+      )
+    case 'connect4':
+      return (
+        <div className="absolute inset-0 grid place-items-center">
+          <div className="c4-board c4-art w-[230px] rounded-[22px] p-2.5">
+            <div className="grid grid-cols-7 gap-1.5">
+              {Array.from({ length: 42 }, (_, i) => {
+                const red = [35, 29, 23, 17, 36, 31].includes(i)
+                const gold = [37, 38, 30, 24, 39].includes(i)
+                return (
+                  <span key={i} className="c4-hole relative aspect-square rounded-full">
+                    {red || gold ? (
+                      <span
+                        className={cn('c4-disc c4-drop absolute inset-[6%]', red ? 'c4-red' : 'c4-gold', [35, 29, 23, 17].includes(i) && 'c4-win')}
+                        style={{ '--fall': Math.floor(i / 7) + 1, animationDelay: `${(i % 7) * 0.15}s` } as CSSProperties}
+                      />
+                    ) : null}
+                  </span>
+                )
+              })}
+            </div>
+          </div>
         </div>
       )
     case 'vinyl':

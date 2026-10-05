@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/Input'
 import { ApiClientError, apiFetch } from '@/lib/api/client'
 import { rememberProfile, signInWithUsername } from '@/lib/auth/session'
 import { useT } from '@/lib/i18n/client'
+import { Untranslated } from '@/lib/i18n/office'
 
 /**
  * ฟอร์มเข้าใช้งานด้วยชื่อผู้ใช้ช่องเดียว
@@ -55,9 +56,19 @@ export function SignInForm({
   const [reveal, setReveal] = useState(false)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /* ★ ช่องที่ยังว่างตอนกดเข้าใช้งาน — ขึ้นแดงใต้ช่องนั้น (เจ้าของสั่ง 5 ต.ค. 2026) */
+  const [missing, setMissing] = useState<{ username: boolean; password: boolean }>({ username: false, password: false })
 
   async function submit(event: FormEvent) {
     event.preventDefault()
+
+    /* ★ ว่างทั้งช่อง = บอกตรง ๆ ว่ายังไม่ได้กรอก ไม่ใช่ "ชื่อผู้ใช้ไม่ถูกต้อง" */
+    const lack = { username: username.trim() === '', password: password === '' }
+    if (lack.username || lack.password) {
+      setMissing(lack)
+      setError(null)
+      return
+    }
 
     /**
      * ★ ทำความสะอาดให้เงียบ ๆ แทนการด่าผู้ใช้
@@ -128,7 +139,7 @@ export function SignInForm({
   }
 
   return (
-    <form onSubmit={submit} className="w-full max-w-[400px]">
+    <form onSubmit={submit} noValidate className="w-full max-w-[400px]">
       {/**
         * ★★ โลโก้ใหญ่และอยู่นอกการ์ด ไม่ใช่ยัดเข้าไปข้างใน
         *
@@ -189,6 +200,7 @@ export function SignInForm({
               onChange={(e) => {
                 setUsername(e.target.value)
                 setError(null)
+                setMissing((m) => ({ ...m, username: false }))
               }}
               placeholder={t('auth.usernamePlaceholder')}
               maxLength={20}
@@ -198,12 +210,19 @@ export function SignInForm({
               spellCheck={false}
               aria-label={t('auth.username')}
               disabled={pending}
-              invalid={Boolean(error)}
+              invalid={Boolean(error) || missing.username}
+              aria-describedby={missing.username ? 'username-missing' : undefined}
               focusTone="accent"
               className="h-12 rounded-xl ps-11 text-[15px] sm:text-[15px]"
             />
           </div>
-          <p className="mt-1.5 text-[11px] text-ink-faint">{t('auth.rule')}</p>
+          {missing.username ? (
+            <p id="username-missing" role="alert" className="mt-1.5 text-xs font-medium text-danger">
+              <Untranslated>{t('auth.needUsername')}</Untranslated>
+            </p>
+          ) : (
+            <p className="mt-1.5 text-[11px] text-ink-faint">{t('auth.rule')}</p>
+          )}
         </div>
 
         {/* ★ บังคับทั้งที่ฟอร์มและที่เซิร์ฟเวอร์ — ทุกบัญชีมีรหัสผ่านแล้ว
@@ -225,13 +244,16 @@ export function SignInForm({
               onChange={(e) => {
                 setPassword(e.target.value)
                 setError(null)
+                setMissing((m) => ({ ...m, password: false }))
               }}
+              placeholder={t('auth.passwordPlaceholder')}
               maxLength={72}
               autoComplete="current-password"
               aria-label={t('auth.password')}
               required
               disabled={pending}
-              invalid={Boolean(error)}
+              invalid={Boolean(error) || missing.password}
+              aria-describedby={missing.password ? 'password-missing' : undefined}
               focusTone="accent"
               className="h-12 rounded-xl ps-11 pe-11 text-[15px] sm:text-[15px]"
             />
@@ -257,6 +279,11 @@ export function SignInForm({
               )}
             </button>
           </div>
+          {missing.password ? (
+            <p id="password-missing" role="alert" className="mt-1.5 text-xs font-medium text-danger">
+              <Untranslated>{t('auth.needPassword')}</Untranslated>
+            </p>
+          ) : null}
         </div>
 
         {error ? (
@@ -330,12 +357,36 @@ export function SignInForm({
       {/* ★ เส้นคั่นบาง ๆ แยก "ของที่ต้องกรอก" ออกจาก "ทางอื่นที่ไปได้"
           ★★ ไม่มีเส้น ลิงก์สมัครจะอ่านเหมือนเป็นส่วนหนึ่งของฟอร์ม */}
       <div className="auth-rule mx-auto mt-5 w-32" aria-hidden="true" />
-      <p className="mt-4 text-center text-xs text-ink-soft">
-        {t('auth.noAccount')}{' '}
-        <Link href="/register" className="font-medium text-link hover:underline">
-          {t('auth.register')}
-        </Link>
-      </p>
+      {/*
+        * ★★ ทางไปสมัครเป็นการ์ดปุ่มเต็มความกว้าง ไม่ใช่ลิงก์ตัวเล็กบรรทัดเดียว
+        *    ★ เจ้าของสั่งให้เด่น (5 ต.ค. 2026) — คนใหม่ส่วนใหญ่ยังไม่มีบัญชี
+        *      ลิงก์ 14px ใต้การ์ดคือสิ่งที่เขาหาไม่เจอ
+        */}
+      <Link href="/register" className="auth-signup group relative mt-4 flex min-h-[88px] items-center gap-4 overflow-hidden rounded-[22px] px-4 py-3.5">
+        {/* แสงวาบกวาดผ่านทั้งปุ่มเป็นระยะ */}
+        <span aria-hidden="true" className="auth-signup-sheen" />
+        {/* ไอคอนใหญ่ + ประกายเล็กลอยวนรอบ */}
+        <span aria-hidden="true" className="relative grid size-14 shrink-0 place-items-center">
+          <span className="auth-signup-icon grid size-14 place-items-center rounded-2xl text-2xl">🚀</span>
+          {(['✦', '✧', '✦'] as const).map((g, i) => (
+            <span key={i} className="auth-signup-spark absolute text-[11px]" style={{ '--a': `${i * 120}deg`, '--dl': `${i * 0.4}s` } as React.CSSProperties}>
+              {g}
+            </span>
+          ))}
+        </span>
+        <span className="relative min-w-0 flex-1 text-start">
+          <span className="block text-xs font-medium text-ink-soft">{t('auth.noAccount')}</span>
+          <span className="auth-signup-title block text-xl font-black leading-tight">{t('auth.register')}</span>
+          <span className="mt-0.5 block text-[11.5px] leading-snug text-ink-faint">
+            <Untranslated>{t('auth.registerHint')}</Untranslated>
+          </span>
+        </span>
+        <span aria-hidden="true" className="auth-signup-go relative grid size-11 shrink-0 place-items-center rounded-full">
+          <svg viewBox="0 0 24 24" className="size-5 rtl:-scale-x-100" fill="currentColor">
+            <path d="M12 4l-1.4 1.4L16.2 11H4v2h12.2l-5.6 5.6L12 20l8-8z" />
+          </svg>
+        </span>
+      </Link>
 
     </form>
   )

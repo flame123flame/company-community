@@ -728,6 +728,44 @@ export type Database = {
         Relationships: []
       }
 
+      /* ── ควิซออฟฟิศ (0062) — office_quiz_* ไม่ใช่ quiz_* (นั่นของเกมทายเพลง 0020) ── */
+      office_quiz_rooms: {
+        Row: {
+          id: string
+          code: string
+          host_id: string
+          title: string
+          status: 'LOBBY' | 'QUESTION' | 'REVEAL' | 'DONE'
+          q_index: number
+          q_count: number
+          q_started_at: string | null
+          answered: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: { code: string; host_id: string; title: string; q_count: number }
+        Update: { title?: string }
+        Relationships: []
+      }
+      office_quiz_questions: {
+        Row: { id: string; room_id: string; idx: number; body: string; choices: string[]; correct: number; seconds: number }
+        Insert: { room_id: string; idx: number; body: string; choices: string[]; correct: number; seconds: number }
+        Update: Record<string, never>
+        Relationships: []
+      }
+      office_quiz_players: {
+        Row: { room_id: string; user_id: string; score: number; joined_at: string }
+        Insert: { room_id: string; user_id: string }
+        Update: Record<string, never>
+        Relationships: []
+      }
+      office_quiz_answers: {
+        Row: { room_id: string; idx: number; user_id: string; choice: number; points: number; answered_at: string }
+        Insert: Record<string, never>
+        Update: Record<string, never>
+        Relationships: []
+      }
+
       typing_players: {
         Row: {
           room_id: string
@@ -1639,6 +1677,19 @@ export type Database = {
       checkers_end: {
         Args: { p_actor: string; p_game: string; p_action: string }
         Returns: Database['public']['Tables']['checkers_games']['Row']
+      }
+      /* ── ควิซออฟฟิศ (0062) ─────────────────────────────────────── */
+      office_quiz_answer: {
+        Args: { p_actor: string; p_room: string; p_choice: number }
+        Returns: { accepted: boolean; reason?: 'CLOSED' | 'LATE' }
+      }
+      office_quiz_reveal: {
+        Args: { p_actor: string; p_room: string }
+        Returns: undefined
+      }
+      office_quiz_next: {
+        Args: { p_actor: string; p_room: string }
+        Returns: undefined
       }
       /* ── แข่งพิมพ์ดีด (0053) ─────────────────────────────────────── */
       typing_join: {

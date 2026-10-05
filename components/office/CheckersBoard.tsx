@@ -437,31 +437,49 @@ export function CheckersResult({
   tone,
   title,
   board,
-  side,
+  side = 'BOTTOM',
   note,
+  stats: statsOverride,
+  piece,
+  seed: seedOverride,
+  lines: linesOverride,
+  sub: subOverride,
   children,
 }: {
   tone: 'win' | 'lose' | 'draw'
   /** หัวเรื่องสั้น เช่น "คุณชนะ!" / "บอทชนะ" */
   title: string
-  board: Board
+  /** กระดานหมากฮอส — เกมอื่น (เช่นเรียง 4) ไม่ต้องส่ง แล้วส่ง stats/piece/seed ของตัวเองแทน */
+  board?: Board
   /** มุมมองของใคร — ใช้นับ "กินได้กี่ตัว / เหลือกี่ตัว" */
-  side: Side
+  side?: Side
   /** หมายเหตุเล็ก ๆ เช่น "(อีกฝ่ายยอมแพ้)" */
   note?: string | null
+  /** ★ แถวสถิติของเกมอื่น — แทนแถว "กินได้ · เหลือ" ของหมากฮอส */
+  stats?: ReactNode
+  /** ★ รูปหมากในภาพแพ้/เสมอ — 'mine' = ฝั่งเรา · 'theirs' = อีกฝ่าย */
+  piece?: (who: 'mine' | 'theirs') => ReactNode
+  /** ★ ตัวเลือกประโยคสุ่ม — ต้องคงที่ต่อเกม (ห้ามสุ่มตอน render) */
+  seed?: number
+  /** ★ ประโยคสุ่มของเกมอื่น (คั่นด้วย ·) — ของหมากฮอสพูดถึงหมากฮอสตรง ๆ */
+  lines?: string
+  /** ★ บรรทัดรองของเกมอื่น */
+  sub?: string
   children: ReactNode
 }) {
   const ot = useOt()
   const [open, setOpen] = useState(true)
 
-  const mine = board.filter((c) => sideOf(c) === side).length
-  const theirs = board.filter((c) => sideOf(c) !== null && sideOf(c) !== side).length
-  const seed = board.reduce<number>((s, c, i) => s + Math.abs(c) * (i + 1), 0)
+  const mine = board ? board.filter((c) => sideOf(c) === side).length : 0
+  const theirs = board ? board.filter((c) => sideOf(c) !== null && sideOf(c) !== side).length : 0
+  const seed = seedOverride ?? (board ? board.reduce<number>((s, c, i) => s + Math.abs(c) * (i + 1), 0) : 0)
   const lines = splitList(
-    ot(tone === 'win' ? 'game.checkers.winLines' : tone === 'lose' ? 'game.checkers.loseLines' : 'game.checkers.drawLines'),
+    linesOverride ??
+      ot(tone === 'win' ? 'game.checkers.winLines' : tone === 'lose' ? 'game.checkers.loseLines' : 'game.checkers.drawLines'),
   )
   const headline = lines[seed % Math.max(1, lines.length)] ?? title
-  const sub = ot(tone === 'win' ? 'game.checkers.winSub' : tone === 'lose' ? 'game.checkers.loseSub' : 'game.checkers.drawSub')
+  const sub =
+    subOverride ?? ot(tone === 'win' ? 'game.checkers.winSub' : tone === 'lose' ? 'game.checkers.loseSub' : 'game.checkers.drawSub')
 
   /* ★ เสียงเล่นพร้อมจังหวะที่ป๊อปอัปโผล่ ไม่ใช่ทันทีที่ตาสุดท้ายเดิน */
   useEffect(() => {
@@ -503,7 +521,7 @@ export function CheckersResult({
     )
   }
 
-  const stats = (
+  const stats = statsOverride !== undefined ? statsOverride : !board ? null : (
     <div className="ckr-rise mt-4 flex flex-wrap justify-center gap-2" style={{ '--d': '1.25s' } as CSSProperties}>
       <span className="inline-flex items-center gap-1.5 rounded-full bg-surface px-3 py-1.5 text-xs font-medium text-ink">
         <span className={cn('ck-chip', side === 'BOTTOM' ? 'ck-pearl' : 'ck-red')} aria-hidden="true" />
@@ -583,7 +601,7 @@ export function CheckersResult({
               <path d="M18 30a12 12 0 0 1-1.6-23.9A16 16 0 0 1 46 10a10 10 0 0 1 2 19.8V30z" />
             </svg>
             <span className="ckr-sad relative mx-auto grid size-24 place-items-center">
-              <Piece cell={side === 'BOTTOM' ? B_MAN : W_MAN} className="!w-full" />
+              {piece ? piece('mine') : <Piece cell={side === 'BOTTOM' ? B_MAN : W_MAN} className="!w-full" />}
               {/* ★ หน้าเศร้าวาดทับหมาก — ใช้สีตัวหนังสือของฝั่งนั้นให้ตัดกับพื้นหมาก */}
               <svg
                 viewBox="0 0 40 40"
@@ -604,10 +622,10 @@ export function CheckersResult({
         ) : (
           <span className="relative mx-auto flex h-24 items-center justify-center">
             <span className="ckr-bump-l grid size-20 place-items-center">
-              <Piece cell={B_MAN} className="!w-full" />
+              {piece ? piece('mine') : <Piece cell={B_MAN} className="!w-full" />}
             </span>
             <span className="ckr-bump-r -ms-4 grid size-20 place-items-center">
-              <Piece cell={W_MAN} className="!w-full" />
+              {piece ? piece('theirs') : <Piece cell={W_MAN} className="!w-full" />}
             </span>
           </span>
         )}

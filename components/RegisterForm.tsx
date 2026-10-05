@@ -651,66 +651,106 @@ export function RegisterForm() {
  */
 function TermsDialog({ onClose, onAgree }: { onClose: () => void; onAgree: () => void }) {
   const ot = useOt()
-  const items: { t: string; b: string }[] = [
-    { t: ot('reg.t1'), b: ot('reg.t1b') },
-    { t: ot('reg.t2'), b: ot('reg.t2b') },
-    { t: ot('reg.t3'), b: ot('reg.t3b') },
-    { t: ot('reg.t4'), b: ot('reg.t4b') },
-    { t: ot('reg.t5'), b: ot('reg.t5b') },
-    { t: ot('reg.t6'), b: ot('reg.t6b') },
+  /* ★ แถบความคืบหน้าการอ่าน — เลื่อนถึงไหนแถบยาวถึงนั่น (คำนวณใน onScroll ไม่ใช่ effect) */
+  const [read, setRead] = useState(0)
+  const items: { t: string; b: string; e: string }[] = [
+    { t: ot('reg.t1'), b: ot('reg.t1b'), e: '👥' },
+    { t: ot('reg.t2'), b: ot('reg.t2b'), e: '🔎' },
+    { t: ot('reg.t3'), b: ot('reg.t3b'), e: '🔐' },
+    { t: ot('reg.t4'), b: ot('reg.t4b'), e: '🚫' },
+    { t: ot('reg.t5'), b: ot('reg.t5b'), e: '💸' },
+    { t: ot('reg.t6'), b: ot('reg.t6b'), e: '✏️' },
   ]
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+      className="cfm-root fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-label={ot('reg.termsTitle')}
+      onKeyDown={(e) => e.key === 'Escape' && onClose()}
       /* ★ กดพื้นหลังเพื่อปิด — แต่เฉพาะพื้นหลังจริง ไม่ใช่ตัวแผง */
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <div className="flex max-h-[85vh] w-full max-w-[560px] flex-col overflow-hidden rounded-t-3xl border border-line bg-elevated sm:rounded-3xl">
-        <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
-          <h2 className="text-[17px] font-semibold text-ink">{ot('reg.termsTitle')}</h2>
+      <div
+        className="terms-card cfm-card flex max-h-[90dvh] w-full max-w-[600px] flex-col overflow-hidden rounded-t-[32px] sm:rounded-[32px]"
+        style={{ '--pc': '255 0 51', '--pc2': '175 82 222' } as CSSProperties}
+      >
+        {/* ── หัวไล่สี + ไอคอนใหญ่ ── */}
+        <div className="pop-hero relative shrink-0 overflow-hidden px-6 pb-6 pt-6">
+          <span aria-hidden="true" className="pop-blob pop-blob-a" />
+          <span aria-hidden="true" className="pop-blob pop-blob-b" />
           <button
             type="button"
             onClick={onClose}
             aria-label={ot('common.close')}
-            className="grid size-9 shrink-0 place-items-center rounded-full text-ink-soft transition-colors hover:bg-surface hover:text-ink"
+            className="pop-action absolute end-4 top-4 z-10 grid size-11 place-items-center rounded-full"
           >
             <svg viewBox="0 0 24 24" className="size-5" fill="currentColor" aria-hidden="true">
               <path d="m12 10.6 5-5 1.4 1.4-5 5 5 5-1.4 1.4-5-5-5 5L5.6 17l5-5-5-5L12 5.6z" />
             </svg>
           </button>
+          <div className="relative flex items-center gap-4 pe-12">
+            <span aria-hidden="true" className="terms-icon grid size-16 shrink-0 place-items-center rounded-[22px] text-3xl">📜</span>
+            <div className="min-w-0">
+              <h2 className="text-[22px] font-black leading-tight text-[var(--ck-shine)]">{ot('reg.termsTitle')}</h2>
+              <p className="mt-1 text-[13px] text-[color-mix(in_srgb,var(--ck-shine)_85%,transparent)]">
+                <Untranslated>{ot('reg.termsLead', { n: items.length })}</Untranslated>
+              </p>
+            </div>
+          </div>
+        </div>
+        {/* แถบอ่านถึงไหนแล้ว */}
+        <div aria-hidden="true" className="h-1 shrink-0 bg-surface">
+          <div className="terms-progress h-full" style={{ width: `${Math.max(4, read)}%` }} />
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 py-4">
-          <ol className="flex flex-col gap-4">
+        <div
+          className="flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6"
+          onScroll={(e) => {
+            const el = e.currentTarget
+            const max = el.scrollHeight - el.clientHeight
+            setRead(max <= 0 ? 100 : Math.round((el.scrollTop / max) * 100))
+          }}
+        >
+          <ol className="flex flex-col gap-3">
             {items.map((it, i) => (
-              <li key={it.t} className="flex gap-3">
-                <span className="grid size-6 shrink-0 place-items-center rounded-full bg-surface text-[11px] font-bold text-ink-soft">
-                  {i + 1}
+              <li
+                key={it.t}
+                className="terms-item flex gap-3.5 rounded-[20px] p-4"
+                style={{ '--i': i } as CSSProperties}
+              >
+                <span className="relative shrink-0">
+                  <span aria-hidden="true" className="grid size-12 place-items-center rounded-2xl bg-surface text-2xl">{it.e}</span>
+                  <span className="terms-num absolute -end-1.5 -top-1.5 grid size-6 place-items-center rounded-full text-[11px] font-black">
+                    {i + 1}
+                  </span>
                 </span>
                 <span className="min-w-0">
-                  <span className="block text-sm font-semibold text-ink">{it.t}</span>
-                  <span className="mt-1 block text-[13px] leading-relaxed text-ink-soft">
-                    {it.b}
-                  </span>
+                  <span className="block text-[15px] font-black text-ink">{it.t}</span>
+                  <span className="mt-1 block text-[13px] leading-relaxed text-ink-soft">{it.b}</span>
                 </span>
               </li>
             ))}
           </ol>
         </div>
 
-        <div className="flex flex-wrap gap-2 border-t border-line px-5 py-4">
-          <Button variant="primary" onClick={onAgree}>
-            {ot('reg.termsAgreeHere')}
-          </Button>
-          <Button variant="ghost" onClick={onClose}>
+        <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-line px-5 py-4 sm:flex-row sm:items-center sm:px-6">
+          <button
+            type="button"
+            onClick={onClose}
+            className="min-h-12 rounded-2xl px-5 text-sm font-semibold text-ink-soft transition-colors hover:bg-surface hover:text-ink sm:me-auto"
+          >
             {ot('reg.termsClose')}
-          </Button>
+          </button>
+          <button type="button" onClick={onAgree} className="cfm-ok inline-flex min-h-13 items-center justify-center gap-2 rounded-2xl px-6 text-base font-bold">
+            <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="m5 12 5 5 9-10" />
+            </svg>
+            {ot('reg.termsAgreeHere')}
+          </button>
         </div>
       </div>
     </div>

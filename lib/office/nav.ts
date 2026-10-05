@@ -111,6 +111,8 @@ export const OFFICE_NAV: NavSection[] = [
            ★★ ของที่ต้องรอคนอื่นควรอยู่ท้าย เพราะคนที่เปิดมาคนเดียว
               จะได้ไม่ต้องเลื่อนผ่านของที่กดแล้วรออย่างเดียว */
       { href: '/office/fun/checkers', labelKey: 'game.checkers.title' , group: 'nav.fun.g.play', icon: 'M4 4h16v16H4zM4 10h16M4 16h16M10 4v16M16 4v16' },
+      { href: '/office/fun/connect4', labelKey: 'game.c4.title' , group: 'nav.fun.g.play', icon: 'M4 5h16v14H4zM8 9h.01M12 9h.01M16 9h.01M8 13h.01M12 13h.01M16 13h.01' },
+      { href: '/office/fun/quiz', labelKey: 'game.quiz.title' , group: 'nav.fun.g.play', icon: 'M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z' },
       { href: '/office/fun/typing', labelKey: 'game.typing.title' , group: 'nav.fun.g.play', icon: 'M3 7h18v10H3zM7 11h.01M10 11h.01M13 11h.01M16 11h.01M8 14h8' },
       { href: '/office/fun/room', labelKey: 'room.title' , group: 'nav.fun.g.draw', icon: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM8 9h.01M16 9h.01M8 15c1.5 1.3 6.5 1.3 8 0' },
     ],
@@ -201,6 +203,8 @@ const PAGE_META: Record<string, PageMeta> = {
   /* ★ หน้าหมวดเกมมีหน้าของตัวเองแล้ว — ของเดิมกดเข้าหมวดแล้วเจอ 404 */
   '/office/fun': { titleKey: 'nav.fun', descKey: 'pdesc.funHub' },
   '/office/fun/checkers': { titleKey: 'game.checkers.title', descKey: 'game.checkers.desc', section: '/office/fun' },
+  '/office/fun/connect4': { titleKey: 'game.c4.title', descKey: 'game.c4.desc', section: '/office/fun' },
+  '/office/fun/quiz': { titleKey: 'game.quiz.title', descKey: 'game.quiz.desc', section: '/office/fun' },
   '/office/fun/typing': { titleKey: 'game.typing.title', descKey: 'game.typing.desc', section: '/office/fun' },
   '/office/fun/name': { titleKey: 'fun.name.title', descKey: 'pdesc.funName', section: '/office/fun' },
   '/office/fun/team': { titleKey: 'fun.team.title', descKey: 'pdesc.funTeam', section: '/office/fun' },
@@ -253,6 +257,8 @@ const WIDE_PAGES = new Set([
   /* ★ หน้าหมากฮอสใช้สองคอลัมน์บนจอกว้าง — คอลัมน์ 1000px บีบจนตารางรูป
        เหลือสองคอลัมน์ ซึ่งเสียประโยชน์ทั้งหมดของการเปลี่ยนมาเป็นตาราง */
   '/office/fun/checkers',
+  '/office/fun/connect4',
+  '/office/fun/quiz',
   '/office/fun/typing',
   '/office/fun/cup',
   '/office/fun',

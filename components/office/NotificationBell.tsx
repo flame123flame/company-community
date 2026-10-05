@@ -256,7 +256,7 @@ export function NotificationBell({ userId }: { userId: string }) {
 
             {/* ★ ขอบล่างจางลง — รายการที่ถูกตัดกลางคันตรง ๆ อ่านเป็น "แสดงไม่หมด"
                 ★★ ส่วนขอบที่จางบอกว่า "เลื่อนลงต่อได้" ซึ่งเป็นคนละความหมาย */}
-            <div className="notify-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain">
+            <div className="notify-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain pb-3">
               {loading && items.length === 0 ? (
                 <p className="px-4 py-10 text-center text-sm text-ink-faint">
                   {ot('common.loading')}
@@ -270,14 +270,12 @@ export function NotificationBell({ userId }: { userId: string }) {
                       * ★ หัวข้อวันเกาะอยู่บนสุดตอนเลื่อน — พอเลื่อนลงไปลึก ๆ
                       *   ยังรู้ว่ากำลังอ่านของวันไหนอยู่
                       */}
-                    <h3
-                      className={cn(
-                        'sticky top-0 z-10 bg-elevated/95 px-4 py-1.5 backdrop-blur-sm',
-                        'text-[10.5px] font-semibold uppercase tracking-wide text-ink-faint',
-                      )}
-                    >
+                    <h3 className="notify-day sticky top-0 z-10 flex items-center gap-2 px-3 pb-1.5 pt-3 text-[11px] font-black uppercase tracking-wide text-ink-soft">
                       <Untranslated>{ot(`notify.${bucket}` as OfficeKey)}</Untranslated>
+                      <span className="rounded-full bg-surface px-1.5 text-[10px] font-bold tabular-nums text-ink-faint">{rows.length}</span>
+                      <span aria-hidden="true" className="h-px flex-1 bg-line" />
                     </h3>
+                    <div className="flex flex-col gap-1.5 px-2">
                     {rows.map((item) => (
                       <Row
                         key={item.id}
@@ -288,6 +286,7 @@ export function NotificationBell({ userId }: { userId: string }) {
                         }}
                       />
                     ))}
+                    </div>
                   </section>
                 ))
               )}
@@ -448,90 +447,67 @@ function Row({ item, onGo }: { item: Item; onGo: () => void }) {
 
   const kind = KIND_OF[item.titleKey] ?? KINDS.other
 
+  const unread = !item.readAt
   const body = (
     <div
-      className={cn(
-        'notify-row flex items-start gap-3 px-4 py-3',
-        item.readAt ? 'is-read' : 'is-unread',
-      )}
+      className={cn('notify-row notify-card group/n flex items-center gap-3 rounded-[18px] px-3 py-3', unread ? 'is-unread' : 'is-read')}
       style={{ '--tint': kind.tint } as CSSProperties}
     >
       {/*
-        * ★★★ ไอคอนบอกชนิดของเรื่อง ไม่ใช่แค่จุดแดงบอกว่าอ่านหรือยัง
-        *
-        *     ★ รายการเดิมเป็นข้อความสิบกว่าบรรทัดหน้าตาเหมือนกันหมด
-        *       ★★ ต้องอ่านทุกบรรทัดถึงจะรู้ว่าอันไหนเรื่องเงิน อันไหนเรื่องแชท
-        *     ★ ไอคอนที่มีสีประจำเรื่องทำให้กวาดตาแล้วแยกกองได้ทันที
-        *       ซึ่งคือสิ่งที่คนทำจริงเวลามีแจ้งเตือนค้าง 18 อัน
+        * ★★★ ไอคอนบอกชนิดของเรื่อง (สีประจำโมดูลต้นทาง) — กวาดตาแล้วแยกกองได้ทันที
+        *     ★ ยังไม่อ่าน = แผ่นไล่สีทึบ + แสงเรือง · อ่านแล้ว = แผ่นจาง
         */}
-      <span
-        aria-hidden="true"
-        className={cn(
-          'mt-0.5 grid size-9 shrink-0 place-items-center rounded-xl',
-          'text-[rgb(var(--tint))] ring-1 ring-[rgb(var(--tint)/0.28)]',
-        )}
-        style={{
-          background:
-            'linear-gradient(145deg, rgb(var(--tint) / 0.22), rgb(var(--tint) / 0.08))',
-        }}
-      >
-        <svg
-          viewBox="0 0 24 24"
-          className="size-4.5"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
+      <span aria-hidden="true" className="notify-icon relative grid size-11 shrink-0 place-items-center rounded-2xl">
+        <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d={kind.icon} />
         </svg>
+        {unread ? <span className="notify-ping absolute -end-1 -top-1 size-3 rounded-full" /> : null}
       </span>
 
       <div className="min-w-0 flex-1">
-        <p
-          className={cn(
-            'text-sm leading-snug',
-            item.readAt ? 'text-ink-soft' : 'font-medium text-ink',
-          )}
-        >
-          {text}
-        </p>
+        <div className="flex items-start gap-2">
+          <p className={cn('min-w-0 flex-1 text-[13.5px] leading-snug', unread ? 'font-bold text-ink' : 'text-ink-soft')}>{text}</p>
+          {unread ? (
+            <span className="notify-new shrink-0 rounded-full px-2 py-0.5 text-[10px] font-black">
+              <Untranslated>{ot('notify.newBadge')}</Untranslated>
+            </span>
+          ) : null}
+        </div>
 
-        {/* ★ ยอดเงิน/ชื่อบิล — ของที่ params มีอยู่แล้วแต่ไม่เคยขึ้นจอ
-            ★★ dir="auto" เพราะชื่อบิลและชื่อของเป็นข้อความที่ผู้ใช้พิมพ์เอง */}
-        {detail ? (
-          <p
-            dir="auto"
-            className="mt-0.5 truncate text-[12.5px] font-semibold tabular-nums text-[rgb(var(--tint))]"
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+          {/* ★ ยอดเงิน/ชื่อบิล — แคปซูลสีประจำเรื่อง · dir="auto" เพราะเป็นข้อความที่ผู้ใช้พิมพ์ */}
+          {detail ? (
+            <span dir="auto" className="notify-detail max-w-full truncate rounded-full px-2.5 py-0.5 text-[12px] font-black tabular-nums">
+              {detail}
+            </span>
+          ) : null}
+          <time
+            dateTime={item.createdAt}
+            /* ★ เวลาเต็มอยู่ใน title — "3 วันที่แล้ว" ตอบไม่ได้ว่าวันไหน */
+            title={new Date(item.createdAt).toLocaleString(locale)}
+            className="inline-flex items-center gap-1 text-[11px] text-ink-faint"
           >
-            {detail}
-          </p>
-        ) : null}
-
-        <time
-          dateTime={item.createdAt}
-          /* ★ เวลาเต็มอยู่ใน title — "3 วันที่แล้ว" ตอบไม่ได้ว่าวันไหน
-               ★★ ชี้ค้างไว้แล้วได้คำตอบ โดยไม่กินที่บนบรรทัด */
-          title={new Date(item.createdAt).toLocaleString(locale)}
-          className="mt-0.5 block text-[11px] text-ink-faint"
-        >
-          {formatWhen(ot, item.createdAt)}
-        </time>
+            <svg viewBox="0 0 24 24" className="size-3" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 7v5l3 2" />
+            </svg>
+            {formatWhen(ot, item.createdAt)}
+          </time>
+        </div>
       </div>
 
-      {/* ★ จุดยังไม่อ่านอยู่ขวา ไม่ใช่ซ้าย — ซ้ายเป็นที่ของไอคอนชนิดแล้ว
-          ★★ ยังคงมีทั้งจุดและพื้นหลังที่ต่างกัน เพราะสีอย่างเดียวไม่พอ
-             สำหรับคนตาบอดสี */}
-      {!item.readAt ? (
-        <span aria-hidden="true" className="mt-2 size-2 shrink-0 rounded-full bg-accent" />
+      {/* ★ ลูกศรขึ้นเฉพาะแถวที่กดไปต่อได้ — บอกว่า "แตะแล้วพาไปที่เรื่องนั้น" */}
+      {item.link ? (
+        <svg viewBox="0 0 24 24" className="notify-go size-4 shrink-0 text-ink-faint rtl:-scale-x-100" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="m9 6 6 6-6 6" />
+        </svg>
       ) : null}
     </div>
   )
 
   if (!item.link) return body
   return (
-    <Link href={item.link} onClick={onGo} className="block">
+    <Link href={item.link} onClick={onGo} className="notify-link block rounded-[18px]">
       {body}
     </Link>
   )

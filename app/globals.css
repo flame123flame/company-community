@@ -3310,6 +3310,8 @@ html[data-theme='dark'] {
 
 /* ── กล่องลอยมุมบน: ธีม + ภาษา ─────────────────────────────────────────── */
 .signin-tools {
+  position: relative;
+  isolation: isolate;
   display: flex;
   align-items: center;
   gap: 0.125rem;
@@ -3317,8 +3319,22 @@ html[data-theme='dark'] {
   border: 1px solid var(--color-line);
   background: color-mix(in oklab, var(--color-elevated) 72%, transparent);
   padding: 0.25rem;
-  backdrop-filter: blur(16px);
   box-shadow: 0 18px 40px -28px rgb(0 0 0 / 0.55);
+}
+/*
+ * ★★★ เบลอไว้ที่ ::before ไม่ใช่ที่กล่องเอง
+ *     ★ backdrop-filter บนกล่องทำให้มันเป็น containing block ของลูกที่ position: fixed
+ *       ★★ เมนูภาษา/โทนสีบนมือถือ (fixed เต็มความกว้างจอ) จึงถูกบีบเหลือกว้างเท่าแคปซูลนี้
+ *          อ่านไม่ออกทั้งเมนู — เจอบนหน้าเข้าสู่ระบบ 5 ต.ค. 2026 (บทเรียนเดียวกับ .app-header)
+ */
+.signin-tools::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  backdrop-filter: blur(16px);
+  pointer-events: none;
 }
 
 /* ── ป้ายเล็กเหนือพาดหัว ──────────────────────────────────────────────── */
@@ -6321,15 +6337,6 @@ html:not([data-reveal='off']) .result-pop {
   .signin-card:hover { transform: translateY(-3px); }
 }
 
-.signin-float {
-  background: color-mix(in srgb, var(--color-elevated) 88%, transparent);
-  backdrop-filter: blur(16px);
-  box-shadow:
-    inset 0 0 0 1px var(--color-line),
-    0 18px 36px -18px color-mix(in srgb, var(--ck-shade) 50%, transparent);
-  animation: room-float 5s ease-in-out infinite;
-  animation-delay: var(--dl);
-}
 
 /* ── หน้าสมัคร ── */
 .reg-hero {
@@ -6375,7 +6382,7 @@ html:not([data-reveal='off']) .result-pop {
 .reg-sec-done { border-color: rgb(var(--tint) / 0.35); }
 
 @media (prefers-reduced-motion: reduce) {
-  .auth-card::after, .auth-badge, .signin-float, .reg-sec, .reg-step-done .reg-step-num { animation: none; }
+  .auth-card::after, .auth-badge, .reg-sec, .reg-step-done .reg-step-num { animation: none; }
   .signin-card:hover { transform: none; }
 }
 
@@ -6570,4 +6577,455 @@ html:not([data-reveal='off']) .result-pop {
 @media (prefers-reduced-motion: reduce) {
   .cfm-root, .cfm-card, .cfm-icon, .cfm-emoji, .cfm-tear, .cfm-heart { animation: none !important; }
   .cfm-icon { transform: translateX(-50%); }
+}
+
+/* ── ทางไปสมัคร: การ์ดปุ่มเด่นใต้ฟอร์มเข้าสู่ระบบ ──
+ * ★ ขอบแสงไล่สีหมุนรอบ (ใช้ --auth-ang ตัวเดียวกับการ์ดฟอร์ม) · แสงวาบกวาด · ประกายลอยวน
+ */
+.auth-signup {
+  isolation: isolate;
+  background:
+    radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--color-accent) 16%, transparent), transparent 60%),
+    radial-gradient(120% 140% at 100% 100%, rgb(var(--aurora-2) / 0.16), transparent 60%),
+    var(--color-elevated);
+  box-shadow:
+    0 24px 48px -26px color-mix(in srgb, var(--color-accent) 90%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--color-accent) 18%, transparent);
+  transition: transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 220ms;
+}
+.auth-signup::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 2px;
+  background: conic-gradient(from var(--auth-ang),
+    var(--color-accent), rgb(var(--aurora-2)), rgb(var(--aurora-3)), var(--color-accent));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: auth-spin 4s linear infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+.auth-signup:hover {
+  transform: translateY(-3px) scale(1.015);
+  box-shadow:
+    0 30px 60px -24px color-mix(in srgb, var(--color-accent) 95%, transparent),
+    0 0 40px -10px rgb(var(--aurora-2) / 0.6);
+}
+.auth-signup:active { transform: scale(0.99); }
+.auth-signup-sheen {
+  position: absolute;
+  inset: -20% auto -20% -40%;
+  width: 35%;
+  background: linear-gradient(100deg, transparent, color-mix(in srgb, var(--ck-shine) 55%, transparent), transparent);
+  transform: skewX(-20deg);
+  animation: auth-sheen 3.6s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes auth-sheen {
+  0%, 55% { left: -40%; }
+  85%, 100% { left: 130%; }
+}
+.auth-signup-icon {
+  background: linear-gradient(135deg, var(--color-accent), rgb(var(--aurora-2)) 60%, rgb(var(--aurora-3)));
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--color-accent) 14%, transparent),
+    0 14px 26px -10px color-mix(in srgb, var(--color-accent) 90%, transparent);
+  animation: auth-rocket 2.4s ease-in-out infinite;
+}
+@keyframes auth-rocket {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  50% { transform: translateY(-4px) rotate(-6deg); }
+}
+.auth-signup-spark {
+  left: 50%;
+  top: 50%;
+  color: var(--color-accent);
+  animation: auth-orbit 3s linear infinite;
+  animation-delay: var(--dl);
+}
+@keyframes auth-orbit {
+  from { transform: translate(-50%, -50%) rotate(var(--a)) translateX(36px) rotate(calc(-1 * var(--a))) scale(0.8); opacity: 0.4; }
+  50% { opacity: 1; }
+  to { transform: translate(-50%, -50%) rotate(calc(var(--a) + 360deg)) translateX(36px) rotate(calc(-1 * var(--a) - 360deg)) scale(0.8); opacity: 0.4; }
+}
+.auth-signup-title {
+  background: linear-gradient(100deg, var(--color-accent), rgb(var(--aurora-2)) 60%, rgb(var(--aurora-3)));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.auth-signup-go {
+  color: var(--ck-shine);
+  background: linear-gradient(135deg, var(--color-accent), rgb(var(--aurora-2)));
+  box-shadow: 0 10px 22px -10px color-mix(in srgb, var(--color-accent) 95%, transparent);
+  transition: transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.auth-signup:hover .auth-signup-go { transform: translateX(4px) scale(1.08); }
+@media (prefers-reduced-motion: reduce) {
+  .auth-signup::before, .auth-signup-sheen, .auth-signup-icon, .auth-signup-spark { animation: none; }
+  .auth-signup-sheen, .auth-signup-spark { display: none; }
+  .auth-signup:hover, .auth-signup:hover .auth-signup-go { transform: none; }
+}
+
+/* ── กล่องเงื่อนไขการใช้งาน (หน้าสมัคร) — ใช้หัว/ปุ่มชุดเดียวกับกล่องยืนยันกลาง ── */
+.terms-icon {
+  background: var(--ck-shine);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--ck-shine) 20%, transparent), 0 14px 28px -12px color-mix(in srgb, var(--ck-shade) 55%, transparent);
+  animation: room-float 4s ease-in-out infinite;
+}
+.terms-progress {
+  background: linear-gradient(90deg, rgb(var(--pc)), rgb(var(--pc2)));
+  transition: width 120ms linear;
+}
+.terms-item {
+  background: color-mix(in srgb, var(--color-surface) 55%, transparent);
+  box-shadow: inset 0 0 0 1px var(--color-line);
+  transition: transform 180ms, box-shadow 180ms;
+  animation: pop-row-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--i, 0) * 60ms + 150ms);
+}
+.terms-item:hover {
+  transform: translateX(3px);
+  box-shadow: inset 0 0 0 1px rgb(var(--pc) / 0.35), 0 12px 24px -18px rgb(var(--pc) / 0.8);
+}
+.terms-num {
+  color: var(--ck-shine);
+  background: linear-gradient(135deg, rgb(var(--pc)), rgb(var(--pc2)));
+  box-shadow: 0 0 0 2px var(--color-elevated);
+}
+@media (prefers-reduced-motion: reduce) {
+  .terms-icon, .terms-item { animation: none; }
+  .terms-item:hover { transform: none; }
+}
+
+/* ── แถบล่างการ์ดร้าน (กินอะไรดี) — หัวใจไล่สี · แผนที่ · ดูร้าน ── */
+.food-dock {
+  background: color-mix(in srgb, var(--color-surface) 70%, transparent);
+  box-shadow: inset 0 0 0 1px var(--color-line);
+}
+.food-heart {
+  color: var(--color-accent);
+  background: var(--color-elevated);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--color-accent) 30%, transparent);
+  transition: transform 180ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 180ms, background-color 180ms;
+}
+.food-heart:hover {
+  transform: scale(1.06);
+  background: color-mix(in srgb, var(--color-accent) 8%, var(--color-elevated));
+}
+.food-heart-on {
+  color: var(--ck-shine);
+  background: linear-gradient(120deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 50%, rgb(var(--aurora-2))));
+  box-shadow: 0 10px 22px -10px color-mix(in srgb, var(--color-accent) 95%, transparent);
+}
+.food-heart-on:hover { background: linear-gradient(120deg, var(--color-accent), rgb(var(--aurora-2))); }
+.food-heart-on .food-heart-icon { animation: food-heart-pop 520ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes food-heart-pop {
+  0% { transform: scale(0.4); }
+  50% { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+.food-map {
+  color: var(--color-link);
+  background: color-mix(in srgb, var(--color-link) 10%, var(--color-elevated));
+  transition: transform 180ms, background-color 180ms;
+}
+.food-map:hover { transform: translateY(-1px); background: color-mix(in srgb, var(--color-link) 16%, var(--color-elevated)); }
+.food-go {
+  color: var(--color-ink);
+  background: var(--color-elevated);
+  box-shadow: 0 8px 18px -12px color-mix(in srgb, var(--ck-shade) 50%, transparent), inset 0 0 0 1px var(--color-line);
+  transition: box-shadow 180ms;
+}
+.food-go-arrow {
+  color: var(--ck-shine);
+  background: linear-gradient(135deg, var(--color-accent), rgb(var(--aurora-2)));
+  box-shadow: 0 6px 14px -6px color-mix(in srgb, var(--color-accent) 90%, transparent);
+  transition: transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.food-go:hover { box-shadow: 0 12px 24px -12px color-mix(in srgb, var(--color-accent) 70%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 40%, var(--color-line)); }
+.food-go:hover .food-go-arrow { transform: translateX(3px) rotate(-8deg) scale(1.08); }
+@media (prefers-reduced-motion: reduce) {
+  .food-heart-on .food-heart-icon { animation: none; }
+  .food-heart:hover, .food-map:hover, .food-go:hover .food-go-arrow { transform: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+ * เรียง 4 — กระดานไล่สีฟ้า-ม่วง · เหรียญแดง/ทองมีแสงเงา · หล่นเด้ง · แถวชนะเรืองแสง
+ * ★ สีจาก token: --color-link / --aurora-* (กระดาน) · --color-accent (แดง) · --ck-gold (ทอง)
+ * ═══════════════════════════════════════════════════════════════════════ */
+.c4-board {
+  background:
+    radial-gradient(120% 80% at 20% 0%, color-mix(in srgb, var(--ck-shine) 22%, transparent), transparent 55%),
+    linear-gradient(160deg, color-mix(in srgb, var(--color-link) 85%, var(--ck-shine)), var(--color-link) 45%, color-mix(in srgb, var(--color-link) 55%, rgb(var(--aurora-2))));
+  box-shadow:
+    0 30px 60px -28px color-mix(in srgb, var(--color-link) 80%, transparent),
+    inset 0 2px 0 color-mix(in srgb, var(--ck-shine) 35%, transparent),
+    inset 0 -6px 0 color-mix(in srgb, var(--ck-shade) 22%, transparent);
+  transition: box-shadow 400ms;
+}
+.c4-board-won { box-shadow: 0 30px 70px -20px color-mix(in srgb, var(--ck-gold) 70%, transparent), inset 0 2px 0 color-mix(in srgb, var(--ck-shine) 35%, transparent); }
+.c4-mini, .c4-art { transform: perspective(900px) rotateX(8deg); }
+/* ★ หลุมเจาะ — สีพื้นเว็บ + เงาในให้ดูลึก */
+.c4-hole {
+  background: var(--color-page);
+  box-shadow: inset 0 4px 8px color-mix(in srgb, var(--ck-shade) 35%, transparent), 0 1px 0 color-mix(in srgb, var(--ck-shine) 30%, transparent);
+}
+.c4-col { padding: 0; transition: background-color 160ms; cursor: pointer; }
+.c4-col:disabled { cursor: default; }
+.c4-col-on { background: color-mix(in srgb, var(--ck-shine) 16%, transparent); }
+.c4-col:focus-visible { outline: 3px solid color-mix(in srgb, var(--ck-shine) 80%, transparent); outline-offset: 2px; }
+
+.c4-disc { display: block; border-radius: 9999px; }
+.c4-red {
+  background:
+    radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--ck-shine) 55%, transparent) 0 18%, transparent 40%),
+    radial-gradient(circle at 50% 50%, var(--color-accent) 0 52%, color-mix(in srgb, var(--color-accent) 70%, var(--ck-shade)) 53% 60%, var(--color-accent) 61%);
+  box-shadow: inset 0 -3px 5px color-mix(in srgb, var(--ck-shade) 35%, transparent), 0 3px 6px color-mix(in srgb, var(--ck-shade) 30%, transparent);
+}
+.c4-gold {
+  background:
+    radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--ck-shine) 65%, transparent) 0 18%, transparent 40%),
+    radial-gradient(circle at 50% 50%, var(--ck-gold) 0 52%, var(--ck-gold-deep) 53% 60%, var(--ck-gold) 61%);
+  box-shadow: inset 0 -3px 5px color-mix(in srgb, var(--ck-gold-deep) 60%, transparent), 0 3px 6px color-mix(in srgb, var(--ck-shade) 30%, transparent);
+}
+/* ★ หล่นจากเหนือกระดานตามจำนวนแถว แล้วเด้งสองจังหวะ */
+.c4-drop { animation: c4-drop calc(260ms + var(--fall) * 70ms) cubic-bezier(0.45, 0, 0.9, 0.6) both; }
+@keyframes c4-drop {
+  0% { transform: translateY(calc(var(--fall) * -118% - 40%)); }
+  70% { transform: translateY(0); }
+  82% { transform: translateY(-12%); }
+  92% { transform: translateY(0); }
+  96% { transform: translateY(-4%); }
+  100% { transform: translateY(0); }
+}
+.c4-hover { animation: c4-hover 1.1s ease-in-out infinite; opacity: 0.95; }
+@keyframes c4-hover { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10%); } }
+.c4-ghost { border: 2px dashed; opacity: 0.6; animation: c4-ghost 1.2s ease-in-out infinite; }
+.c4-ghost-red { border-color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 14%, transparent); }
+.c4-ghost-gold { border-color: var(--ck-gold-deep); background: color-mix(in srgb, var(--ck-gold) 22%, transparent); }
+@keyframes c4-ghost { 50% { opacity: 0.25; } }
+.c4-win { animation: c4-win 1s 0.5s ease-in-out infinite; z-index: 1; }
+@keyframes c4-win {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 color-mix(in srgb, var(--ck-shine) 0%, transparent), 0 0 14px 2px color-mix(in srgb, var(--ck-gold) 70%, transparent); }
+  50% { transform: scale(1.1); box-shadow: 0 0 0 4px color-mix(in srgb, var(--ck-shine) 85%, transparent), 0 0 26px 8px color-mix(in srgb, var(--ck-gold) 85%, transparent); }
+}
+.c4-mini .c4-win, .c4-art .c4-win { animation: c4-drop calc(260ms + var(--fall) * 70ms) cubic-bezier(0.45, 0, 0.9, 0.6) both, c4-win 1s 1.6s ease-in-out infinite; }
+.c4-dim { opacity: 0.35; transition: opacity 500ms 300ms; }
+/* ป้ายผู้เล่น — ฝั่งที่ถึงตาเรืองแสง */
+.c4-seat {
+  background: var(--color-elevated);
+  box-shadow: inset 0 0 0 1px var(--color-line);
+  transition: box-shadow 220ms, transform 220ms;
+}
+.c4-seat-on {
+  transform: translateY(-2px);
+  box-shadow: inset 0 0 0 2px var(--color-link), 0 12px 24px -14px color-mix(in srgb, var(--color-link) 90%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .c4-drop, .c4-hover, .c4-ghost, .c4-win, .c4-mini .c4-win, .c4-art .c4-win { animation: none; }
+  .c4-seat-on { transform: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+ * ควิซออฟฟิศ — หัวไล่สี · ตัวเลือกสี่สีสี่รูปทรง · วงนับถอยหลัง · โพเดียม
+ * ★ สีตัวเลือกมาจาก token: แดง = --color-accent · ฟ้า = --color-link · ทอง = --ck-gold-deep · เขียว = --quiz-green
+ * ═══════════════════════════════════════════════════════════════════════ */
+:root { --quiz-green: #1fa463; }
+.quiz-tone-red { --qc: var(--color-accent); }
+.quiz-tone-blue { --qc: var(--color-link); }
+.quiz-tone-gold { --qc: var(--ck-gold-deep); }
+.quiz-tone-green { --qc: var(--quiz-green); }
+
+.quiz-hero-card,
+.quiz-head {
+  --pc: 255 0 51;
+  --pc2: 175 82 222;
+  background:
+    radial-gradient(80% 120% at 0% 0%, color-mix(in srgb, var(--ck-shine) 22%, transparent), transparent 55%),
+    linear-gradient(130deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 40%, rgb(var(--aurora-2))) 55%, rgb(var(--aurora-3)));
+  box-shadow: 0 30px 60px -30px color-mix(in srgb, var(--color-accent) 75%, transparent);
+}
+.quiz-hero-card { transition: transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+.quiz-hero-card:hover { transform: translateY(-3px); }
+.quiz-join,
+.quiz-builder,
+.quiz-lobby-code,
+.quiz-lobby-players,
+.quiz-question {
+  border: 1px solid var(--color-line);
+  background: color-mix(in srgb, var(--color-elevated) 82%, transparent);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 24px 50px -36px color-mix(in srgb, var(--ck-shade) 60%, transparent);
+}
+.quiz-badge {
+  color: var(--ck-shine);
+  background: linear-gradient(135deg, var(--color-accent), rgb(var(--aurora-2)));
+  box-shadow: 0 12px 24px -12px color-mix(in srgb, var(--color-accent) 90%, transparent);
+}
+.quiz-sample {
+  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 10%, var(--color-elevated));
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--color-accent) 35%, transparent);
+}
+.quiz-room-card {
+  border: 1px solid var(--color-line);
+  background: var(--color-elevated);
+  transition: transform 200ms, box-shadow 200ms, border-color 200ms;
+  animation: pop-row-in 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--i, 0) * 50ms);
+}
+.quiz-room-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-line));
+  box-shadow: 0 18px 34px -22px color-mix(in srgb, var(--color-accent) 80%, transparent);
+}
+
+/* ── ตัวสร้าง ── */
+.quiz-qcard {
+  background: color-mix(in srgb, var(--color-surface) 55%, transparent);
+  box-shadow: inset 0 0 0 1px var(--color-line);
+  animation: pop-row-in 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.quiz-qnum { color: var(--ck-shine); background: linear-gradient(135deg, var(--color-accent), rgb(var(--aurora-2))); }
+.quiz-edit-choice { background: color-mix(in srgb, var(--qc) 14%, var(--color-elevated)); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--qc) 30%, transparent); }
+.quiz-edit-correct { box-shadow: inset 0 0 0 2.5px var(--qc), 0 10px 20px -14px var(--qc); }
+.quiz-shape { color: var(--ck-shine); background: var(--qc); transition: transform 180ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+.quiz-shape:hover { transform: scale(1.08) rotate(-6deg); }
+
+/* ── ห้องรอ ── */
+.quiz-code-tile {
+  color: var(--color-ink);
+  background: var(--color-surface);
+  box-shadow: inset 0 -4px 0 color-mix(in srgb, var(--ck-shade) 12%, transparent), 0 10px 20px -14px color-mix(in srgb, var(--ck-shade) 60%, transparent);
+  animation: cfm-icon-pop 520ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+@keyframes cfm-icon-pop { from { transform: translateY(14px) scale(0.6); opacity: 0; } }
+.quiz-player-chip {
+  background: var(--color-surface);
+  animation: cfm-icon-pop 420ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+.quiz-player-me { box-shadow: inset 0 0 0 2px var(--color-accent); background: color-mix(in srgb, var(--color-accent) 8%, var(--color-surface)); }
+.quiz-waiting { animation: room-float 2.4s ease-in-out infinite; }
+
+/* ── คำถาม + ตัวเลือก ── */
+.quiz-ring {
+  background: conic-gradient(var(--color-accent) var(--p), color-mix(in srgb, var(--color-ink) 10%, transparent) var(--p));
+  transition: background 200ms linear;
+}
+.quiz-ring-urgent { animation: quiz-pulse 0.8s ease-in-out infinite; }
+@keyframes quiz-pulse { 50% { transform: scale(1.08); } }
+.quiz-choice {
+  color: var(--ck-shine);
+  background: linear-gradient(135deg, var(--qc), color-mix(in srgb, var(--qc) 72%, var(--ck-shade)));
+  box-shadow: inset 0 -5px 0 color-mix(in srgb, var(--ck-shade) 22%, transparent), 0 14px 26px -16px var(--qc);
+  transition: transform 160ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 300ms, filter 300ms;
+  animation: cfm-icon-pop 420ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+.quiz-choice:disabled { cursor: default; }
+.quiz-choice-live:hover { transform: translateY(-3px) scale(1.015); }
+.quiz-choice-live:active { transform: scale(0.97); }
+.quiz-choice-picked { box-shadow: 0 0 0 4px var(--color-elevated), 0 0 0 7px var(--qc), 0 18px 30px -16px var(--qc); }
+.quiz-choice-correct { box-shadow: 0 0 0 4px var(--color-elevated), 0 0 0 7px var(--ck-gold), 0 0 34px 6px color-mix(in srgb, var(--ck-gold) 60%, transparent); animation: quiz-pulse 1.2s ease-in-out 2; }
+.quiz-choice-wrong { opacity: 0.4; filter: saturate(0.5); }
+.quiz-bar { background: color-mix(in srgb, var(--ck-shine) 22%, transparent); transition: width 700ms cubic-bezier(0.22, 1, 0.36, 1); }
+
+/* ── หลังเฉลย ── */
+.quiz-result { position: relative; overflow: hidden; animation: cfm-icon-pop 520ms cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.quiz-result-ok { color: var(--ck-shine); background: linear-gradient(120deg, var(--quiz-green), color-mix(in srgb, var(--quiz-green) 50%, rgb(var(--aurora-3)))); }
+.quiz-result-no { color: var(--color-ink); background: var(--color-surface); }
+.quiz-score-row {
+  background: var(--color-elevated);
+  box-shadow: inset 0 0 0 1px var(--color-line);
+  animation: pop-row-in 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--i, 0) * 70ms + 200ms);
+}
+.quiz-gain { color: var(--ck-shine); background: var(--quiz-green); }
+
+/* ── โพเดียม ── */
+.quiz-podium {
+  color: var(--ck-shine);
+  transform-origin: bottom;
+  animation: quiz-rise 700ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
+  animation-delay: calc(var(--i, 0) * 180ms + 200ms);
+}
+@keyframes quiz-rise { from { transform: scaleY(0); } }
+.quiz-podium-1 { height: 9rem; background: linear-gradient(180deg, var(--ck-gold), var(--ck-gold-deep)); box-shadow: 0 0 40px -6px color-mix(in srgb, var(--ck-gold) 70%, transparent); }
+.quiz-podium-2 { height: 6.5rem; background: linear-gradient(180deg, color-mix(in srgb, var(--color-ink-faint) 60%, var(--ck-shine)), var(--color-ink-faint)); }
+.quiz-podium-3 { height: 5rem; background: linear-gradient(180deg, color-mix(in srgb, var(--ck-gold-deep) 55%, var(--color-accent)), color-mix(in srgb, var(--ck-gold-deep) 70%, var(--ck-shade))); }
+.quiz-podium-ava { animation: cfm-icon-pop 600ms cubic-bezier(0.34, 1.56, 0.64, 1) both; animation-delay: 900ms; }
+.quiz-podium-first { filter: drop-shadow(0 8px 20px color-mix(in srgb, var(--ck-gold) 70%, transparent)); }
+
+@media (prefers-reduced-motion: reduce) {
+  .quiz-room-card, .quiz-qcard, .quiz-code-tile, .quiz-player-chip, .quiz-waiting, .quiz-ring-urgent,
+  .quiz-choice, .quiz-choice-correct, .quiz-result, .quiz-score-row, .quiz-podium, .quiz-podium-ava { animation: none; }
+  .quiz-hero-card:hover, .quiz-choice-live:hover, .quiz-shape:hover { transform: none; }
+}
+
+/* ── รายการแจ้งเตือนแบบการ์ด (กล่องกระดิ่ง) ── ทับกฎ .notify-row รุ่นเดิมด้านบน */
+.notify-card {
+  border-top: 0 !important;
+  background: color-mix(in srgb, var(--color-surface) 40%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-line) 70%, transparent);
+  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 180ms, background 180ms;
+}
+.notify-card.is-unread {
+  background:
+    radial-gradient(120% 140% at 0% 0%, rgb(var(--tint) / 0.16), transparent 60%),
+    var(--color-elevated);
+  box-shadow: inset 0 0 0 1.5px rgb(var(--tint) / 0.35), 0 10px 24px -18px rgb(var(--tint) / 0.9);
+}
+/* ★ การ์ดมีขอบสีกับไอคอนทึบบอก "ยังไม่อ่าน" แล้ว — แถบซ้ายรุ่นเดิมยื่นเกินขอบโค้ง จึงปิด */
+.notify-card.is-unread::before { display: none; }
+.notify-link:hover .notify-card,
+.notify-link:focus-visible .notify-card {
+  transform: translateY(-2px);
+  background: var(--color-elevated);
+  box-shadow: inset 0 0 0 1.5px rgb(var(--tint) / 0.5), 0 16px 30px -20px rgb(var(--tint) / 0.95);
+}
+.notify-link:hover .notify-go { transform: translateX(3px); color: rgb(var(--tint)); }
+.notify-go { transition: transform 180ms, color 180ms; }
+.notify-icon {
+  color: rgb(var(--tint));
+  background: linear-gradient(145deg, rgb(var(--tint) / 0.2), rgb(var(--tint) / 0.08));
+  box-shadow: inset 0 0 0 1px rgb(var(--tint) / 0.25);
+  transition: transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.is-unread .notify-icon {
+  color: var(--ck-shine);
+  background: linear-gradient(145deg, rgb(var(--tint)), color-mix(in srgb, rgb(var(--tint)) 60%, var(--ck-shade)));
+  box-shadow: 0 8px 18px -8px rgb(var(--tint) / 0.95);
+}
+.notify-link:hover .notify-icon { transform: rotate(-8deg) scale(1.08); }
+.notify-ping {
+  background: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-elevated);
+}
+.notify-ping::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--color-accent);
+  animation: signin-pulse 1.8s ease-out infinite;
+}
+.notify-new {
+  color: var(--ck-shine);
+  background: linear-gradient(120deg, var(--color-accent), rgb(var(--aurora-2)));
+}
+.notify-detail {
+  color: rgb(var(--tint));
+  background: rgb(var(--tint) / 0.12);
+  box-shadow: inset 0 0 0 1px rgb(var(--tint) / 0.22);
+}
+.notify-day { background: color-mix(in srgb, var(--color-elevated) 94%, transparent); backdrop-filter: blur(6px); }
+@media (prefers-reduced-motion: reduce) {
+  .notify-ping::after { animation: none; }
+  .notify-link:hover .notify-card, .notify-link:hover .notify-icon, .notify-link:hover .notify-go { transform: none; }
 }

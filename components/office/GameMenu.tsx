@@ -46,6 +46,18 @@ export function GameMenu() {
       icon: 'M4 4h16v16H4zM4 10h16M4 16h16M10 4v16M16 4v16',
     },
     {
+      href: '/office/fun/connect4',
+      titleKey: 'game.c4.title',
+      descKey: 'game.c4.desc',
+      icon: 'M4 5h16v14H4zM8 9h.01M12 9h.01M16 9h.01M8 13h.01M12 13h.01M16 13h.01',
+    },
+    {
+      href: '/office/fun/quiz',
+      titleKey: 'game.quiz.title',
+      descKey: 'game.quiz.desc',
+      icon: 'M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z',
+    },
+    {
       href: '/office/fun/typing',
       titleKey: 'game.typing.title',
       descKey: 'game.typing.desc',

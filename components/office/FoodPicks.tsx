@@ -972,20 +972,31 @@ function Card({
         </p>
       ) : null}
 
-      {/* ★ mt-auto ดันแถวปุ่มไปชิดล่าง การ์ดทุกใบจึงมีเส้นฐานเดียวกัน */}
-      <div className="relative z-10 mt-auto flex flex-wrap items-center gap-1.5 border-t border-line pt-3">
+      {/*
+        * ★ mt-auto ดันแถวปุ่มไปชิดล่าง การ์ดทุกใบจึงมีเส้นฐานเดียวกัน
+        * ★★ แถบล่างเป็น "ท่าเรือ" ปุ่มสามตัว: หัวใจ (กดบ่อยสุด) · แผนที่ · ดูร้าน
+        *    ★ เจ้าของสั่งให้อลังการขึ้น (5 ต.ค. 2026) — หัวใจไล่สีเด้งตอนกด · ปุ่มดูร้านไล่สีชี้ทางชัด
+        */}
+      <div className="relative z-10 mt-auto pt-3">
+      <div className="food-dock @container flex items-center gap-2 rounded-[20px] p-1.5">
         <button
           type="button"
           onClick={onVote}
           aria-pressed={r.voted}
-          className={cn(
-            'h-11 rounded-full px-4 text-sm font-medium transition-colors',
-            r.voted
-              ? 'bg-accent text-accent-ink hover:bg-accent-hover'
-              : 'bg-surface text-ink hover:bg-surface-hover',
-          )}
+          aria-label={ot('food.picks.heartLabel', { n: r.voteCount })}
+          className={cn('food-heart inline-flex h-11 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-4 text-sm font-black tabular-nums', r.voted && 'food-heart-on')}
         >
-          {r.voted ? '♥' : '♡'} {r.voteCount}
+          {/* ★ key เปลี่ยนตามสถานะ = แอนิเมชันเด้งเล่นใหม่ทุกครั้งที่กด */}
+          <svg key={String(r.voted)} viewBox="0 0 24 24" className="food-heart-icon size-[18px]" aria-hidden="true">
+            <path
+              d="M12 21s-7.5-4.6-9.6-9.3C.9 8.3 3 4.5 6.7 4.5c2.1 0 3.6 1.2 5.3 3.1 1.7-1.9 3.2-3.1 5.3-3.1 3.7 0 5.8 3.8 4.3 7.2C19.5 16.4 12 21 12 21z"
+              fill={r.voted ? 'currentColor' : 'none'}
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinejoin="round"
+            />
+          </svg>
+          {r.voteCount}
         </button>
 
         {r.mapUrl ? (
@@ -993,13 +1004,33 @@ function Card({
             href={r.mapUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="grid h-11 place-items-center rounded-full bg-surface px-4 text-sm text-ink hover:bg-surface-hover"
+            aria-label={ot('food.picks.openMap')}
+            title={ot('food.picks.openMap')}
+            className="food-map inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-3 text-sm font-semibold"
           >
-            {ot('food.picks.openMap')}
+            <svg viewBox="0 0 24 24" className="size-[18px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" />
+              <circle cx="12" cy="9.5" r="2.5" />
+            </svg>
+            {/* ★ จัดตามความกว้างการ์ด ไม่ใช่ความกว้างจอ — การ์ดแคบเหลือแค่ไอคอนหมุด */}
+            <span className="hidden @[360px]:inline">{ot('food.picks.openMap')}</span>
           </a>
         ) : null}
 
-        {/* ★ "ร้านปิด" กับ "ลบ" ย้ายไปเมนู ⋯ ด้านบนแล้ว แถวนี้เหลือแต่ของที่กดบ่อย */}
+        {/* ★ ปุ่มดูร้านชิดขวา — ทั้งการ์ดกดได้อยู่แล้ว แต่ปุ่มที่เห็นชัดบอกว่า "กดเข้าไปได้" */}
+        <Link
+          href={`/office/food/picks/${r.id}`}
+          className="food-go group/go ms-auto inline-flex h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full ps-4 pe-1.5 text-sm font-bold"
+        >
+          <Untranslated>{ot('food.picks.viewShop')}</Untranslated>
+          <span aria-hidden="true" className="food-go-arrow grid size-8 place-items-center rounded-full">
+            <svg viewBox="0 0 24 24" className="size-4 rtl:-scale-x-100" fill="currentColor">
+              <path d="M12 4l-1.4 1.4L16.2 11H4v2h12.2l-5.6 5.6L12 20l8-8z" />
+            </svg>
+          </span>
+        </Link>
+        {/* ★ "ร้านปิด" กับ "ลบ" อยู่ในเมนู ⋯ ด้านบน แถวนี้เหลือแต่ของที่กดบ่อย */}
+      </div>
       </div>
 
       {/*
