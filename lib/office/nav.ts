@@ -111,6 +111,9 @@ export const OFFICE_NAV: NavSection[] = [
            ★★ ของที่ต้องรอคนอื่นควรอยู่ท้าย เพราะคนที่เปิดมาคนเดียว
               จะได้ไม่ต้องเลื่อนผ่านของที่กดแล้วรออย่างเดียว */
       { href: '/office/fun/checkers', labelKey: 'game.checkers.title' , group: 'nav.fun.g.play', icon: 'M4 4h16v16H4zM4 10h16M4 16h16M10 4v16M16 4v16' },
+      { href: '/office/fun/frog', labelKey: 'game.fg.title' , group: 'nav.fun.g.play', icon: 'M12 4c-3 0-5 2-5 4 0 1 .5 2 1 2.5C5 12 4 14.5 4 16c0 2.5 3.5 4 8 4s8-1.5 8-4c0-1.5-1-4-4-5.5.5-.5 1-1.5 1-2.5 0-2-2-4-5-4zM9.5 7h.01M14.5 7h.01' },
+      { href: '/office/fun/bubble', labelKey: 'game.bb.title' , group: 'nav.fun.g.play', icon: 'M8 8a3 3 0 1 0 0-.01M16 8a3 3 0 1 0 0-.01M12 14a3 3 0 1 0 0-.01M12 21v-4' },
+      { href: '/office/fun/makruk', labelKey: 'game.mk.title' , group: 'nav.fun.g.play', icon: 'M8 21h8M9 21l1-6h4l1 6M8 9a4 4 0 0 1 8 0c0 2-1.5 3-1.5 3h-5S8 11 8 9zM12 3v2M10 4h4' },
       { href: '/office/fun/connect4', labelKey: 'game.c4.title' , group: 'nav.fun.g.play', icon: 'M4 5h16v14H4zM8 9h.01M12 9h.01M16 9h.01M8 13h.01M12 13h.01M16 13h.01' },
       { href: '/office/fun/quiz', labelKey: 'game.quiz.title' , group: 'nav.fun.g.play', icon: 'M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z' },
       { href: '/office/fun/typing', labelKey: 'game.typing.title' , group: 'nav.fun.g.play', icon: 'M3 7h18v10H3zM7 11h.01M10 11h.01M13 11h.01M16 11h.01M8 14h8' },
@@ -203,6 +206,9 @@ const PAGE_META: Record<string, PageMeta> = {
   /* ★ หน้าหมวดเกมมีหน้าของตัวเองแล้ว — ของเดิมกดเข้าหมวดแล้วเจอ 404 */
   '/office/fun': { titleKey: 'nav.fun', descKey: 'pdesc.funHub' },
   '/office/fun/checkers': { titleKey: 'game.checkers.title', descKey: 'game.checkers.desc', section: '/office/fun' },
+  '/office/fun/frog': { titleKey: 'game.fg.title', descKey: 'game.fg.desc', section: '/office/fun' },
+  '/office/fun/bubble': { titleKey: 'game.bb.title', descKey: 'game.bb.desc', section: '/office/fun' },
+  '/office/fun/makruk': { titleKey: 'game.mk.title', descKey: 'game.mk.desc', section: '/office/fun' },
   '/office/fun/connect4': { titleKey: 'game.c4.title', descKey: 'game.c4.desc', section: '/office/fun' },
   '/office/fun/quiz': { titleKey: 'game.quiz.title', descKey: 'game.quiz.desc', section: '/office/fun' },
   '/office/fun/typing': { titleKey: 'game.typing.title', descKey: 'game.typing.desc', section: '/office/fun' },
@@ -257,6 +263,9 @@ const WIDE_PAGES = new Set([
   /* ★ หน้าหมากฮอสใช้สองคอลัมน์บนจอกว้าง — คอลัมน์ 1000px บีบจนตารางรูป
        เหลือสองคอลัมน์ ซึ่งเสียประโยชน์ทั้งหมดของการเปลี่ยนมาเป็นตาราง */
   '/office/fun/checkers',
+  '/office/fun/frog',
+  '/office/fun/bubble',
+  '/office/fun/makruk',
   '/office/fun/connect4',
   '/office/fun/quiz',
   '/office/fun/typing',

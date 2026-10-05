@@ -46,6 +46,24 @@ export function GameMenu() {
       icon: 'M4 4h16v16H4zM4 10h16M4 16h16M10 4v16M16 4v16',
     },
     {
+      href: '/office/fun/frog',
+      titleKey: 'game.fg.title',
+      descKey: 'game.fg.desc',
+      icon: 'M12 4c-3 0-5 2-5 4 0 1 .5 2 1 2.5C5 12 4 14.5 4 16c0 2.5 3.5 4 8 4s8-1.5 8-4c0-1.5-1-4-4-5.5.5-.5 1-1.5 1-2.5 0-2-2-4-5-4zM9.5 7h.01M14.5 7h.01',
+    },
+    {
+      href: '/office/fun/bubble',
+      titleKey: 'game.bb.title',
+      descKey: 'game.bb.desc',
+      icon: 'M8 8a3 3 0 1 0 0-.01M16 8a3 3 0 1 0 0-.01M12 14a3 3 0 1 0 0-.01M12 21v-4',
+    },
+    {
+      href: '/office/fun/makruk',
+      titleKey: 'game.mk.title',
+      descKey: 'game.mk.desc',
+      icon: 'M8 21h8M9 21l1-6h4l1 6M8 9a4 4 0 0 1 8 0c0 2-1.5 3-1.5 3h-5S8 11 8 9zM12 3v2M10 4h4',
+    },
+    {
       href: '/office/fun/connect4',
       titleKey: 'game.c4.title',
       descKey: 'game.c4.desc',

@@ -4,13 +4,14 @@ import { useSyncExternalStore, type CSSProperties } from 'react'
 import { cn } from '@/lib/cn'
 import { splitList } from '@/lib/i18n/office-format'
 import { Untranslated, useOt } from '@/lib/i18n/office'
+import { MakrukPiece } from './MakrukPiece'
 
 export type GuideArt =
   | 'hub' | 'wheel' | 'room' | 'teams' | 'lottery' | 'cup' | 'checkers' | 'typing'
   | 'owed' | 'bill' | 'chart' | 'qr'
   | 'market' | 'post' | 'mine' | 'chat'
   | 'picks' | 'spin' | 'talk' | 'idcard'
-  | 'vinyl' | 'stage' | 'connect4' | 'quiz'
+  | 'vinyl' | 'stage' | 'connect4' | 'quiz' | 'makruk' | 'bubble' | 'frog'
 
 /*
  * ★★ จำว่า "ซ่อนคำอธิบาย" ไว้ในเครื่อง — ของสะดวกส่วนตัว ไม่ใช่ข้อมูลสำคัญ
@@ -578,6 +579,61 @@ function Art({ kind }: { kind: GuideArt }) {
           <span className="guide-person absolute bottom-8 start-2 grid size-12 place-items-center rounded-2xl bg-elevated text-2xl shadow-md ring-1 ring-line" style={{ '--dl': '1.2s' } as CSSProperties}>
             📷
           </span>
+        </div>
+      )
+    case 'frog':
+      return (
+        <div className="fg-demo absolute inset-3 overflow-hidden rounded-[24px]">
+          {Array.from({ length: 12 }, (_, i) => {
+            const a = (i / 12) * Math.PI * 2
+            return (
+              <span
+                key={i}
+                className={cn('bb-ball fg-orbit absolute', `bb-c${i % 5}`)}
+                style={{ left: `${(43 + Math.cos(a) * 36).toFixed(2)}%`, top: `${(43 + Math.sin(a) * 36).toFixed(2)}%`, '--dl': `${i * 0.12}s` } as CSSProperties}
+              />
+            )
+          })}
+          <span className="fg-frog absolute">🐸</span>
+        </div>
+      )
+    case 'bubble':
+      return (
+        <div className="bb-stage absolute inset-3 overflow-hidden rounded-[24px]">
+          {Array.from({ length: 15 }, (_, i) => (
+            <span
+              key={i}
+              className={cn('bb-ball absolute', `bb-c${(i * 7) % 6}`)}
+              style={{ left: `${6 + (i % 5) * 18 + (Math.floor(i / 5) % 2) * 9}%`, top: `${8 + Math.floor(i / 5) * 15}%`, '--dl': `${(i % 5) * 0.25}s` } as CSSProperties}
+            />
+          ))}
+          <span className="bb-ball bb-c2 bb-shot absolute" />
+          <span className="bb-cannon absolute" />
+        </div>
+      )
+    case 'makruk':
+      return (
+        <div className="absolute inset-0 grid place-items-center">
+          <div className="mk-frame mk-art w-[220px] rounded-[20px] p-2.5">
+            <div className="mk-board relative grid aspect-square grid-cols-4 grid-rows-4 overflow-hidden rounded-md">
+              {Array.from({ length: 16 }, (_, i) => (
+                <span key={i} className="mk-sq" />
+              ))}
+              {(
+                [
+                  ['K', 'B', 1, 0, '0s'],
+                  ['R', 'B', 3, 0, '0.4s'],
+                  ['N', 'W', 2, 2, '0.8s'],
+                  ['K', 'W', 1, 3, '1.2s'],
+                  ['R', 'W', 0, 1, '1.6s'],
+                ] as const
+              ).map(([kind, side, c, r, d], k) => (
+                <span key={k} className="guide-person absolute" style={{ left: `${c * 25}%`, top: `${r * 25}%`, width: '25%', height: '25%', '--dl': d } as CSSProperties}>
+                  <MakrukPiece kind={kind} side={side} />
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
       )
     case 'quiz':

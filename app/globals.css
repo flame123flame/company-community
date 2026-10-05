@@ -7029,3 +7029,268 @@ html:not([data-reveal='off']) .result-pop {
   .notify-ping::after { animation: none; }
   .notify-link:hover .notify-card, .notify-link:hover .notify-icon, .notify-link:hover .notify-go { transform: none; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+ * หมากรุกไทย — กระดานไม้สีเดียว · เส้นตาราง · หมากงาช้าง/ครั่งดำขอบทอง · หมากเลื่อนลื่น
+ * ★ สีไม้จาก --ck-gold / --ck-gold-deep ผสม --ck-shade · หมากขาวจาก --ck-shine · ดำจาก --ck-shade
+ * ═══════════════════════════════════════════════════════════════════════ */
+.mk-frame {
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--ck-gold-deep) 70%, var(--ck-shade)), color-mix(in srgb, var(--ck-gold-deep) 85%, var(--ck-shine) 5%) 50%, color-mix(in srgb, var(--ck-gold-deep) 60%, var(--ck-shade)));
+  box-shadow:
+    0 40px 80px -40px color-mix(in srgb, var(--ck-shade) 80%, transparent),
+    inset 0 2px 0 color-mix(in srgb, var(--ck-shine) 25%, transparent),
+    inset 0 -4px 0 color-mix(in srgb, var(--ck-shade) 30%, transparent);
+}
+.mk-mini, .mk-art { transform: perspective(1000px) rotateX(10deg); }
+/* ★ กระดานหมากรุกไทยเป็นสีเดียว แบ่งช่องด้วยเส้น — ไม่ใช่ตาหมากรุกสองสี */
+.mk-board {
+  background:
+    radial-gradient(120% 90% at 30% 20%, color-mix(in srgb, var(--ck-shine) 30%, transparent), transparent 60%),
+    repeating-linear-gradient(92deg, transparent 0 7px, color-mix(in srgb, var(--ck-gold-deep) 10%, transparent) 7px 9px),
+    linear-gradient(180deg, color-mix(in srgb, var(--ck-gold) 72%, var(--ck-shine)), color-mix(in srgb, var(--ck-gold) 60%, var(--ck-gold-deep)));
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--ck-gold-deep) 70%, var(--ck-shade));
+}
+.mk-sq {
+  box-shadow: inset 0 0 0 0.5px color-mix(in srgb, var(--ck-gold-deep) 75%, var(--ck-shade));
+  transition: background-color 160ms;
+}
+.mk-sq:not(:disabled):hover { background: color-mix(in srgb, var(--ck-shine) 18%, transparent); }
+.mk-sq-last { background: color-mix(in srgb, var(--color-link) 22%, transparent); }
+.mk-sq-sel { background: color-mix(in srgb, var(--color-link) 38%, transparent); }
+.mk-sq-check { background: radial-gradient(circle, color-mix(in srgb, var(--color-accent) 70%, transparent), transparent 70%); animation: mk-check 1s ease-in-out infinite; }
+@keyframes mk-check { 50% { background-color: color-mix(in srgb, var(--color-accent) 25%, transparent); } }
+.mk-coord { position: absolute; font-size: 9px; font-weight: 800; color: color-mix(in srgb, var(--ck-gold-deep) 80%, var(--ck-shade)); opacity: 0.8; }
+.mk-dot {
+  position: absolute;
+  inset: 37%;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--color-link) 75%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ck-shine) 50%, transparent);
+  animation: mk-dot 1.2s ease-in-out infinite;
+}
+.mk-dot-cap { inset: 6%; background: transparent; box-shadow: inset 0 0 0 4px color-mix(in srgb, var(--color-accent) 85%, transparent); }
+@keyframes mk-dot { 50% { transform: scale(0.8); } }
+
+.mk-piece { transition: left 280ms cubic-bezier(0.22, 1, 0.36, 1), top 280ms cubic-bezier(0.22, 1, 0.36, 1); z-index: 1; }
+.mk-piece-moved { animation: mk-land 320ms 240ms cubic-bezier(0.34, 1.56, 0.64, 1); z-index: 2; }
+@keyframes mk-land { 40% { transform: scale(1.15); } }
+.mk-piece-sel .mk-pc { transform: translateY(-10%) scale(1.1); filter: drop-shadow(0 8px 6px color-mix(in srgb, var(--ck-shade) 55%, transparent)) drop-shadow(0 0 6px var(--color-link)); }
+
+/* ★ เบี้ยหงาย — วงแหวนทองรอบตัว บอกว่า "มาจากเบี้ย" แม้เดินเหมือนเม็ด */
+
+.mk-burst {
+  background: radial-gradient(circle, color-mix(in srgb, var(--ck-gold) 85%, transparent) 0 20%, transparent 60%);
+  animation: mk-burst 520ms ease-out both;
+  z-index: 3;
+}
+@keyframes mk-burst { from { transform: scale(0.3); opacity: 1; } to { transform: scale(1.8); opacity: 0; } }
+
+.mk-seat { background: var(--color-elevated); box-shadow: inset 0 0 0 1px var(--color-line); transition: box-shadow 220ms, transform 220ms; }
+.mk-seat-on { transform: translateY(-1px); box-shadow: inset 0 0 0 2px var(--ck-gold-deep), 0 12px 24px -16px color-mix(in srgb, var(--ck-gold-deep) 90%, transparent); }
+.mk-check-banner { color: var(--ck-shine); background: linear-gradient(120deg, var(--color-accent), rgb(var(--aurora-2))); animation: quiz-pulse 1s ease-in-out 3; }
+
+.mk-mini-grid { background: color-mix(in srgb, var(--ck-gold) 40%, var(--color-surface)); }
+.mk-mg-off { background: color-mix(in srgb, var(--color-elevated) 70%, transparent); }
+.mk-mg-on { background: var(--color-link); }
+.mk-mg-me { background: var(--ck-gold-deep); }
+.mk-guide-row { animation: pop-row-in 380ms cubic-bezier(0.22, 1, 0.36, 1) both; animation-delay: calc(var(--i, 0) * 60ms); }
+
+@media (prefers-reduced-motion: reduce) {
+  .mk-piece { transition: none; }
+  .mk-piece-moved, .mk-dot, .mk-sq-check, .mk-burst, .mk-check-banner, .mk-guide-row { animation: none; }
+}
+
+/* ── ตัวหมากภาพวาด (MakrukPiece) — งาช้าง / ไม้มะเกลือลงรักขอบทอง ── */
+.mk-pc { overflow: visible; transition: transform 180ms cubic-bezier(0.34, 1.56, 0.64, 1), filter 180ms; filter: drop-shadow(0 2px 2px color-mix(in srgb, var(--ck-shade) 35%, transparent)); }
+.mk-ivory {
+  --pk-hi: color-mix(in srgb, var(--ck-shine) 96%, var(--ck-gold));
+  --pk-mid: color-mix(in srgb, var(--ck-shine) 78%, var(--ck-gold));
+  --pk-lo: color-mix(in srgb, var(--ck-gold) 55%, var(--ck-gold-deep));
+  --pk-line: color-mix(in srgb, var(--ck-gold-deep) 80%, var(--ck-shade));
+  --pk-trim: color-mix(in srgb, var(--ck-gold-deep) 90%, var(--color-accent));
+  --pk-gloss: var(--ck-shine);
+  --pk-eye: color-mix(in srgb, var(--ck-shade) 85%, var(--ck-gold-deep));
+  --pk-shadow: var(--ck-shade);
+}
+.mk-ebony {
+  --pk-hi: color-mix(in srgb, var(--ck-shade) 55%, var(--color-accent) 20%);
+  --pk-mid: color-mix(in srgb, var(--ck-shade) 82%, var(--color-accent));
+  --pk-lo: var(--ck-shade);
+  --pk-line: color-mix(in srgb, var(--ck-shade) 90%, var(--ck-shine) 10%);
+  --pk-trim: var(--ck-gold);
+  --pk-gloss: color-mix(in srgb, var(--ck-shine) 70%, var(--ck-gold));
+  --pk-eye: var(--ck-gold);
+  --pk-shadow: var(--ck-shade);
+}
+/* ★ เบี้ยหงาย — รัศมีทองรอบตัว บอกว่ามาจากเบี้ย แม้ทรงเป็นเม็ดแล้ว */
+.mk-promoted { filter: drop-shadow(0 0 4px var(--ck-gold)) drop-shadow(0 0 2px var(--ck-gold)); }
+
+/* ── หมากรุกไทย: ป้ายผู้เล่น · แผงข้อมูลหมาก · ปุ่มควบคุม ── */
+.mk-seat {
+  background:
+    radial-gradient(120% 160% at 0% 50%, color-mix(in srgb, var(--ck-gold) 14%, transparent), transparent 60%),
+    var(--color-elevated);
+  box-shadow: inset 0 0 0 1px var(--color-line), 0 14px 30px -24px color-mix(in srgb, var(--ck-shade) 60%, transparent);
+}
+.mk-seat-on {
+  transform: none;
+  box-shadow: inset 0 0 0 2px var(--ck-gold-deep), 0 18px 34px -20px color-mix(in srgb, var(--ck-gold-deep) 90%, transparent);
+}
+.mk-seat-on::after {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  width: 40%;
+  left: -40%;
+  background: linear-gradient(100deg, transparent, color-mix(in srgb, var(--ck-gold) 25%, transparent), transparent);
+  animation: mk-sweep 2.6s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes mk-sweep { 60%, 100% { left: 110%; } }
+.mk-medal {
+  background: conic-gradient(from 200deg, var(--ck-gold), var(--ck-gold-deep), var(--ck-gold), color-mix(in srgb, var(--ck-gold) 50%, var(--ck-shine)), var(--ck-gold));
+  box-shadow: 0 8px 16px -8px color-mix(in srgb, var(--ck-shade) 70%, transparent);
+}
+.mk-medal::before { content: ''; position: absolute; inset: 3px; border-radius: inherit; }
+.mk-medal-w::before { background: radial-gradient(circle at 35% 30%, var(--color-elevated), color-mix(in srgb, var(--ck-gold) 25%, var(--color-elevated))); }
+.mk-medal-b::before { background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--ck-shade) 55%, var(--color-accent) 20%), var(--ck-shade)); }
+.mk-medal > span { position: relative; }
+.mk-tag-w { color: color-mix(in srgb, var(--ck-gold-deep) 85%, var(--ck-shade)); background: color-mix(in srgb, var(--ck-gold) 22%, var(--color-elevated)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ck-gold-deep) 35%, transparent); }
+.mk-tag-b { color: var(--ck-gold); background: color-mix(in srgb, var(--ck-shade) 85%, var(--color-accent)); }
+.mk-tag-gold { color: var(--ck-shade); background: var(--ck-gold); }
+.mk-turn { color: var(--ck-shine); background: linear-gradient(120deg, var(--ck-gold-deep), color-mix(in srgb, var(--ck-gold-deep) 60%, var(--color-accent))); }
+.mk-took { filter: drop-shadow(0 1px 1px color-mix(in srgb, var(--ck-shade) 50%, transparent)); }
+.mk-info {
+  background: color-mix(in srgb, var(--color-surface) 70%, transparent);
+  border: 1.5px dashed var(--color-line);
+}
+.mk-info-on {
+  border: 0;
+  background:
+    radial-gradient(140% 160% at 0% 0%, color-mix(in srgb, var(--ck-gold) 18%, transparent), transparent 60%),
+    var(--color-elevated);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--ck-gold-deep) 45%, transparent), 0 14px 28px -20px color-mix(in srgb, var(--ck-gold-deep) 90%, transparent);
+  animation: cfm-icon-pop 380ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.mk-ctl {
+  color: var(--color-ink);
+  background: var(--color-elevated);
+  box-shadow: inset 0 0 0 1px var(--color-line), 0 10px 20px -16px color-mix(in srgb, var(--ck-shade) 60%, transparent);
+  transition: transform 180ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 180ms;
+}
+.mk-ctl:hover { transform: translateY(-2px); box-shadow: inset 0 0 0 1.5px var(--ck-gold-deep), 0 14px 24px -14px color-mix(in srgb, var(--ck-gold-deep) 80%, transparent); }
+.mk-ctl-main { color: var(--ck-shine); background: linear-gradient(135deg, var(--ck-gold-deep), color-mix(in srgb, var(--ck-gold-deep) 55%, var(--color-accent))); box-shadow: 0 12px 24px -12px color-mix(in srgb, var(--ck-gold-deep) 90%, transparent); }
+@media (prefers-reduced-motion: reduce) {
+  .mk-seat-on::after, .mk-info-on { animation: none; }
+  .mk-ctl:hover { transform: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+ * ยิงบอลสี — เวทีไล่สีม่วงน้ำเงินมีดาว · บอลมันวาว (DOM ตัวอย่าง) · แถบคะแนน
+ * ═══════════════════════════════════════════════════════════════════════ */
+.bb-stage {
+  background:
+    radial-gradient(2px 2px at 12% 18%, color-mix(in srgb, var(--ck-shine) 80%, transparent), transparent),
+    radial-gradient(1.5px 1.5px at 68% 32%, color-mix(in srgb, var(--ck-shine) 70%, transparent), transparent),
+    radial-gradient(1.5px 1.5px at 38% 72%, color-mix(in srgb, var(--ck-shine) 60%, transparent), transparent),
+    radial-gradient(2px 2px at 86% 64%, color-mix(in srgb, var(--ck-shine) 70%, transparent), transparent),
+    radial-gradient(120% 80% at 50% 0%, rgb(var(--aurora-2) / 0.55), transparent 60%),
+    radial-gradient(100% 70% at 50% 100%, rgb(var(--aurora-3) / 0.45), transparent 60%),
+    linear-gradient(180deg, color-mix(in srgb, var(--ck-shade) 75%, rgb(var(--aurora-2))), color-mix(in srgb, var(--ck-shade) 85%, rgb(var(--aurora-3))));
+  box-shadow: 0 40px 80px -40px rgb(var(--aurora-2) / 0.9), inset 0 0 0 1px color-mix(in srgb, var(--ck-shine) 10%, transparent);
+}
+.bb-ball {
+  width: 13%;
+  aspect-ratio: 1;
+  border-radius: 9999px;
+  --bc: var(--color-accent);
+  background:
+    radial-gradient(circle at 32% 28%, color-mix(in srgb, var(--ck-shine) 75%, transparent) 0 14%, transparent 32%),
+    radial-gradient(circle at 38% 35%, color-mix(in srgb, var(--bc) 50%, var(--ck-shine)), var(--bc) 50%, color-mix(in srgb, var(--bc) 60%, var(--ck-shade)));
+  box-shadow: inset 0 -3px 6px color-mix(in srgb, var(--ck-shade) 35%, transparent), 0 4px 10px -4px color-mix(in srgb, var(--bc) 80%, transparent);
+  animation: bb-bob 2.4s ease-in-out infinite;
+  animation-delay: var(--dl, 0s);
+}
+@keyframes bb-bob { 50% { transform: translateY(-4px); } }
+.bb-c0 { --bc: var(--color-accent); }
+.bb-c1 { --bc: var(--color-link); }
+.bb-c2 { --bc: var(--ck-gold); }
+.bb-c3 { --bc: var(--quiz-green); }
+.bb-c4 { --bc: rgb(var(--aurora-2)); }
+.bb-c5 { --bc: var(--color-warn); }
+.bb-shot { left: 43.5%; bottom: 14%; animation: bb-fire 2.6s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+@keyframes bb-fire {
+  0%, 20% { transform: translate(0, 0); opacity: 1; }
+  45% { transform: translate(110%, -200%); }
+  70% { transform: translate(-60%, -420%); opacity: 1; }
+  78%, 100% { transform: translate(-60%, -420%) scale(1.8); opacity: 0; }
+}
+.bb-cannon {
+  left: 50%;
+  bottom: 3%;
+  width: 26%;
+  aspect-ratio: 2 / 1;
+  transform: translateX(-50%);
+  border-radius: 9999px 9999px 0 0;
+  background: radial-gradient(circle at 50% 100%, color-mix(in srgb, var(--ck-shine) 35%, transparent), transparent 70%);
+}
+.bb-hud {
+  background: var(--color-elevated);
+  box-shadow: inset 0 0 0 1px var(--color-line), 0 12px 24px -18px rgb(var(--aurora-2) / 0.7);
+}
+.bb-score { animation: cfm-icon-pop 360ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+.bb-pip-on { background: linear-gradient(135deg, var(--color-link), rgb(var(--aurora-2))); }
+.bb-pip-off { background: var(--color-surface); box-shadow: inset 0 0 0 1px var(--color-line); }
+.bb-pip-warn { background: var(--color-accent); animation: quiz-pulse 0.8s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .bb-ball, .bb-shot, .bb-score, .bb-pip-warn { animation: none; }
+}
+
+/* ── กบพ่นบอล: ฉากตัวอย่าง (หน้าเลือกระดับ / แผงคำอธิบาย) + เวทีเกม ── */
+.fg-demo {
+  background:
+    radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--color-link) 45%, var(--ck-shade)) 0 15%, color-mix(in srgb, var(--color-link) 25%, var(--ck-shade)) 15.5% 18%, transparent 18.5%),
+    radial-gradient(circle at 50% 50%, transparent 0 30%, color-mix(in srgb, var(--quiz-green) 55%, var(--ck-shade)) 30% 46%, transparent 46.5%),
+    radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--quiz-green) 80%, var(--ck-shine)), color-mix(in srgb, var(--quiz-green) 70%, var(--ck-shade)));
+  box-shadow: 0 30px 60px -30px color-mix(in srgb, var(--quiz-green) 80%, transparent);
+}
+.fg-orbit { animation: bb-bob 2.4s ease-in-out infinite, fg-roll 6s linear infinite; animation-delay: var(--dl, 0s); }
+@keyframes fg-roll { to { rotate: 360deg; } }
+.fg-frog {
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  font-size: clamp(48px, 9vw, 84px);
+  line-height: 1;
+  filter: drop-shadow(0 6px 8px color-mix(in srgb, var(--ck-shade) 50%, transparent));
+  animation: fg-turn 4s ease-in-out infinite;
+}
+@keyframes fg-turn { 0%, 100% { rotate: -14deg; } 50% { rotate: 14deg; } }
+.fg-stage { box-shadow: 0 40px 80px -40px color-mix(in srgb, var(--quiz-green) 85%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--ck-shine) 10%, transparent); transition: box-shadow 300ms; }
+.fg-danger { animation: fg-alarm 0.9s ease-in-out infinite; }
+@keyframes fg-alarm {
+  0%, 100% { box-shadow: 0 0 0 2px var(--color-accent), 0 20px 50px -20px color-mix(in srgb, var(--color-accent) 60%, transparent); }
+  50% { box-shadow: 0 0 0 5px var(--color-accent), 0 30px 80px -10px color-mix(in srgb, var(--color-accent) 90%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fg-orbit, .fg-frog, .fg-danger { animation: none; }
+}
+
+/* ── โหมดเต็มจอของเกม (useGameFullscreen) — ปูทับทั้งหน้า ใช้ได้แม้เบราว์เซอร์ไม่รองรับเต็มจอจริง ── */
+.game-fs {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow-y: auto;
+  padding: max(10px, env(safe-area-inset-top)) 14px max(10px, env(safe-area-inset-bottom));
+  background:
+    radial-gradient(80% 60% at 50% 0%, rgb(var(--aurora-2) / 0.35), transparent 60%),
+    radial-gradient(80% 60% at 50% 100%, rgb(var(--aurora-3) / 0.3), transparent 60%),
+    var(--color-page);
+  animation: cfm-fade 220ms ease-out both;
+}
+.game-fs:fullscreen { background-color: var(--color-page); }
