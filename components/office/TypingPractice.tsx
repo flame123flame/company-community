@@ -102,6 +102,8 @@ export function TypingPractice() {
   }, [startedAt, finishedAt])
 
   const progress = useMemo(() => compare(text, typed), [text, typed])
+
+  const typedChars = useMemo(() => toChars(typed), [typed])
   /* ★ จบแล้วใช้เวลาที่จบ · ยังพิมพ์อยู่ใช้นาฬิกาที่เดิน · เพิ่งเริ่มใช้เวลาตอนนี้ */
   const elapsed = startedAt === null ? 0 : (finishedAt ?? (now || Date.now())) - startedAt
   const stats = counterRef.current.stats(elapsed)
@@ -129,8 +131,10 @@ export function TypingPractice() {
     restart(next)
   }
 
-  function onChange(value: string) {
+  function onChange(raw: string) {
     if (finishedAt !== null) return
+    /* ★ พิมพ์เกินความยาวข้อความไม่ได้ — ครบแล้วจบทันที */
+    const value = toChars(raw).slice(0, toChars(text).length).join('')
 
     /*
      * ★★★ ระหว่าง IME กำลังประกอบอักษร ยังไม่นับการกด
@@ -221,7 +225,8 @@ export function TypingPractice() {
   }
 
   const total = chars.length || 1
-  const pct = Math.min(100, (progress.correct / total) * 100)
+  /* ★ แถบความคืบหน้าเดินตามตำแหน่งที่พิมพ์ (ผิดก็เดิน) */
+  const pct = Math.min(100, (progress.cursor / total) * 100)
 
   return (
     <div className="py-2">
@@ -271,18 +276,19 @@ export function TypingPractice() {
       >
         <p dir="auto" className="break-words">
           {chars.map((ch, i) => {
+            /* ★ ตัดสินทีละตำแหน่ง — ผิดแล้วเคอร์เซอร์เดินต่อ ตัวที่ผิดค้างไฮไลต์แดงไว้ให้เห็น */
             const state =
-              i < progress.correct
-                ? 'ok'
-                : i === progress.correct && progress.wrong
-                  ? 'bad'
-                  : i === progress.correct
-                    ? 'cursor'
-                    : 'rest'
+              i < progress.cursor
+                ? typedChars[i] === ch
+                  ? 'ok'
+                  : 'bad'
+                : i === progress.cursor
+                  ? 'cursor'
+                  : 'rest'
             return (
               <span
                 key={i}
-                ref={state === 'cursor' || state === 'bad' ? scrollIntoViewRef : undefined}
+                ref={state === 'cursor' ? scrollIntoViewRef : undefined}
                 className={cn(
                   'inline-block',
                   state === 'ok' && 'type-ok text-ink',
@@ -299,12 +305,6 @@ export function TypingPractice() {
               </span>
             )
           })}
-          {/* ★ พิมพ์เกินความยาวข้อความ — แสดงส่วนเกินเป็นสีแดงต่อท้าย */}
-          {toChars(typed).length > chars.length ? (
-            <span className="rounded bg-danger/30 text-danger">
-              {toChars(typed).slice(chars.length).join('')}
-            </span>
-          ) : null}
         </p>
       </div>
 

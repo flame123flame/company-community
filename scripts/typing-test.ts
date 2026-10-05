@@ -34,17 +34,19 @@ check(compare('hello', '').correct === 0, 'ยังไม่พิมพ์ = 0
 check(compare('hello', 'hel').correct === 3, 'พิมพ์ถูกสามตัว')
 check(!compare('hello', 'hel').wrong, 'ถูกอยู่ = ไม่ผิด')
 check(compare('hello', 'hex').wrong, 'พิมพ์ผิดตัวที่สาม = ผิด')
-check(compare('hello', 'hex').correct === 2, 'นับถูกต่อเนื่องแค่สองตัว')
+check(compare('hello', 'hex').correct === 2, 'ถูกสองตัว ผิดหนึ่ง')
+check(compare('hello', 'hex').cursor === 3, 'ผิดแล้วเคอร์เซอร์เดินต่อ')
 check(compare('hello', 'hello').done, 'พิมพ์ครบ = จบ')
-check(compare('hello', 'helloo').wrong, 'พิมพ์เกิน = ผิด')
-check(!compare('hello', 'helloo').done, 'พิมพ์เกินยังไม่ถือว่าจบ')
+check(compare('hello', 'helloo').cursor === 5, 'พิมพ์เกินถูกตัดที่ความยาวข้อความ')
+check(compare('hellx', 'hello').done, 'พิมพ์ครบความยาว = จบ แม้มีตัวผิด')
 
 /*
  * ★★★ ต้องแก้ให้ถูกก่อนไปต่อ — นับถูก "ต่อเนื่องจากต้น" ไม่ใช่ถูกรวม ๆ
  *     ★ ถ้านับรวม ๆ คนที่พิมพ์ผิดกลางทางแล้วพิมพ์ต่อไปเรื่อย ๆ จะได้คะแนน
  *       เท่าคนที่พิมพ์ถูกหมด ซึ่งผิดเจตนาของเกม
  */
-check(compare('abcdef', 'abXdef').correct === 2, 'ผิดกลางทางแล้วพิมพ์ต่อ ยังนับได้แค่ถึงจุดที่ผิด')
+check(compare('abcdef', 'abXdef').correct === 5, 'ผิดกลางทางแล้วพิมพ์ต่อ ตัวหลังจากนั้นนับถูกได้')
+check(compare('abcdef', 'abXdef').errors === 1, 'นับตัวผิดได้ 1')
 
 head('ไทย: พิมพ์ทีละ code point')
 const thai = 'สวัสดี'
@@ -85,7 +87,7 @@ head('ตัวนับระหว่างพิมพ์')
   check(s.correct === 5, 'พิมพ์ครบ 5 ตัว', `${s.correct}`)
   check(s.keystrokes === 7, 'นับการกดทั้งหมด 7 ครั้ง', `${s.keystrokes}`)
   check(s.accuracy < 100, 'ลบแก้แล้วความแม่นยำต่ำกว่า 100%', `${s.accuracy}%`)
-  check(Math.abs(s.accuracy - 71.4) < 0.2, 'ความแม่นยำ = 5/7 ≈ 71.4%', `${s.accuracy}%`)
+  check(Math.abs(s.accuracy - 57.1) < 0.2, 'ความแม่นยำ = 4/7 ≈ 57.1% (ตัวที่ลบแก้ไม่นับว่าถูกครั้งแรก)', `${s.accuracy}%`)
 }
 {
   const c = new TypingCounter()

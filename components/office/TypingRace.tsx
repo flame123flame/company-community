@@ -247,6 +247,8 @@ export function TypingRace({
   }, [racing])
 
   const progress = useMemo(() => compare(room?.text ?? '', typed), [room?.text, typed])
+
+  const typedChars = useMemo(() => toChars(typed), [typed])
   const stats = counterRef.current.stats(elapsed)
 
   async function push(final: boolean) {
@@ -272,7 +274,8 @@ export function TypingRace({
       } else {
         await apiFetch('/api/office/games/typing', {
           method: 'POST',
-          body: { action: 'progress', roomId, chars: s.correct, wpm: s.wpm, accuracy: s.accuracy },
+          /* ★ ความคืบหน้า = ตำแหน่งที่พิมพ์ถึง (ผิดก็เดิน) — WPM สุทธิยังนับเฉพาะตัวที่ถูก */
+          body: { action: 'progress', roomId, chars: compare(room.text, typed).cursor, wpm: s.wpm, accuracy: s.accuracy },
         })
       }
     } catch {
@@ -280,8 +283,10 @@ export function TypingRace({
     }
   }
 
-  function onChange(value: string) {
+  function onChange(raw: string) {
     if (!racing || finishedRef.current) return
+    /* ★ พิมพ์เกินความยาวข้อความไม่ได้ — ครบแล้วจบทันที */
+    const value = toChars(raw).slice(0, toChars(room?.text ?? '').length).join('')
     setTyped(value)
     if (composingRef.current) return
 
@@ -374,7 +379,7 @@ export function TypingRace({
                 className={cn('h-full rounded-full transition-all', p.finished ? 'bg-link' : 'bg-accent')}
                 style={{
                   /* ★ จบแล้ว = เต็มแถบ — server เก็บความคืบหน้าล่าสุดที่ส่งทัน (เคยค้าง 97%) */
-                  width: `${p.finished ? 100 : Math.min(100, ((p.me ? stats.correct : p.progress) / total) * 100)}%`,
+                  width: `${p.finished ? 100 : Math.min(100, ((p.me ? progress.cursor : p.progress) / total) * 100)}%`,
                 }}
               />
             </div>
@@ -390,18 +395,19 @@ export function TypingRace({
         >
           <p dir="auto" className="break-words">
             {chars.map((ch, i) => {
+              /* ★ ตัดสินทีละตำแหน่ง — ผิดแล้วเคอร์เซอร์เดินต่อ ตัวที่ผิดค้างไฮไลต์แดงไว้ให้เห็น */
               const state =
-                i < progress.correct
-                  ? 'ok'
-                  : i === progress.correct && progress.wrong
-                    ? 'bad'
-                    : i === progress.correct
-                      ? 'cursor'
-                      : 'rest'
+                i < progress.cursor
+                  ? typedChars[i] === ch
+                    ? 'ok'
+                    : 'bad'
+                  : i === progress.cursor
+                    ? 'cursor'
+                    : 'rest'
               return (
                 <span
                   key={i}
-                  ref={state === 'cursor' || state === 'bad' ? scrollIntoViewRef : undefined}
+                  ref={state === 'cursor' ? scrollIntoViewRef : undefined}
                   className={cn(
                     state === 'ok' && 'text-ink',
                     state === 'bad' && 'rounded bg-danger/30 text-danger',

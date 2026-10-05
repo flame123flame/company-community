@@ -21,38 +21,41 @@ export function toChars(s: string): string[] {
 }
 
 export type Progress = {
-  /** พิมพ์ถูกไปแล้วกี่ตัว (นับจากต้นข้อความต่อเนื่อง) */
+  /** จำนวนตัวที่พิมพ์ถูกตำแหน่ง (นับทุกตำแหน่งที่พิมพ์ไปแล้ว ไม่ต้องต่อเนื่อง) */
   correct: number
-  /** ตำแหน่งที่เคอร์เซอร์อยู่ */
+  /** ตำแหน่งที่เคอร์เซอร์อยู่ = จำนวนตัวที่พิมพ์ไปแล้ว (ไม่เกินความยาวข้อความ) */
   cursor: number
-  /** ตัวที่กำลังพิมพ์ผิดอยู่ตอนนี้ไหม */
+  /** จำนวนตำแหน่งที่พิมพ์ผิดอยู่ตอนนี้ */
+  errors: number
+  /** ตัวล่าสุดที่เพิ่งพิมพ์ผิดไหม (ใช้สั่นหน้าจอ/ไฮไลต์) */
   wrong: boolean
-  /** พิมพ์ครบแล้วไหม */
+  /** พิมพ์ครบความยาวข้อความแล้วไหม — ★ ไม่ต้องถูกทุกตัว */
   done: boolean
 }
 
 /**
- * เทียบสิ่งที่พิมพ์กับข้อความต้นฉบับ
+ * เทียบสิ่งที่พิมพ์กับข้อความต้นฉบับ — ทีละตำแหน่ง
  *
- * ★★★ ต้องพิมพ์แก้ให้ถูกก่อนถึงจะไปต่อได้ — ตามข้อกำหนด
- *
- *     ★ จึงนับ "ถูกต่อเนื่องจากต้น" ไม่ใช่ "ถูกกี่ตัวรวม ๆ"
- *       ★★ ถ้านับรวม ๆ คนที่พิมพ์ผิดกลางทางแล้วพิมพ์ต่อไปเรื่อย ๆ
- *          จะได้คะแนนเหมือนคนที่พิมพ์ถูกหมด ซึ่งผิดเจตนาของเกม
+ * ★★★ กติกาใหม่ (เจ้าของสั่ง 5 ต.ค. 2026): พิมพ์ผิดแล้ว "พิมพ์ต่อได้เลย" ไม่ต้องลบแก้
+ *     ★ รุ่นเดิมบังคับลบให้ถูกก่อน — ช่องพิมพ์ซ่อนอยู่ คนจึงเห็นแค่ว่า "พิมพ์ต่อไม่ได้" แล้วคิดว่าเกมค้าง
+ *     ★★ ตัวที่ผิดยังมีราคา: WPM นับเฉพาะตัวที่ถูก (net) และความแม่นยำลดลง
+ *        คนพิมพ์มั่วเร็ว ๆ จึงไม่ได้คะแนนดีไปกว่าคนพิมพ์ถูก
+ * ★ ยังลบแก้ได้ตามปกติ (Backspace) — แค่ไม่บังคับ
  */
 export function compare(target: string, typed: string): Progress {
   const t = toChars(target)
-  const u = toChars(typed)
+  const u = toChars(typed).slice(0, t.length)
 
-  let i = 0
-  while (i < u.length && i < t.length && u[i] === t[i]) i++
+  let correct = 0
+  for (let i = 0; i < u.length; i++) if (u[i] === t[i]) correct++
+  const last = u.length - 1
 
   return {
-    correct: i,
+    correct,
     cursor: u.length,
-    /* ★ ผิดเมื่อพิมพ์เกินจุดที่ถูก — รวมถึงพิมพ์ยาวเกินข้อความด้วย */
-    wrong: u.length > i,
-    done: i === t.length && u.length === t.length,
+    errors: u.length - correct,
+    wrong: last >= 0 && u[last] !== t[last],
+    done: t.length > 0 && u.length === t.length,
   }
 }
 
@@ -93,38 +96,45 @@ export class TypingCounter {
   private maxReached = 0
   private firstTryCorrect = 0
   private keystrokes = 0
+  private lastCorrect = 0
 
   /** เรียกทุกครั้งที่ข้อความในช่องเปลี่ยน */
   update(target: string, typed: string, keystrokeDelta: number): Progress {
     this.keystrokes += Math.max(0, keystrokeDelta)
     const p = compare(target, typed)
+    this.lastCorrect = p.correct
 
-    /* ★ นับเฉพาะ "ตัวที่เพิ่งไปถึงเป็นครั้งแรกและถูก" */
-    if (p.correct > this.maxReached) {
-      this.firstTryCorrect += p.correct - this.maxReached
-      this.maxReached = p.correct
+    /* ★ ตำแหน่งที่เพิ่งไปถึงเป็นครั้งแรก — นับว่า "ถูกในครั้งแรก" เฉพาะตัวที่พิมพ์ถูก
+         ★★ ลบแล้วพิมพ์ใหม่ที่ตำแหน่งเดิมไม่ได้นับซ้ำ ความแม่นยำจึงยังสะท้อนการพิมพ์จริง */
+    if (p.cursor > this.maxReached) {
+      const t = toChars(target)
+      const u = toChars(typed)
+      for (let i = this.maxReached; i < p.cursor; i++) if (u[i] === t[i]) this.firstTryCorrect++
+      this.maxReached = p.cursor
     }
     return p
   }
 
-  /** สถานะทั้งหมด — เก็บลง sessionStorage ให้รีโหลดกลางแข่งแล้วพิมพ์ต่อได้ */
-  snapshot(): { maxReached: number; firstTryCorrect: number; keystrokes: number } {
-    return { maxReached: this.maxReached, firstTryCorrect: this.firstTryCorrect, keystrokes: this.keystrokes }
+  /** สถานะทั้งหมด — เก็บลง sessionStorage ให้รีโหลดกลางแข่งแล้วพิมพ์ต่อจากเดิมได้ */
+  snapshot(): { maxReached: number; firstTryCorrect: number; keystrokes: number; lastCorrect?: number } {
+    return { maxReached: this.maxReached, firstTryCorrect: this.firstTryCorrect, keystrokes: this.keystrokes, lastCorrect: this.lastCorrect }
   }
 
-  static restore(s: { maxReached: number; firstTryCorrect: number; keystrokes: number }): TypingCounter {
+  static restore(s: { maxReached: number; firstTryCorrect: number; keystrokes: number; lastCorrect?: number }): TypingCounter {
     const c = new TypingCounter()
     c.maxReached = s.maxReached
     c.firstTryCorrect = s.firstTryCorrect
     c.keystrokes = s.keystrokes
+    c.lastCorrect = s.lastCorrect ?? s.maxReached
     return c
   }
 
   stats(elapsedMs: number) {
     return {
-      wpm: wpm(this.maxReached, elapsedMs),
+      /* ★ WPM สุทธิ — นับเฉพาะตัวที่ถูกตอนจบ ตัวที่ผิดไม่ช่วยให้เร็วขึ้น */
+      wpm: wpm(this.lastCorrect, elapsedMs),
       accuracy: accuracy(this.firstTryCorrect, this.keystrokes),
-      correct: this.maxReached,
+      correct: this.lastCorrect,
       keystrokes: this.keystrokes,
     }
   }
