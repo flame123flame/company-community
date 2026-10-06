@@ -17,6 +17,8 @@ import { toBaht, toSatang } from '@/lib/office/money'
 import { ChatAvatar } from './ChatAvatar'
 import { PaySheet, type PayTarget } from './PaySheet'
 import { DebtDetailSheet } from './DebtDetailSheet'
+import { CuteRemindSheet } from './CuteRemindSheet'
+import { TONE_EMOJI, type RemindTone } from '@/lib/office/remind'
 
 type Debt = {
   id: string
@@ -266,8 +268,11 @@ export function WalletOwed() {
     }
   }
 
+  /* ★ กล่องเลือกสไตล์ทวงสำหรับปุ่ม "ทวงทุกคน" */
+  const [cuteAll, setCuteAll] = useState(false)
+
   /** ทวงทุกคนที่ยังค้างและพ้นคูลดาวน์แล้ว */
-  async function remindAll() {
+  async function remindAll(tone: RemindTone) {
     const due = owedGroups.flatMap((g) =>
       g.theirs.filter((d) => d.status === 'PENDING' && canRemind(d)),
     )
@@ -278,7 +283,7 @@ export function WalletOwed() {
       for (const d of due) {
         await apiFetch(`/api/office/wallet/debts/${d.id}`, {
           method: 'POST',
-          body: { action: 'remind', tone: 'POLITE' },
+          body: { action: 'remind', tone },
         })
       }
       await load()
@@ -392,15 +397,26 @@ export function WalletOwed() {
           owedGroups.flatMap((g) =>
             g.theirs.filter((d) => d.status === 'PENDING' && canRemind(d)),
           ).length > 1 ? (
-            <Button
-              size="sm"
-              variant="secondary"
-              className="min-h-11 shrink-0"
-              loading={busy === 'all'}
-              onClick={remindAll}
-            >
-              <Untranslated>{ot('wallet.owed.remindAll')}</Untranslated>
-            </Button>
+            <>
+              <Button
+                size="sm"
+                variant="secondary"
+                className="min-h-11 shrink-0"
+                loading={busy === 'all'}
+                onClick={() => setCuteAll(true)}
+              >
+                <Untranslated>{`${TONE_EMOJI.CAT} ${ot('wallet.owed.remindAll')}`}</Untranslated>
+              </Button>
+              {cuteAll ? (
+                <CuteRemindSheet
+                  name={null}
+                  amount={null}
+                  count={new Set(owedGroups.filter((g) => g.theirs.some((d) => d.status === 'PENDING' && canRemind(d))).map((g) => g.otherId)).size}
+                  onClose={() => setCuteAll(false)}
+                  onSend={(tone) => void remindAll(tone)}
+                />
+              ) : null}
+            </>
           ) : undefined
         }
       >
@@ -998,6 +1014,8 @@ function OwedActions({
   locale: string
 }) {
   const confirm = useConfirm()
+  /* ★ กล่องเลือกสไตล์ทวง (น่ารัก) */
+  const [cute, setCute] = useState(false)
   const waiting = group.waiting.filter((d) => group.theirs.includes(d))
 
   if (waiting.length > 0) {
@@ -1044,12 +1062,20 @@ function OwedActions({
         className="min-h-11 w-full"
         disabled={blocked}
         loading={busy === pending[0]!.id}
-        onClick={() => {
-          for (const d of due) onAct(d.id, { action: 'remind', tone: 'POLITE' }, ot('wallet.owed.toastReminded'))
-        }}
+        onClick={() => setCute(true)}
       >
-        <Untranslated>{ot('wallet.owed.remind')}</Untranslated>
+        <Untranslated>{`${TONE_EMOJI.CAT} ${ot('wallet.owed.remind')}`}</Untranslated>
       </Button>
+      {cute ? (
+        <CuteRemindSheet
+          name={group.otherName}
+          amount={`฿${formatBaht(locale, due.reduce((sum, d) => sum + d.amount, 0))}`}
+          onClose={() => setCute(false)}
+          onSend={(tone) => {
+            for (const d of due) onAct(d.id, { action: 'remind', tone }, ot('wallet.owed.toastReminded'))
+          }}
+        />
+      ) : null}
       {/*
         * ★ บอกเวลาที่ทวงล่าสุด และเวลาที่ทวงได้อีกครั้ง
         *   ★★ ปุ่มที่กดไม่ได้โดยไม่บอกเหตุผล ทำให้คนกดซ้ำแล้วคิดว่าเว็บค้าง

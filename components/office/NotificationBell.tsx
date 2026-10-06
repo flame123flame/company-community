@@ -6,9 +6,9 @@ import Link from 'next/link'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { apiFetch } from '@/lib/api/client'
 import { cn } from '@/lib/cn'
+import { TONE_EMOJI, isTone } from '@/lib/office/remind'
 import { useLocale } from '@/lib/i18n/client'
 import { formatBaht } from '@/lib/office/wallet'
-import { toBaht } from '@/lib/office/money'
 import { Untranslated, useOt, type OfficeKey, type Ot } from '@/lib/i18n/office'
 
 /**
@@ -415,8 +415,11 @@ function detailOf(item: Item, locale: string): string | null {
   switch (item.titleKey) {
     case 'notify.type.debtReminder':
     case 'notify.type.debtPaidPending':
-      /* ★ amount เก็บเป็นสตางค์ในฐานข้อมูล — แปลงก่อนเสมอ */
-      return amount === null ? null : `฿${formatBaht(locale, toBaht(amount))}`
+      /*
+       * ★★ amount ในแจ้งเตือนเป็น "บาท" (debts.amount numeric(12,2)) ไม่ใช่สตางค์
+       *    ★ รุ่นเดิมหาร 100 ซ้ำ — ฿124 ขึ้นเป็น ฿1.24 ในทุกแจ้งเตือนเรื่องเงิน (เจอ 6 ต.ค. 2026)
+       */
+      return amount === null ? null : `฿${formatBaht(locale, amount)}`
     case 'notify.type.debtCreated':
     case 'notify.type.marketReserved':
     case 'notify.type.marketQueueTurn':
@@ -442,7 +445,11 @@ function Row({ item, onGo }: { item: Item; onGo: () => void }) {
    *     ★★ ไม่จำเป็นด้วย: makeOt() คืนชื่อกุญแจเองเมื่อแปลไม่เจอ
    *        ซึ่งเป็นผลเดียวกันเป๊ะกับที่โค้ดเดิมเขียนไว้สองทาง
    */
-  const text = ot(item.titleKey as OfficeKey, item.params as Record<string, string | number>)
+  /* ★ ทวงแบบน่ารัก: หัวข้อ + ข้อความตามสไตล์ที่คนทวงเลือก (params.tone) — สไตล์ไม่รู้จัก = ข้อความเดิม */
+  const tone = item.titleKey === 'notify.type.debtReminder' && isTone(item.params.tone) && item.params.tone !== 'POLITE' ? item.params.tone : null
+  const text = tone
+    ? `${TONE_EMOJI[tone]} ${ot(`wallet.tone.${tone}.title` as 'wallet.tone.CAT.title')}`
+    : ot(item.titleKey as OfficeKey, item.params as Record<string, string | number>)
   const detail = detailOf(item, locale)
 
   const kind = KIND_OF[item.titleKey] ?? KINDS.other
@@ -474,6 +481,11 @@ function Row({ item, onGo }: { item: Item; onGo: () => void }) {
           ) : null}
         </div>
 
+        {tone ? (
+          <p className="notify-cute mt-1 rounded-xl rounded-tl-sm px-2.5 py-1.5 text-[12.5px] leading-snug text-ink-soft">
+            <Untranslated>{ot(`wallet.tone.${tone}.msg` as 'wallet.tone.CAT.msg')}</Untranslated>
+          </p>
+        ) : null}
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
           {/* ★ ยอดเงิน/ชื่อบิล — แคปซูลสีประจำเรื่อง · dir="auto" เพราะเป็นข้อความที่ผู้ใช้พิมพ์ */}
           {detail ? (

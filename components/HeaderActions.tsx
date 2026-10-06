@@ -52,7 +52,7 @@ export async function HeaderActions({
    *    ★ วัดไว้แล้วตอนทำหน้าแรก: ก้อนเต็มทำให้ HTML โตขึ้น 34,726 ไบต์
    *      ซึ่งทุกคนต้องโหลดทุกครั้งที่เปิดหน้าไหนก็ได้
    */
-  const dict = officeDictSubset(locale, ['notify.', 'time.', 'top.', 'common.', 'chat.', 'nav.'])
+  const dict = officeDictSubset(locale, ['notify.', 'time.', 'top.', 'common.', 'chat.', 'nav.', 'wallet.tone.'])
 
   return (
     <OfficeI18nProvider dict={dict}>

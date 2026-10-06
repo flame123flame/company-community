@@ -40,7 +40,8 @@ export type DebtStatus = 'PENDING' | 'PAID_PENDING' | 'SETTLED' | 'CANCELLED'
 export type ExpenseCategory = 'FOOD' | 'COFFEE' | 'OTHER'
 export type SplitMode = 'EQUAL' | 'CUSTOM'
 /** โทนข้อความทวง (FR-B06) */
-export type ReminderTone = 'POLITE' | 'FUNNY'
+/** สไตล์ทวงเงิน — ฐานข้อมูลเก็บเป็นข้อความอิสระ · ชุดที่ใช้ได้กำหนดใน lib/office/remind.ts */
+export type ReminderTone = 'POLITE' | 'CAT' | 'PLEAD' | 'COFFEE' | 'HEART' | 'FUNNY'
 
 /* ── โมดูล D · ตลาดนัด (0029) ─────────────────────────────────────────── */
 

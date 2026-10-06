@@ -1,5 +1,6 @@
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
+import { REMIND_TONES } from '@/lib/office/remind'
 import { getSupabaseAdminClient } from '@/lib/supabase/admin'
 import { AppError, fromPostgresError } from '@/lib/http/errors'
 import { assertSameOrigin, parseJsonBody } from '@/lib/http/guard'
@@ -33,7 +34,8 @@ const actionSchema = z.discriminatedUnion('action', [
    *        ★ ทางออกเดียวคือ "ยกเลิกหนี้" ซึ่งลบหนี้ทิ้งทั้งที่เงินยังไม่ได้รับ
    */
   z.object({ action: z.literal('reject') }),
-  z.object({ action: z.literal('remind'), tone: z.enum(['POLITE', 'FUNNY']).default('POLITE') }),
+  /* ★ สไตล์ทวงน่ารัก — รับเฉพาะชุดที่กำหนด (lib/office/remind.ts) */
+  z.object({ action: z.literal('remind'), tone: z.enum(REMIND_TONES).default('POLITE') }),
 ])
 
 export const POST = withErrorHandling(
