@@ -5,10 +5,7 @@ import { cn } from '@/lib/cn'
 import { Button } from '@/components/ui/Button'
 import { Untranslated, useOt } from '@/lib/i18n/office'
 import {
-  COLS,
-  ROWS,
   botMove,
-  dropRow,
   emptyBoard,
   other,
   outcome,
@@ -19,19 +16,27 @@ import {
 } from '@/lib/games/connect4'
 import { ModeCard } from './CheckersIntro'
 import { CheckersResult, useBotTurn } from './CheckersBoard'
+import { Connect4Board, Connect4Seats, MiniConnect4 } from './Connect4Board'
+import { Connect4Online } from './Connect4Online'
+import { GameLobby } from './GameLobby'
 import { FunGuide } from './FunGuide'
 
-type Mode = 'BOT' | 'PASS'
+type Mode = 'BOT' | 'PASS' | 'ONLINE'
 type Game = { board: Board; turn: Player; last: number | null; moves: number }
 
 const newGame = (): Game => ({ board: emptyBoard(), turn: 1, last: null, moves: 0 })
 
 /**
- * เรียง 4 (Connect Four) — เล่นในเครื่อง: กับบอท 3 ระดับ · 2 คนบนเครื่องเดียว
+ * เรียง 4 (Connect Four) — กับบอท 3 ระดับ · ส่งเครื่องกันเล่น · ท้าเพื่อนออนไลน์
  *
- * ★★ โครงเดียวกับหมากฮอส (หน้าเลือกโหมด · ตั้งค่าเพิ่ม · ป๊อปอัปชนะ/แพ้) — คนที่เล่นหมากฮอส
- *    แล้วมาเล่นเกมนี้ไม่ต้องเรียนวิธีใช้ใหม่
+ * ★★ โครงเดียวกับหมากฮอสทุกจุด (หน้าเลือกโหมด · ตั้งค่าเพิ่ม · ลอบบี้ท้าเพื่อน ·
+ *    ป๊อปอัปชนะ/แพ้) — คนที่เล่นหมากฮอสแล้วมาเล่นเกมนี้ไม่ต้องเรียนวิธีใช้ใหม่
  * ★ ผู้เล่นเป็นสีแดง (ตาแรกเสมอ) · บอทเป็นสีทอง
+ *
+ * ★★★ โหมดออนไลน์อยู่ที่ Connect4Online และลอบบี้ใช้ GameLobby ร่วมกับหมากฮอส
+ *     ★ ไฟล์นี้ถือแต่เกมในเครื่อง ซึ่งเป็นเกมที่ "ความจริงอยู่ใน useState"
+ *       ★★ ออนไลน์คือเกมที่ความจริงอยู่ที่ server — สองเรื่องนี้ปนกันในไฟล์เดียว
+ *          จะมีสถานะที่ไม่มีใครรู้ว่าอันไหนเป็นของจริง
  */
 export function Connect4Game() {
   const ot = useOt()
@@ -41,6 +46,8 @@ export function Connect4Game() {
   const [game, setGame] = useState<Game>(newGame)
   /* ★ เลขเกม — ใช้เลือกประโยคฉลอง/ปลอบให้ต่างกันแต่ละเกมโดยไม่สุ่มตอน render */
   const [round, setRound] = useState(0)
+  /* ★ null = ยังอยู่ในลอบบี้ ยังไม่ได้เข้าเกมไหน */
+  const [onlineId, setOnlineId] = useState<string | null>(null)
 
   const result = outcome(game.board)
   const over = result.kind !== 'PLAYING'
@@ -106,6 +113,16 @@ export function Connect4Game() {
                   setMode('PASS')
                 }}
               />
+              {/* ★ ไอคอนและคำเหมือนหมากฮอสเป๊ะ — มันคือของเดียวกัน คนละเกม */}
+              <ModeCard
+                title={ot('game.online.challengeFriend')}
+                detail={ot('game.online.onlineDetail')}
+                icon="M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM3 20a6 6 0 0 1 12 0M16 11h6M19 8v6"
+                onClick={() => {
+                  setOnlineId(null)
+                  setMode('ONLINE')
+                }}
+              />
 
               {/* ── ตั้งค่าเพิ่ม ─────────────────────────────────── */}
               <div className="rounded-2xl border border-line bg-elevated/50 p-5 backdrop-blur-md sm:col-span-2">
@@ -153,6 +170,22 @@ export function Connect4Game() {
     )
   }
 
+  /* ── ออนไลน์: ลอบบี้ก่อน แล้วค่อยเข้าเกม ───────────────────── */
+  if (mode === 'ONLINE') {
+    return onlineId ? (
+      <Connect4Online gameId={onlineId} onExit={() => setOnlineId(null)} onRematch={setOnlineId} />
+    ) : (
+      <div>
+        <GameLobby game="connect4" onEnter={setOnlineId} />
+        <div className="mt-4 text-center">
+          <Button variant="ghost" className="min-h-11" onClick={() => setMode(null)}>
+            <Untranslated>{ot('game.checkers.backToMenu')}</Untranslated>
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
   /* ── กระดาน ────────────────────────────────────────────────── */
   const names: Record<Player, string> =
     mode === 'BOT'
@@ -165,27 +198,12 @@ export function Connect4Game() {
 
   return (
     <div className="py-2">
-      {/* ── ป้ายผู้เล่นสองฝั่ง: ฝั่งที่ถึงตาเรืองแสง ── */}
-      <div className="mx-auto mb-4 flex max-w-[560px] items-center justify-between gap-3">
-        {([1, 2] as Player[]).map((p) => (
-          <div
-            key={p}
-            className={cn('c4-seat flex min-w-0 items-center gap-2.5 rounded-full py-1.5 ps-1.5 pe-4', !over && game.turn === p && 'c4-seat-on')}
-          >
-            <span aria-hidden="true" className={cn('c4-disc size-8 shrink-0', p === 1 ? 'c4-red' : 'c4-gold')} />
-            <span className="min-w-0">
-              <span className="block truncate text-sm font-bold text-ink">
-                <Untranslated>{names[p]}</Untranslated>
-              </span>
-              {!over && game.turn === p ? (
-                <span className="block text-[11px] text-ink-soft">
-                  <Untranslated>{botTurn ? ot('game.checkers.botThinking') : ot('game.c4.yourTurn')}</Untranslated>
-                </span>
-              ) : null}
-            </span>
-          </div>
-        ))}
-      </div>
+      <Connect4Seats
+        names={names}
+        turn={game.turn}
+        over={over}
+        sub={() => (botTurn ? ot('game.checkers.botThinking') : ot('game.c4.yourTurn'))}
+      />
 
       <Connect4Board
         board={game.board}
@@ -254,120 +272,6 @@ export function Connect4Game() {
           </Button>
         </div>
       )}
-    </div>
-  )
-}
-
-/**
- * กระดาน 7×6
- *
- * ★ แต่ละคอลัมน์เป็นปุ่มเดียวทั้งแท่ง — แตะตรงไหนของคอลัมน์ก็หยอดได้ (เป้าใหญ่บนมือถือ)
- * ★ ชี้/โฟกัสคอลัมน์ = เหรียญเงาลอยรอบนหัวคอลัมน์ และวงเงาที่ช่องที่จะตก
- * ★ เหรียญใหม่หล่นจากบนสุดลงมาเด้ง (ระยะหล่นตามแถว) · แถวชนะเรืองแสง ที่เหลือจาง
- */
-function Connect4Board({
-  board,
-  turn,
-  last,
-  winCells,
-  disabled,
-  onDrop,
-}: {
-  board: Board
-  turn: Player
-  last: number | null
-  winCells: number[]
-  disabled: boolean
-  onDrop: (col: number) => void
-}) {
-  const ot = useOt()
-  const [hover, setHover] = useState<number | null>(null)
-  const won = winCells.length > 0
-  const target = hover !== null && !disabled ? dropRow(board, hover) : null
-
-  return (
-    <div className="mx-auto w-full max-w-[560px]">
-      {/* แถวเหรียญเงาเหนือกระดาน */}
-      <div aria-hidden="true" className="grid grid-cols-7 gap-[clamp(4px,1.4vw,10px)] px-[clamp(8px,2.2vw,16px)] pb-2">
-        {Array.from({ length: COLS }, (_, c) => (
-          <span key={c} className="relative aspect-square">
-            {hover === c && !disabled && dropRow(board, c) !== null ? (
-              <span className={cn('c4-disc c4-hover absolute inset-[6%]', turn === 1 ? 'c4-red' : 'c4-gold')} />
-            ) : null}
-          </span>
-        ))}
-      </div>
-
-      <div className={cn('c4-board relative rounded-[28px] p-[clamp(8px,2.2vw,16px)]', won && 'c4-board-won')}>
-        {/* ★ ระยะห่างเป็น px ไม่ใช่ % — gap แนวตั้งแบบ % คิดจากความสูงที่ยังไม่รู้ แถวล่างเลยทะลุกรอบ */}
-        <div className="grid grid-cols-7 gap-[clamp(4px,1.4vw,10px)]">
-          {Array.from({ length: COLS }, (_, c) => {
-            const full = dropRow(board, c) === null
-            return (
-              <button
-                key={c}
-                type="button"
-                disabled={disabled || full}
-                onClick={() => onDrop(c)}
-                onPointerEnter={() => setHover(c)}
-                onPointerLeave={() => setHover((h) => (h === c ? null : h))}
-                onFocus={() => setHover(c)}
-                onBlur={() => setHover((h) => (h === c ? null : h))}
-                aria-label={ot('game.c4.dropCol', { n: c + 1 })}
-                className={cn('c4-col flex flex-col gap-[clamp(4px,1.4vw,10px)] rounded-2xl', hover === c && !disabled && !full && 'c4-col-on')}
-              >
-                {Array.from({ length: ROWS }, (_, r) => {
-                  const i = r * COLS + c
-                  const v = board[i]
-                  const isWin = winCells.includes(i)
-                  return (
-                    <span key={r} className="c4-hole relative aspect-square rounded-full">
-                      {v ? (
-                        <span
-                          key={i === last ? `last-${i}` : i}
-                          className={cn(
-                            'c4-disc absolute inset-[5%]',
-                            v === 1 ? 'c4-red' : 'c4-gold',
-                            i === last && 'c4-drop',
-                            won && (isWin ? 'c4-win' : 'c4-dim'),
-                          )}
-                          style={{ '--fall': r + 1 } as CSSProperties}
-                        />
-                      ) : target === r && hover === c ? (
-                        <span className={cn('c4-ghost absolute inset-[5%] rounded-full', turn === 1 ? 'c4-ghost-red' : 'c4-ghost-gold')} />
-                      ) : null}
-                    </span>
-                  )
-                })}
-              </button>
-            )
-          })}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-/** กระดานตัวอย่างบนหน้าเลือกโหมด — แถวทแยงชนะเรืองแสง */
-function MiniConnect4() {
-  /* แดงเรียงทแยง 4 เหรียญ (แถวล่างซ้ายขึ้นขวา) ปนเหรียญทอง */
-  const RED = new Set([35, 29, 23, 17, 36, 30])
-  const GOLD = new Set([37, 38, 31, 24, 39, 32])
-  const WIN = new Set([35, 29, 23, 17])
-  return (
-    <div className="c4-board c4-mini rounded-[24px] p-[clamp(8px,2.2vw,16px)]" aria-hidden="true">
-      <div className="grid grid-cols-7 gap-[clamp(4px,1.4vw,10px)]">
-        {Array.from({ length: COLS * ROWS }, (_, i) => (
-          <span key={i} className="c4-hole relative aspect-square rounded-full">
-            {RED.has(i) || GOLD.has(i) ? (
-              <span
-                className={cn('c4-disc c4-drop absolute inset-[5%]', RED.has(i) ? 'c4-red' : 'c4-gold', WIN.has(i) && 'c4-win')}
-                style={{ '--fall': Math.floor(i / COLS) + 1, animationDelay: `${(i % COLS) * 0.12}s` } as CSSProperties}
-              />
-            ) : null}
-          </span>
-        ))}
-      </div>
     </div>
   )
 }

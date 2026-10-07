@@ -5,6 +5,7 @@ import { apiFetch } from '@/lib/api/client'
 import { CardGrid, LinkCard } from '@/components/ui/Card'
 import { Untranslated, useOt } from '@/lib/i18n/office'
 import type { OfficeKey } from '@/lib/i18n/office-format'
+import type { OnlineGameKey } from './GameLobby'
 import { FunGuide } from './FunGuide'
 
 type Card = {
@@ -12,7 +13,12 @@ type Card = {
   titleKey: OfficeKey
   descKey: OfficeKey
   icon: string
+  /** ★ เกมที่ท้าเพื่อนได้ — มีป้ายบอกว่ามีคำท้าหรือเกมค้างกี่รายการ */
+  online?: OnlineGameKey
 }
+
+/** ★ จำนวนที่รออยู่ของเกมหนึ่งเกม */
+type Waiting = { challenges: number; ongoing: number }
 
 /**
  * หน้าหมวดเกม — การ์ดเกมทั้งหมด
@@ -23,19 +29,31 @@ type Card = {
  *     แถบเมนูแสดงไม่ได้เลย
  *     ★★ และ /office/fun ไม่เคยมีหน้าของตัวเอง กดเข้าหมวดแล้วเจอ 404
  */
+/** ★ ที่เดียวที่รู้ว่าเกมไหนมีโหมดท้าเพื่อน — การ์ดอ้างชื่อจากที่นี่ */
+const ONLINE_GAMES: OnlineGameKey[] = ['checkers', 'connect4']
+
 export function GameMenu() {
   const ot = useOt()
-  const [challenges, setChallenges] = useState(0)
-  const [ongoing, setOngoing] = useState(0)
+  const [waiting, setWaiting] = useState<Partial<Record<OnlineGameKey, Waiting>>>({})
 
+  /*
+   * ★★★ ถามทุกเกมที่ท้าเพื่อนได้ ไม่ใช่เฉพาะหมากฮอส
+   *
+   *     ★ ของเดิมฝังไว้ว่า "การ์ดหมากฮอสเท่านั้นที่มีป้าย" ★★ พอเรียง 4
+   *       ท้าเพื่อนได้ คำท้าเรียง 4 จะไม่ขึ้นที่ไหนเลยบนหน้านี้ ซึ่งแปลว่า
+   *       คนถูกท้าไม่รู้ตัวจนกว่าจะเผลอกดเข้าไปในเกมนั้นเอง
+   *     ★ ไล่จากรายการการ์ด ไม่ใช่รายการเกมชุดที่สอง — เพิ่มเกมที่สาม
+   *       แล้วป้ายมาเองโดยไม่ต้องจำว่าต้องมาแก้ที่นี่
+   */
   useEffect(() => {
     /* ★ ล้มแล้วเงียบ — การ์ดต้องขึ้นเสมอ ตัวเลขเป็นของแถม */
-    void apiFetch<{ games: unknown[]; challenges: unknown[] }>('/api/office/games/checkers')
-      .then((r) => {
-        setChallenges(r.challenges.length)
-        setOngoing(r.games.length)
-      })
-      .catch(() => undefined)
+    for (const key of ONLINE_GAMES) {
+      void apiFetch<{ games: unknown[]; challenges: unknown[] }>(`/api/office/games/${key}`)
+        .then((r) =>
+          setWaiting((w) => ({ ...w, [key]: { challenges: r.challenges.length, ongoing: r.games.length } })),
+        )
+        .catch(() => undefined)
+    }
   }, [])
 
   const cards: Card[] = [
@@ -44,6 +62,7 @@ export function GameMenu() {
       titleKey: 'game.checkers.title',
       descKey: 'game.checkers.desc',
       icon: 'M4 4h16v16H4zM4 10h16M4 16h16M10 4v16M16 4v16',
+      online: 'checkers',
     },
     {
       href: '/office/fun/frog',
@@ -68,6 +87,7 @@ export function GameMenu() {
       titleKey: 'game.c4.title',
       descKey: 'game.c4.desc',
       icon: 'M4 5h16v14H4zM8 9h.01M12 9h.01M16 9h.01M8 13h.01M12 13h.01M16 13h.01',
+      online: 'connect4',
     },
     {
       href: '/office/fun/quiz',
@@ -98,7 +118,9 @@ export function GameMenu() {
     <FunGuide id="hub" art="hub" />
     <CardGrid cols={3} className="py-2 mt-4">
       {cards.map((c) => {
-        const isCheckers = c.href === '/office/fun/checkers'
+        const w = c.online ? waiting[c.online] : undefined
+        const invites = w?.challenges ?? 0
+        const ongoing = w?.ongoing ?? 0
         return (
           <LinkCard
             key={c.href}
@@ -108,7 +130,7 @@ export function GameMenu() {
             detail={<Untranslated>{ot(c.descKey)}</Untranslated>}
             /* ★ การ์ดที่มีเรื่องรออยู่ใช้โทนเน้น — ไม่ใช่แค่ติดป้าย
                  ★★ ป้ายเล็ก ๆ บนการ์ดที่หน้าตาเหมือนใบอื่นหมด ตากวาดผ่านได้ */
-            tone={isCheckers && challenges > 0 ? 'accent' : 'plain'}
+            tone={invites > 0 ? 'accent' : 'plain'}
             badge={
               <>
                 {/*
@@ -116,12 +138,12 @@ export function GameMenu() {
                   *    ★ มันตอบคำถาม "เกมไหนมีเรื่องรอฉันอยู่" ซึ่งเป็นเหตุผล
                   *      เดียวที่คนกวาดตาดูหน้านี้ตอนเปิดเข้ามา
                   */}
-                {isCheckers && challenges > 0 ? (
+                {invites > 0 ? (
                   <span className="rounded-full bg-accent px-2 py-0.5 text-[11px] text-accent-ink">
-                    <Untranslated>{ot('game.menu.invites', { n: challenges })}</Untranslated>
+                    <Untranslated>{ot('game.menu.invites', { n: invites })}</Untranslated>
                   </span>
                 ) : null}
-                {isCheckers && ongoing > 0 ? (
+                {ongoing > 0 ? (
                   <span className="rounded-full bg-surface px-2 py-0.5 text-[11px] text-ink-soft">
                     <Untranslated>{ot('game.menu.ongoing', { n: ongoing })}</Untranslated>
                   </span>

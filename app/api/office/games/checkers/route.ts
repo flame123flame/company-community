@@ -111,6 +111,14 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
     admin
       .from('game_challenges')
       .select('id, game, from_id, to_id, status, expires_at, game_id')
+      /*
+       * ★★★ กรองชนิดเกมด้วย — game_challenges เป็นตารางของกลางทุกเกม
+       *
+       *     ★ ไม่กรอง = คำท้า "เรียง 4" โผล่ในหน้าหมากฮอส กดรับแล้วได้
+       *       เกมผิดชนิด ★★ ของเดิมไม่กรองแล้วไม่เคยพัง เพราะหมากฮอส
+       *       เป็นเกมเดียวที่ใช้ตารางนี้ — ซึ่งไม่ใช่การกัน แค่ยังไม่มีใครเหยียบ
+       */
+      .eq('game', 'checkers')
       .eq('to_id', actor.id)
       .eq('status', 'PENDING')
       .gt('expires_at', new Date().toISOString())
@@ -340,6 +348,16 @@ function shape(g: CheckersRow, me: string, names: Map<string, string>) {
     drawOfferFromOpponent: g.draw_offer_by !== null && g.draw_offer_by !== me,
     bottom: { id: g.bottom_id, name: names.get(g.bottom_id) ?? '' },
     top: { id: g.top_id, name: names.get(g.top_id) ?? '' },
+    /*
+     * ★★ "คู่ต่อสู้คือใคร" คำนวณที่นี่ด้วย — ลอบบี้ใช้ร่วมกับเกมอื่น
+     *    ★ หมากฮอสเรียกฝั่งว่า bottom/top เรียง 4 เรียกว่า red/gold
+     *      ★★ ให้ลอบบี้เดาเองแปลว่ามันต้องรู้ชื่อคอลัมน์ของทุกเกม
+     *         แล้วเกมที่สามจะต้องกลับมาแก้ลอบบี้ทุกครั้ง
+     */
+    opponent:
+      mySide === 'BOTTOM'
+        ? { id: g.top_id, name: names.get(g.top_id) ?? '' }
+        : { id: g.bottom_id, name: names.get(g.bottom_id) ?? '' },
     updatedAt: g.updated_at,
   }
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { apiFetch } from '@/lib/api/client'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/cn'
@@ -8,41 +8,43 @@ import { officeErrorText } from '@/lib/i18n/office-format'
 import { Untranslated, useOt } from '@/lib/i18n/office'
 import { useConfirm } from '@/components/ConfirmProvider'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
-import type { Board, Move, Side } from '@/lib/games/checkers'
-import { CheckersBoard, CheckersResult } from './CheckersBoard'
+import type { Board, Player } from '@/lib/games/connect4'
+import { CheckersResult } from './CheckersBoard'
+import { Connect4Board, Connect4Seats } from './Connect4Board'
 
-/** เวลาต่อตา (วินาที) — ตามข้อกำหนด */
+/** เวลาต่อตา (วินาที) — ตัวเดียวกับหมากฮอส */
 const TURN_SECONDS = 60
 
-export type OnlineGame = {
+export type OnlineC4Game = {
   id: string
   board: Board
-  turn: Side
+  turn: Player
   version: number
   status: 'PLAYING' | 'FINISHED'
-  forceCapture: boolean
-  mySide: Side
+  myPlayer: Player
   myTurn: boolean
-  lastMove: { from: number; to: number } | null
+  lastCell: number | null
+  winCells: number[]
   winnerId: string | null
   endReason: string | null
   drawOfferFromOpponent: boolean
-  bottom: { id: string; name: string }
-  top: { id: string; name: string }
+  red: { id: string; name: string }
+  gold: { id: string; name: string }
+  opponent: { id: string; name: string }
   updatedAt: string
 }
 
 /**
- * หมากฮอสออนไลน์หนึ่งเกม
+ * เรียง 4 ออนไลน์หนึ่งเกม
  *
  * ★★★ หน้าจอไม่เก็บกระดานเป็นของตัวเอง — ความจริงอยู่ที่ server เสมอ
  *
- *     ★ กดเดิน → ยิง API → รับกระดานใหม่กลับมา → วาด
- *       ★★ ไม่วาดล่วงหน้าแล้วค่อยแก้ทีหลัง เพราะถ้า server ปฏิเสธ
- *          ผู้เล่นจะเห็นหมากเด้งกลับ ซึ่งทำให้ไม่เชื่อถือทั้งเกม
+ *     ★ กดหยอด → ยิง API → รับกระดานใหม่กลับมา → วาด
+ *       ★★ ไม่วาดล่วงหน้าแล้วค่อยแก้ทีหลัง เพราะถ้า server ปฏิเสธ ผู้เล่น
+ *          จะเห็นเหรียญโผล่มาแล้วหายไป ซึ่งทำให้ไม่เชื่อถือทั้งเกม
  *     ★ แลกมากับการหน่วงหนึ่งรอบคำขอ ซึ่งในเกมผลัดตากันไม่มีใครรู้สึก
  */
-export function CheckersOnline({
+export function Connect4Online({
   gameId,
   onExit,
   onRematch,
@@ -54,7 +56,7 @@ export function CheckersOnline({
 }) {
   const ot = useOt()
   const confirm = useConfirm()
-  const [game, setGame] = useState<OnlineGame | null>(null)
+  const [game, setGame] = useState<OnlineC4Game | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -62,8 +64,8 @@ export function CheckersOnline({
 
   const load = useCallback(async () => {
     try {
-      const res = await apiFetch<{ game: OnlineGame }>(
-        `/api/office/games/checkers?id=${encodeURIComponent(gameId)}`,
+      const res = await apiFetch<{ game: OnlineC4Game }>(
+        `/api/office/games/connect4?id=${encodeURIComponent(gameId)}`,
       )
       setGame(res.game)
       setError(null)
@@ -78,19 +80,17 @@ export function CheckersOnline({
 
   /*
    * ★★ ฟังแถวเกมแถวเดียวผ่าน Realtime
-   *    ★ ไม่ใช้ presence เพราะสิ่งที่ต้องรู้คือ "กระดานเปลี่ยนไหม"
-   *      ไม่ใช่ "ใครออนไลน์อยู่"
-   *    ★★ ได้ event แล้วโหลดใหม่ ไม่ใช่เอา payload มาวาดตรง ๆ
-   *       payload เป็นแถวดิบที่ยังไม่ผ่านการคำนวณ mySide/myTurn ของ server
-   *       ★ เอามาวาดเองจะต้องเขียนกติกา "ฝั่งไหนของฉัน" ซ้ำที่หน้าจอ
+   *    ★ ได้ event แล้วโหลดใหม่ ไม่ใช่เอา payload มาวาดตรง ๆ
+   *      payload เป็นแถวดิบที่ยังไม่ผ่านการคำนวณ myPlayer/myTurn ของ server
+   *      ★★ เอามาวาดเองจะต้องเขียนกติกา "ฉันเป็นเบอร์ไหน" ซ้ำที่หน้าจอ
    */
   useEffect(() => {
     const supabase = getSupabaseBrowserClient()
     const channel = supabase
-      .channel(`checkers:${gameId}`)
+      .channel(`connect4:${gameId}`)
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'checkers_games', filter: `id=eq.${gameId}` },
+        { event: 'UPDATE', schema: 'public', table: 'connect4_games', filter: `id=eq.${gameId}` },
         () => {
           void load()
         },
@@ -105,10 +105,8 @@ export function CheckersOnline({
   /*
    * ── นาฬิกาต่อตา ──────────────────────────────────────────────
    * ★★★ นับจาก updated_at ของแถว ไม่ใช่นับถอยหลังในเครื่องตัวเอง
-   *
-   *     ★ เครื่องที่เพิ่งเปิดกลับมาต้องเห็นเวลาที่เหลือ "จริง" ไม่ใช่เริ่มนับ 60 ใหม่
-   *       ★★ ข้อกำหนดบอกว่าหลุดแล้วกลับมาต้องเล่นต่อจากเดิมได้
-   *          ซึ่งรวมถึงนาฬิกาด้วย
+   *     ★ เครื่องที่เพิ่งเปิดกลับมาต้องเห็นเวลาที่เหลือ "จริง"
+   *       ไม่ใช่เริ่มนับ 60 ใหม่
    */
   useEffect(() => {
     if (!game || game.status !== 'PLAYING') return
@@ -126,7 +124,7 @@ export function CheckersOnline({
     setBusy(true)
     setError(null)
     try {
-      const res = await apiFetch<{ game: OnlineGame }>('/api/office/games/checkers', {
+      const res = await apiFetch<{ game: OnlineC4Game }>('/api/office/games/connect4', {
         method: 'POST',
         body,
       })
@@ -140,36 +138,48 @@ export function CheckersOnline({
     }
   }
 
-  function commit(m: Move) {
+  function drop(col: number) {
     if (!game) return
-    void send({ action: 'move', gameId, version: game.version, from: m.from, to: m.to })
+    void send({ action: 'move', gameId, version: game.version, col })
   }
 
   if (!game) {
-    return (
-      <p className="py-16 text-center text-sm text-ink-faint">
-        {error ?? ot('common.loading')}
-      </p>
-    )
+    return <p className="py-16 text-center text-sm text-ink-faint">{error ?? ot('common.loading')}</p>
   }
 
   const over = game.status === 'FINISHED'
-  const opponentName = game.mySide === 'BOTTOM' ? game.top.name : game.bottom.name
-  const iWon = game.winnerId === (game.mySide === 'BOTTOM' ? game.bottom.id : game.top.id)
+  const opponentName = game.opponent.name
+  const iWon = game.winnerId === (game.myPlayer === 1 ? game.red.id : game.gold.id)
+  const names: Record<Player, string> = { 1: game.red.name, 2: game.gold.name }
 
   return (
     <div className="py-2">
-      <CheckersBoard
+      {/*
+        * ★★ ป้ายชื่อใช้ชื่อคนจริงทั้งสองฝั่ง ไม่ใช่ "คุณ/คู่ต่อสู้"
+        *    ★ สีเหรียญบอกว่าใครเป็นใครอยู่แล้ว และชื่อจริงทำให้เห็นว่า
+        *      กำลังเล่นกับใครโดยไม่ต้องกลับไปดูรายการเกม
+        */}
+      <Connect4Seats
+        names={names}
+        turn={game.turn}
+        over={over}
+        /*
+         * ★★ ขึ้นคำใต้ชื่อเฉพาะตอนเป็นตาเราเอง
+         *    ★ ใส่ "รออีกฝ่าย" ไว้ใต้ชื่ออีกฝ่ายอ่านแล้วสับสน — เหมือนบอกว่า
+         *      เขากำลังรอ ทั้งที่คนที่รออยู่คือเรา
+         *      ★★ ป้ายที่เรืองแสงบอกว่าถึงตาใครอยู่แล้ว และบรรทัดนาฬิกา
+         *         ข้างล่างบอกว่ารอใครและเหลือกี่วินาที
+         */
+        sub={(p) => (p === game.myPlayer ? ot('game.online.yourMove') : null)}
+      />
+
+      <Connect4Board
         board={game.board}
         turn={game.turn}
-        mySide={game.mySide}
-        forceCapture={game.forceCapture}
-        onCommit={commit}
-        lastMove={game.lastMove}
-        finished={over}
+        last={game.lastCell}
+        winCells={game.winCells}
         disabled={over || busy || !game.myTurn}
-        top={{ name: game.top.name }}
-        bottom={{ name: game.bottom.name }}
+        onDrop={drop}
       />
 
       {/* ── นาฬิกา ──────────────────────────────────────────────── */}
@@ -191,7 +201,12 @@ export function CheckersOnline({
       {/* ★ หมดเวลาแล้วใครก็กดรายงานได้ — คนที่หมดเวลามักปิดแอปไปแล้ว */}
       {!over && secondsLeft === 0 ? (
         <div className="mt-2 text-center">
-          <Button variant="secondary" className="min-h-11" loading={busy} onClick={() => void send({ action: 'end', gameId, kind: 'TIMEOUT' })}>
+          <Button
+            variant="secondary"
+            className="min-h-11"
+            loading={busy}
+            onClick={() => void send({ action: 'end', gameId, kind: 'TIMEOUT' })}
+          >
             <Untranslated>{ot('game.online.claimTimeout')}</Untranslated>
           </Button>
         </div>
@@ -203,7 +218,12 @@ export function CheckersOnline({
           <span className="text-sm text-ink">
             <Untranslated>{ot('game.online.drawOffered', { name: opponentName })}</Untranslated>
           </span>
-          <Button variant="primary" className="min-h-11" loading={busy} onClick={() => void send({ action: 'end', gameId, kind: 'ACCEPT_DRAW' })}>
+          <Button
+            variant="primary"
+            className="min-h-11"
+            loading={busy}
+            onClick={() => void send({ action: 'end', gameId, kind: 'ACCEPT_DRAW' })}
+          >
             <Untranslated>{ot('game.online.acceptDraw')}</Untranslated>
           </Button>
         </div>
@@ -219,8 +239,36 @@ export function CheckersOnline({
       {over ? (
         <CheckersResult
           tone={game.endReason === 'DRAW' ? 'draw' : iWon ? 'win' : 'lose'}
-          board={game.board}
-          side={game.mySide ?? 'BOTTOM'}
+          /* ★ เลขนิ่ง ๆ จากเวอร์ชันเกม — ประโยคฉลองไม่เปลี่ยนทุกครั้งที่โหลดใหม่ */
+          seed={game.version}
+          lines={ot(
+            game.endReason === 'DRAW'
+              ? 'game.c4.drawLines'
+              : iWon
+                ? 'game.c4.winLines'
+                : 'game.c4.loseLines',
+          )}
+          piece={(who) => (
+            <span
+              aria-hidden="true"
+              className={cn(
+                'c4-disc block size-full',
+                (who === 'mine') === (game.myPlayer === 1) ? 'c4-red' : 'c4-gold',
+              )}
+            />
+          )}
+          stats={
+            game.winCells.length ? (
+              <div
+                className="ckr-rise mt-4 flex flex-wrap justify-center gap-2"
+                style={{ '--d': '1.25s' } as CSSProperties}
+              >
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-surface px-3 py-1.5 text-xs font-medium text-ink">
+                  <Untranslated>{ot('game.c4.statLine', { n: game.winCells.length })}</Untranslated>
+                </span>
+              </div>
+            ) : null
+          }
           title={
             game.endReason === 'DRAW'
               ? ot('game.checkers.draw')
@@ -236,14 +284,14 @@ export function CheckersOnline({
               : null
           }
         >
-          {/* ★ ท้าคนเดิมทันที — สลับฝั่งให้ที่ server ไม่งั้นคนเดิมเดินก่อนทุกเกม */}
+          {/* ★ ท้าคนเดิมทันที — สลับสีให้ที่ server ไม่งั้นคนเดิมหยอดก่อนทุกเกม */}
           <Button
             variant="primary"
             className="min-h-12 text-base"
             loading={busy}
             onClick={async () => {
               try {
-                const res = await apiFetch<{ gameId: string }>('/api/office/games/checkers', {
+                const res = await apiFetch<{ gameId: string }>('/api/office/games/connect4', {
                   method: 'POST',
                   body: { action: 'rematch', gameId },
                 })

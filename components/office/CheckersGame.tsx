@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { Untranslated, useOt } from '@/lib/i18n/office'
 import { botMove, type BotLevel, type Move } from '@/lib/games/checkers'
 import { CheckersOnline } from './CheckersOnline'
-import { CheckersLobby } from './CheckersLobby'
+import { GameLobby } from './GameLobby'
 import { MiniBoard, ModeCard } from './CheckersIntro'
 import {
   CheckersBoard,
@@ -105,8 +105,8 @@ export function CheckersGame() {
                 }}
               />
               <ModeCard
-                title={ot('game.checkers.challengeFriend')}
-                detail={ot('game.checkers.onlineDetail')}
+                title={ot('game.online.challengeFriend')}
+                detail={ot('game.online.onlineDetail')}
                 icon="M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm8 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM2 20a7 7 0 0 1 14 0M16 20a6 6 0 0 1 6-6"
                 onClick={() => {
                   setOnlineId(null)
@@ -208,7 +208,7 @@ export function CheckersGame() {
       <CheckersOnline gameId={onlineId} onExit={() => setOnlineId(null)} onRematch={setOnlineId} />
     ) : (
       <div>
-        <CheckersLobby onEnter={setOnlineId} />
+        <GameLobby game="checkers" onEnter={setOnlineId} />
         <div className="mt-4 text-center">
           <Button variant="ghost" className="min-h-11" onClick={() => setMode(null)}>
             <Untranslated>{ot('game.checkers.backToMenu')}</Untranslated>

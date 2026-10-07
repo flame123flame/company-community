@@ -641,7 +641,7 @@ export type Database = {
       game_challenges: {
         Row: {
           id: string
-          game: 'checkers' | 'typing'
+          game: 'checkers' | 'typing' | 'connect4'
           from_id: string
           to_id: string
           status: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'EXPIRED'
@@ -703,6 +703,51 @@ export type Database = {
           to_sq: number
           captured?: number[]
         }
+        Update: Record<never, never>
+        Relationships: []
+      }
+
+      /* ── เรียง 4 ออนไลน์ (0063) ──────────────────────────────────── */
+
+      connect4_games: {
+        Row: {
+          id: string
+          /** ★ ฝ่ายแดง = คนที่ท้า และหยอดก่อน (ผู้เล่นหมายเลข 1) */
+          red_id: string
+          gold_id: string
+          /** array ยาว 42 รูปแบบเดียวกับ lib/games/connect4 เป๊ะ */
+          board: unknown
+          /** ★ เลขเดียวกับ Player ใน TypeScript — ไม่ต้องแปลงระหว่างสองชั้น */
+          turn: 1 | 2
+          version: number
+          status: 'PLAYING' | 'FINISHED'
+          winner_id: string | null
+          end_reason: 'WIN' | 'DRAW' | 'RESIGN' | 'TIMEOUT' | null
+          last_cell: number | null
+          /** ★ แถวที่ชนะ — เก็บไว้ให้คนที่เพิ่งเปิดกลับมาเห็นแถวเรืองแสงเหมือนกัน */
+          win_cells: number[]
+          draw_offer_by: string | null
+          red_timeouts: number
+          gold_timeouts: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: { red_id: string; gold_id: string; board: unknown }
+        Update: { status?: string; winner_id?: string | null }
+        Relationships: []
+      }
+
+      connect4_moves: {
+        Row: {
+          id: number
+          game_id: string
+          ply: number
+          actor_id: string
+          col: number
+          cell: number
+          created_at: string
+        }
+        Insert: { game_id: string; ply: number; actor_id: string; col: number; cell: number }
         Update: Record<never, never>
         Relationships: []
       }
@@ -1678,6 +1723,42 @@ export type Database = {
       checkers_end: {
         Args: { p_actor: string; p_game: string; p_action: string }
         Returns: Database['public']['Tables']['checkers_games']['Row']
+      }
+      /* ── เรียง 4 ออนไลน์ (0063) ──────────────────────────────────── */
+      connect4_accept: {
+        /** ★ แยกจาก challenge_accept — ตารางเป้าหมายและคอลัมน์ไม่เหมือนกัน */
+        Args: { p_actor: string; p_id: string; p_board: unknown }
+        Returns: string
+      }
+      connect4_play: {
+        Args: {
+          p_actor: string
+          p_game: string
+          /** เวอร์ชันที่ผู้เล่นเห็นตอนตัดสินใจ — ไม่ตรง = มีตาอื่นแทรก → ปฏิเสธ */
+          p_version: number
+          p_col: number
+          p_cell: number
+          p_board: unknown
+          p_turn: number
+          p_status: string
+          p_winner: string | null
+          p_reason: string | null
+          p_win: number[]
+        }
+        Returns: Database['public']['Tables']['connect4_games']['Row']
+      }
+      connect4_end: {
+        Args: { p_actor: string; p_game: string; p_action: string }
+        Returns: Database['public']['Tables']['connect4_games']['Row']
+      }
+      connect4_rematch: {
+        /** ★ สลับสีให้ — เรียง 4 คนหยอดก่อนได้เปรียบชัดกว่าหมากฮอสมาก */
+        Args: { p_actor: string; p_game: string; p_board: unknown }
+        Returns: string
+      }
+      connect4_leaderboard: {
+        Args: { p_since: string }
+        Returns: { user_id: string; wins: number; losses: number; draws: number }[]
       }
       /* ── ควิซออฟฟิศ (0062) ─────────────────────────────────────── */
       office_quiz_answer: {
