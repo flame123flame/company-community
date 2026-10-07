@@ -118,6 +118,7 @@ export const th = {
   'notify.type.marketReserved': 'มีคนจองสินค้าของคุณ',
   'notify.type.contentHidden': 'เนื้อหาของคุณถูกซ่อนจากการรายงาน',
   'notify.type.drawInvite': 'คุณถูกเชิญเข้าห้องสุ่ม',
+  'notify.type.gameChallenge': '{name} ท้าคุณเล่นเกม',
   'notify.type.debtNetted': 'มีการหักลบยอดค้างกับคุณ ({closed} รายการถูกปิด)',
   'notify.type.marketAlert': 'มีประกาศตรงคำที่คุณตามหา: {title}',
   'notify.type.marketMessage': 'มีข้อความใหม่เรื่อง {title}',
@@ -528,6 +529,9 @@ export const th = {
   'game.online.ongoing': 'เกมที่ค้างอยู่',
   'game.online.yourMove': 'ตาคุณ',
   'game.online.theirMove': 'รออีกฝ่าย',
+  'game.online.yourTurn': 'ถึงตาคุณแล้ว',
+  'game.online.theirTurn': 'รอ {name} เดิน',
+  'game.online.secondsLeft': 'เหลือ {n} วิ',
   'game.online.yourTurnIn': 'ตาคุณ · เหลือ {n} วินาที',
   'game.online.waitingFor': 'รอ {name} · เหลือ {n} วินาที',
   'game.online.claimTimeout': 'หมดเวลาแล้ว · จบเกม',
@@ -1512,6 +1516,8 @@ export const th = {
   'profile.n.marketMessage': 'ข้อความในตลาดนัด',
   'profile.n.marketAlert': 'ประกาศตรงคำที่ฉันตามหา',
   'profile.n.contentHidden': 'เนื้อหาของฉันถูกซ่อน',
+  'profile.n.gFun': 'เกม',
+  'profile.n.gameChallenge': 'มีคนท้าเล่นเกม',
 
   /* ── พอร์ทัลหน้าแรก ─────────────────────────────────────────── */
   'portal.title1': 'ออฟฟิศนี้',

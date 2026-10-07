@@ -3,13 +3,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiFetch } from '@/lib/api/client'
 import { Button } from '@/components/ui/Button'
-import { cn } from '@/lib/cn'
 import { officeErrorText } from '@/lib/i18n/office-format'
 import { Untranslated, useOt } from '@/lib/i18n/office'
 import { useConfirm } from '@/components/ConfirmProvider'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import type { Board, Move, Side } from '@/lib/games/checkers'
 import { CheckersBoard, CheckersResult } from './CheckersBoard'
+import { TurnBanner } from './TurnBanner'
 
 /** เวลาต่อตา (วินาที) — ตามข้อกำหนด */
 const TURN_SECONDS = 60
@@ -159,6 +159,9 @@ export function CheckersOnline({
 
   return (
     <div className="py-2">
+      {/* ★ อยู่เหนือกระดาน ไม่ใช่ใต้ — ใต้กระดานบนมือถือคือนอกจอ */}
+      {!over ? <TurnBanner mine={game.myTurn} name={opponentName} seconds={secondsLeft} /> : null}
+
       <CheckersBoard
         board={game.board}
         turn={game.turn}
@@ -171,22 +174,6 @@ export function CheckersOnline({
         top={{ name: game.top.name }}
         bottom={{ name: game.bottom.name }}
       />
-
-      {/* ── นาฬิกา ──────────────────────────────────────────────── */}
-      {!over ? (
-        <p
-          className={cn(
-            'mt-3 text-center text-sm tabular-nums',
-            secondsLeft <= 10 ? 'font-semibold text-danger' : 'text-ink-soft',
-          )}
-        >
-          <Untranslated>
-            {game.myTurn
-              ? ot('game.online.yourTurnIn', { n: secondsLeft })
-              : ot('game.online.waitingFor', { name: opponentName, n: secondsLeft })}
-          </Untranslated>
-        </p>
-      ) : null}
 
       {/* ★ หมดเวลาแล้วใครก็กดรายงานได้ — คนที่หมดเวลามักปิดแอปไปแล้ว */}
       {!over && secondsLeft === 0 ? (

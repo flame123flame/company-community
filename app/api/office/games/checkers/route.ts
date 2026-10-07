@@ -135,6 +135,12 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
   const names = await loadNames(admin, [...ids])
 
   return ok({
+    /*
+     * ★★ บอก id ของตัวเองกลับไปด้วย — หน้าลอบบี้ต้องใช้ตั้ง filter ของ Realtime
+     *    ★ ให้หน้าจอไปถาม supabase.auth.getUser() เองได้ แต่นั่นคือคำขอ
+     *      เพิ่มอีกหนึ่งรอบก่อนจะเริ่มฟังได้ ★★ ซึ่งคือช่วงที่คำท้าหลุดได้พอดี
+     */
+    meId: actor.id,
     games: (games ?? []).map((g) => shape(g, actor.id, names)),
     challenges: (challenges ?? []).map((c) => ({
       id: c.id,

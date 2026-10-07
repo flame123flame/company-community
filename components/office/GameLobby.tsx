@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/cn'
 import { officeErrorText } from '@/lib/i18n/office-format'
 import { Untranslated, useOt } from '@/lib/i18n/office'
+import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { SectionTitle } from './CheckersIntro'
 import { PersonAvatar } from './PersonAvatar'
 
@@ -59,6 +60,14 @@ export function GameLobby({
   const [challenges, setChallenges] = useState<Challenge[]>([])
   const [people, setPeople] = useState<Person[]>([])
   const [frequent, setFrequent] = useState<{ id: string; name: string; games: number }[]>([])
+  const [meId, setMeId] = useState<string | null>(null)
+  /*
+   * ★★ จำ id ของคำท้าที่ "เราเป็นคนส่ง" ในรอบนี้
+   *    ★ ใช้ตัดสินว่าควรพาเข้าเกมอัตโนมัติตอนอีกฝ่ายกดรับ
+   *      ★★ พาเข้าทุกครั้งที่มีคำท้าของเราถูกรับ จะดึงคนที่กำลังไล่ดู
+   *         รายการอื่นออกจากหน้าโดยไม่ได้ขอ — ต้องเป็นใบที่เขาเพิ่งกดส่งเอง
+   */
+  const sentRef = useRef<Set<string>>(new Set())
   const [query, setQuery] = useState('')
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<string | null>(null)
@@ -67,9 +76,10 @@ export function GameLobby({
 
   const load = useCallback(async () => {
     try {
-      const r = await apiFetch<{ games: LobbyGame[]; challenges: Challenge[] }>(api)
+      const r = await apiFetch<{ meId: string; games: LobbyGame[]; challenges: Challenge[] }>(api)
       setGames(r.games)
       setChallenges(r.challenges)
+      setMeId(r.meId)
     } catch (e) {
       setError(officeErrorText(e, ot))
     }
@@ -77,12 +87,98 @@ export function GameLobby({
 
   useEffect(() => {
     void load()
-    /* ★ ดึงซ้ำเป็นระยะ ไม่เปิด channel ค้าง — คำท้าเข้ามานาน ๆ ครั้ง */
-    timerRef.current = window.setInterval(() => void load(), 20_000)
+    /*
+     * ★★ ยังดึงซ้ำเป็นระยะ แต่ตอนนี้มันเป็น "ตัวสำรอง" ไม่ใช่ตัวหลัก
+     *    ★ ตัวหลักคือ Realtime ข้างล่าง ★★ Realtime หลุดได้ (เน็ตสะดุด ·
+     *      เครื่องหลับ · channel ถูกตัด) และไม่มีทางรู้ว่าหลุดไปตอนไหน
+     *      ★ รอบดึงทุก 30 วินาทีจึงยังจำเป็น เพื่อให้หน้าจอกลับมาตรงเอง
+     *        โดยที่ผู้ใช้ไม่ต้องรีโหลด
+     *    ★ ยืดจาก 20 เป็น 30 วินาที — ของหลักเร็วแล้ว ตัวสำรองไม่ต้องถี่
+     */
+    timerRef.current = window.setInterval(() => void load(), 30_000)
     return () => {
       if (timerRef.current) window.clearInterval(timerRef.current)
     }
   }, [load])
+
+  /*
+   * ── คำท้าเข้ามาแล้วเห็นทันที ──────────────────────────────────
+   *
+   * ★★★ ของเดิมรู้ตัวช้าได้ถึง 20 วินาที เพราะมีแต่รอบดึงข้อมูล
+   *
+   *     ★ สถานการณ์จริงคือสองคนนั่งคุยกันแล้วคนหนึ่งกดท้า อีกคนจ้องจออยู่
+   *       ★★ ยี่สิบวินาทีในจังหวะนั้นอ่านได้อย่างเดียวว่า "มันพัง"
+   *
+   * ★★ ฟังสองทิศ เพราะสองทิศคือสองเรื่องที่ต่างกัน
+   *    ★ to_id = เรา → มีคนท้าเรา (หรือถอน/หมดอายุ) → โหลดรายการใหม่
+   *    ★ from_id = เรา → คำท้าที่เราส่งถูกรับแล้ว → พาเข้าเกมได้เลย
+   *      ★★ ไม่ฟังทิศนี้ คนที่ท้าจะนั่งมองหน้าว่าง ๆ รอรอบดึงถัดไป
+   *         ทั้งที่อีกฝ่ายเข้าเกมไปแล้ว
+   *
+   * ★ filter ของ postgres_changes รับได้คอลัมน์เดียวต่อหนึ่ง .on()
+   *   ★★ จึงต้องแยกเป็นสองตัว ไม่ใช่ or ในตัวเดียว
+   */
+  useEffect(() => {
+    if (!meId) return
+    const supabase = getSupabaseBrowserClient()
+    const channel = supabase
+      .channel(`challenges:${game}:${meId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'game_challenges', filter: `to_id=eq.${meId}` },
+        () => {
+          void load()
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'game_challenges', filter: `from_id=eq.${meId}` },
+        (payload) => {
+          const row = payload.new as { id?: string; game?: string; status?: string; game_id?: string | null }
+          if (row.game === game && row.status === 'ACCEPTED' && row.game_id && row.id && sentRef.current.has(row.id)) {
+            sentRef.current.delete(row.id)
+            onEnter(row.game_id)
+            return
+          }
+          void load()
+        },
+      )
+      .subscribe()
+
+    return () => {
+      void supabase.removeChannel(channel)
+    }
+  }, [game, meId, load, onEnter])
+
+  /*
+   * ── เกมที่ค้างอยู่ก็ต้องสด ────────────────────────────────────
+   *
+   * ★★ "ถึงตาใคร" ในรายการต้องเปลี่ยนเองตอนอีกฝ่ายเดิน
+   *    ★ ไม่งั้นคนที่อยู่หน้าลอบบี้จะเห็นว่ายังไม่ถึงตาตัวเองอยู่นาทีกว่า
+   *      ทั้งที่อีกฝ่ายเดินไปแล้ว ★★ ซึ่งเป็นเหตุผลเดียวที่คนเปิดหน้านี้ค้างไว้
+   *
+   * ★ ไม่ใส่ filter — Realtime กรองต่อแถวได้คอลัมน์เดียว และเกมของเรา
+   *   อยู่ได้ทั้งสองฝั่ง ★★ RLS จึงเป็นตัวกรองจริง: policy ปล่อยเฉพาะเกม
+   *   ที่เราเป็นผู้เล่น แถวของคนอื่นไม่ถูกส่งมาแต่แรก
+   */
+  useEffect(() => {
+    if (!meId) return
+    const supabase = getSupabaseBrowserClient()
+    const channel = supabase
+      .channel(`lobby:${game}:${meId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: `${game}_games` },
+        () => {
+          void load()
+        },
+      )
+      .subscribe()
+
+    return () => {
+      void supabase.removeChannel(channel)
+    }
+  }, [game, meId, load])
 
   useEffect(() => {
     void apiFetch<{ items: Person[] }>('/api/office/people')
@@ -108,7 +204,11 @@ export function GameLobby({
 
   async function challenge(p: { id: string; name: string }) {
     const res = await act({ action: 'challenge', to: p.id })
-    if (res) setNote(ot('game.online.sent', { name: p.name }))
+    if (res) {
+      /* ★ จำใบที่เพิ่งส่ง — พอฝั่งนั้นกดรับ Realtime จะพาเราเข้าเกมเอง */
+      if (res.challengeId) sentRef.current.add(res.challengeId)
+      setNote(ot('game.online.sent', { name: p.name }))
+    }
     void load()
   }
 
@@ -186,7 +286,8 @@ export function GameLobby({
                     className={cn(
                       'flex min-h-16 w-full items-center gap-3 rounded-2xl border px-4 text-start transition-colors',
                       g.myTurn
-                        ? 'border-line-strong bg-elevated hover:bg-surface'
+                        /* ★ ถึงตาเรา = กรอบสีเน้นเต็มใบ ไม่ใช่แค่เส้นเข้มขึ้น */
+                        ? 'border-accent/50 bg-accent/10 hover:bg-accent/15'
                         : 'border-line bg-elevated/40 hover:bg-surface',
                     )}
                   >
@@ -195,15 +296,25 @@ export function GameLobby({
                       <span dir="auto" className="block truncate text-sm font-medium text-ink">
                         {g.opponent.name}
                       </span>
-                      <span className="text-xs text-ink-faint">
-                        <Untranslated>
-                          {g.myTurn ? ot('game.online.yourMove') : ot('game.online.theirMove')}
-                        </Untranslated>
-                      </span>
+                      {!g.myTurn ? (
+                        <span className="text-xs text-ink-faint">
+                          <Untranslated>{ot('game.online.theirMove')}</Untranslated>
+                        </span>
+                      ) : null}
                     </span>
-                    {/* ★ จุดแดงบอกว่าถึงตาเรา — อ่านได้จากหางตา ไม่ต้องอ่านคำ */}
+                    {/*
+                      * ★★★ ของเดิมเป็นจุดกลม 10px ที่ไม่มีคำกำกับ
+                      *
+                      *     ★ ผมเขียนไว้ว่า "อ่านได้จากหางตา ไม่ต้องอ่านคำ"
+                      *       ★★ แต่จุดเปล่า ๆ ไม่ได้บอกว่ามันหมายถึงอะไร
+                      *          คนที่เพิ่งเห็นครั้งแรกต้องเดา — และเดาผิดก็ได้
+                      *          ว่ามันคือ "ออนไลน์อยู่" หรือ "ยังไม่ได้อ่าน"
+                      *     ★ ป้ายที่มีคำเด่นกว่า และไม่ต้องให้ใครเดา
+                      */}
                     {g.myTurn ? (
-                      <span aria-hidden="true" className="size-2.5 shrink-0 rounded-full bg-accent" />
+                      <span className="shrink-0 rounded-full bg-accent px-2.5 py-1 text-[11px] font-bold text-accent-ink">
+                        <Untranslated>{ot('game.online.yourMove')}</Untranslated>
+                      </span>
                     ) : null}
                   </button>
                 </li>

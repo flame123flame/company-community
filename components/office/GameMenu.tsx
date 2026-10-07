@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { apiFetch } from '@/lib/api/client'
+import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { CardGrid, LinkCard } from '@/components/ui/Card'
 import { Untranslated, useOt } from '@/lib/i18n/office'
 import type { OfficeKey } from '@/lib/i18n/office-format'
@@ -35,6 +36,7 @@ const ONLINE_GAMES: OnlineGameKey[] = ['checkers', 'connect4']
 export function GameMenu() {
   const ot = useOt()
   const [waiting, setWaiting] = useState<Partial<Record<OnlineGameKey, Waiting>>>({})
+  const [meId, setMeId] = useState<string | null>(null)
 
   /*
    * ★★★ ถามทุกเกมที่ท้าเพื่อนได้ ไม่ใช่เฉพาะหมากฮอส
@@ -45,16 +47,49 @@ export function GameMenu() {
    *     ★ ไล่จากรายการการ์ด ไม่ใช่รายการเกมชุดที่สอง — เพิ่มเกมที่สาม
    *       แล้วป้ายมาเองโดยไม่ต้องจำว่าต้องมาแก้ที่นี่
    */
-  useEffect(() => {
+  const load = useCallback(() => {
     /* ★ ล้มแล้วเงียบ — การ์ดต้องขึ้นเสมอ ตัวเลขเป็นของแถม */
     for (const key of ONLINE_GAMES) {
-      void apiFetch<{ games: unknown[]; challenges: unknown[] }>(`/api/office/games/${key}`)
-        .then((r) =>
-          setWaiting((w) => ({ ...w, [key]: { challenges: r.challenges.length, ongoing: r.games.length } })),
-        )
+      void apiFetch<{ meId: string; games: unknown[]; challenges: unknown[] }>(`/api/office/games/${key}`)
+        .then((r) => {
+          setMeId(r.meId)
+          setWaiting((w) => ({ ...w, [key]: { challenges: r.challenges.length, ongoing: r.games.length } }))
+        })
         .catch(() => undefined)
     }
   }, [])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  /*
+   * ── ป้ายต้องขึ้นทันทีที่เพื่อนกดท้า ───────────────────────────
+   *
+   * ★★★ ของเดิมดึงครั้งเดียวตอนเปิดหน้า แล้วไม่ดึงอีกเลย
+   *
+   *     ★ เปิดหน้าเกมค้างไว้แล้วเพื่อนท้ามา = ไม่มีอะไรเปลี่ยนบนจอตลอดไป
+   *       ★★ ต้องกดรีเฟรชเองถึงจะเห็น ซึ่งไม่มีใครรู้ว่าต้องทำ
+   *
+   * ★ ฟังทั้งสองทิศด้วยตัวเดียว — ทิศไหนก็แค่ "ดึงตัวเลขใหม่"
+   *   ★★ หน้านี้ไม่ต้องพาใครเข้าเกม ต่างจากลอบบี้ที่ต้องแยกสองทิศ
+   */
+  useEffect(() => {
+    if (!meId) return
+    const supabase = getSupabaseBrowserClient()
+    const channel = supabase
+      .channel(`menu-challenges:${meId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'game_challenges', filter: `to_id=eq.${meId}` },
+        () => load(),
+      )
+      .subscribe()
+
+    return () => {
+      void supabase.removeChannel(channel)
+    }
+  }, [meId, load])
 
   const cards: Card[] = [
     {

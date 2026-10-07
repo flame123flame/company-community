@@ -11,6 +11,7 @@ import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import type { Board, Player } from '@/lib/games/connect4'
 import { CheckersResult } from './CheckersBoard'
 import { Connect4Board, Connect4Seats } from './Connect4Board'
+import { TurnBanner } from './TurnBanner'
 
 /** เวลาต่อตา (วินาที) — ตัวเดียวกับหมากฮอส */
 const TURN_SECONDS = 60
@@ -154,6 +155,9 @@ export function Connect4Online({
 
   return (
     <div className="py-2">
+      {/* ★ อยู่เหนือทุกอย่าง — คำถามเดียวที่ต้องตอบตลอดเวลาคือ "ตาใคร" */}
+      {!over ? <TurnBanner mine={game.myTurn} name={opponentName} seconds={secondsLeft} /> : null}
+
       {/*
         * ★★ ป้ายชื่อใช้ชื่อคนจริงทั้งสองฝั่ง ไม่ใช่ "คุณ/คู่ต่อสู้"
         *    ★ สีเหรียญบอกว่าใครเป็นใครอยู่แล้ว และชื่อจริงทำให้เห็นว่า
@@ -181,22 +185,6 @@ export function Connect4Online({
         disabled={over || busy || !game.myTurn}
         onDrop={drop}
       />
-
-      {/* ── นาฬิกา ──────────────────────────────────────────────── */}
-      {!over ? (
-        <p
-          className={cn(
-            'mt-3 text-center text-sm tabular-nums',
-            secondsLeft <= 10 ? 'font-semibold text-danger' : 'text-ink-soft',
-          )}
-        >
-          <Untranslated>
-            {game.myTurn
-              ? ot('game.online.yourTurnIn', { n: secondsLeft })
-              : ot('game.online.waitingFor', { name: opponentName, n: secondsLeft })}
-          </Untranslated>
-        </p>
-      ) : null}
 
       {/* ★ หมดเวลาแล้วใครก็กดรายงานได้ — คนที่หมดเวลามักปิดแอปไปแล้ว */}
       {!over && secondsLeft === 0 ? (

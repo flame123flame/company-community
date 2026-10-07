@@ -7322,3 +7322,66 @@ html:not([data-reveal='off']) .result-pop {
   .remind-face, .remind-bubble, .remind-chip { animation: none; }
   .remind-chip:hover, .remind-chip-on { transform: none; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+ * แถบบอกว่าถึงตาใคร (TurnBanner) — เกมผลัดตาออนไลน์
+ *
+ * ★★★ โจทย์คือ "เห็นชัดว่าถึงตาแล้ว" ซึ่งต้องต่างกันมากกว่าคำที่เขียน
+ *
+ *     ★ ถึงตาเรา = พื้นสีเน้นเต็มตัว + จุดเต้น + เงาใต้แถบ
+ *     ★ รออีกฝ่าย = พื้นจาง ตัวอักษรสีรอง ไม่มีอะไรขยับ
+ *       ★★ ความต่างระดับนี้อ่านได้จากหางตาโดยไม่ต้องอ่านตัวอักษร
+ *          ซึ่งเป็นเงื่อนไขจริงของคนที่กำลังจ้องกระดานอยู่
+ *
+ * ★★ สิบวินาทีสุดท้ายเปลี่ยนเป็นสีเตือนทั้งสองสถานะ
+ *    ★ เวลาจะหมดเป็นเรื่องของทั้งคู่ — ฝ่ายที่รออยู่ก็ต้องรู้ว่าจะได้กดจบเกม
+ * ═══════════════════════════════════════════════════════════════════════ */
+.turn-mine {
+  color: var(--color-accent-ink);
+  background: linear-gradient(180deg,
+    color-mix(in oklab, var(--color-accent) 92%, #fff),
+    var(--color-accent));
+  box-shadow: 0 10px 24px -12px color-mix(in oklab, var(--color-accent) 85%, transparent);
+}
+.turn-theirs {
+  color: var(--color-ink-soft);
+  background: var(--color-surface);
+  box-shadow: inset 0 0 0 1px var(--color-line);
+}
+/* ★ สีเตือนใช้ token เดียวกับที่ระบบใช้บอกเรื่องด่วนอยู่แล้ว */
+.turn-mine.turn-urgent {
+  background: linear-gradient(180deg,
+    color-mix(in oklab, var(--color-danger) 92%, #fff),
+    var(--color-danger));
+  box-shadow: 0 10px 24px -12px color-mix(in oklab, var(--color-danger) 85%, transparent);
+}
+.turn-theirs.turn-urgent {
+  color: var(--color-danger);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-danger) 45%, transparent);
+}
+
+/* ★ นาฬิกาจางกว่าข้อความหลัก — "ตาใคร" ต้องเด่นกว่า "เหลือกี่วิ" */
+.turn-clock { opacity: 0.78; }
+
+.turn-dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background: currentColor;
+  opacity: 0.45;
+}
+.turn-dot-on {
+  opacity: 1;
+  animation: turn-dot 1.1s ease-in-out infinite;
+}
+@keyframes turn-dot {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 70%, transparent); }
+  60%      { box-shadow: 0 0 0 0.42rem color-mix(in srgb, currentColor 0%, transparent); }
+}
+
+/* ★★ ปิดการขยับให้คนที่ตั้งค่าไว้ — จุดยังอยู่และยังทึบกว่าอีกสถานะ
+      ★ ข้อมูลไม่หายไปพร้อมแอนิเมชัน ซึ่งเป็นกฎของทุกบล็อกแบบนี้ในไฟล์นี้ */
+@media (prefers-reduced-motion: reduce) {
+  .turn-dot-on { animation: none; }
+}

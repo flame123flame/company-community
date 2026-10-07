@@ -91,6 +91,19 @@ const NOTIFY_GROUPS: NotifyGroup[] = [
     ],
   },
   {
+    titleKey: 'profile.n.gFun',
+    /*
+     * ★★ 'gameChallenge' คือ p_type ที่ challenge_create ส่ง (migration 0064)
+     *    ★ ปิดแล้วกระดิ่งเงียบ แต่คำท้ายังถูกสร้างปกติและยังเห็นในหน้าเกม
+     *      ★★ "ไม่อยากให้กระดิ่งดัง" ไม่ใช่ "ห้ามใครท้าฉัน" — สองเรื่องนี้
+     *         ต่างกัน และสวิตช์นี้คุมเรื่องแรกเท่านั้น
+     * ★ ไม่ใส่ drawInvite ไว้ที่นี่ แม้จะมีข้อความแปลอยู่ — ตรวจแล้วว่า
+     *   ไม่มีที่ไหนเรียก notify() ด้วยชนิดนั้น ★★ สวิตช์ที่ไม่ได้คุมอะไรจริง
+     *   คือคำโกหกที่ผู้ใช้ตรวจไม่ได้
+     */
+    items: [{ type: 'gameChallenge', labelKey: 'profile.n.gameChallenge' }],
+  },
+  {
     titleKey: 'profile.n.gSystem',
     items: [{ type: 'contentHidden', labelKey: 'profile.n.contentHidden' }],
   },
