@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiFetch } from '@/lib/api/client'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
+import { healthOf, useRealtimeAuth, useRefreshLoop, type ChannelHealth } from '@/lib/supabase/realtime'
 import { CardGrid, LinkCard } from '@/components/ui/Card'
 import { Untranslated, useOt } from '@/lib/i18n/office'
 import type { OfficeKey } from '@/lib/i18n/office-format'
@@ -37,6 +38,8 @@ export function GameMenu() {
   const ot = useOt()
   const [waiting, setWaiting] = useState<Partial<Record<OnlineGameKey, Waiting>>>({})
   const [meId, setMeId] = useState<string | null>(null)
+  const realtimeReady = useRealtimeAuth()
+  const [health, setHealth] = useState<ChannelHealth>('connecting')
 
   /*
    * ★★★ ถามทุกเกมที่ท้าเพื่อนได้ ไม่ใช่เฉพาะหมากฮอส
@@ -75,7 +78,7 @@ export function GameMenu() {
    *   ★★ หน้านี้ไม่ต้องพาใครเข้าเกม ต่างจากลอบบี้ที่ต้องแยกสองทิศ
    */
   useEffect(() => {
-    if (!meId) return
+    if (!meId || !realtimeReady) return
     const supabase = getSupabaseBrowserClient()
     const channel = supabase
       .channel(`menu-challenges:${meId}`)
@@ -84,12 +87,16 @@ export function GameMenu() {
         { event: '*', schema: 'public', table: 'game_challenges', filter: `to_id=eq.${meId}` },
         () => load(),
       )
-      .subscribe()
+      .subscribe((status) => setHealth(healthOf(status)))
 
     return () => {
+      setHealth('connecting')
       void supabase.removeChannel(channel)
     }
-  }, [meId, load])
+  }, [meId, load, realtimeReady])
+
+  /* ★ ของสำรอง — ป้ายบนการ์ดเคยดึงครั้งเดียวตอนเปิดหน้าเท่านั้น */
+  useRefreshLoop(load, health, { live: 60_000, down: 10_000 })
 
   const cards: Card[] = [
     {

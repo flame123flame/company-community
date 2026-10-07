@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { apiFetch } from '@/lib/api/client'
 import { cn } from '@/lib/cn'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
+import { useRealtimeAuth } from '@/lib/supabase/realtime'
 import { officeErrorText } from '@/lib/i18n/office-format'
 import { Untranslated, useOt } from '@/lib/i18n/office'
 import { useConfirm } from '@/components/ConfirmProvider'
@@ -23,6 +24,8 @@ import { Confetti } from './Confetti'
  * ★ หมดเวลาแล้ว เครื่องไหนก็เรียก "เฉลย" ได้ (ฐานข้อมูลตรวจเวลาเอง) — ผู้จัดปิดแท็บห้องก็ไม่ค้าง
  */
 export function QuizRoom({ roomId }: { roomId: string }) {
+  /* ★ Realtime พร้อมเมื่อ socket รู้จักผู้ใช้แล้วเท่านั้น */
+  const realtimeReady = useRealtimeAuth()
   const ot = useOt()
   const router = useRouter()
   const confirm = useConfirm()
@@ -57,6 +60,8 @@ export function QuizRoom({ roomId }: { roomId: string }) {
 
   /* Realtime: ทางเร็ว */
   useEffect(() => {
+    /* ★ รอ socket รู้จักผู้ใช้ก่อน — เปิดก่อน RLS จะกรองทุกแถวทิ้งเงียบ ๆ */
+    if (!realtimeReady) return
     const supabase = getSupabaseBrowserClient()
     const ch = supabase
       .channel(`office-quiz:${roomId}`)
@@ -66,7 +71,7 @@ export function QuizRoom({ roomId }: { roomId: string }) {
     return () => {
       void supabase.removeChannel(ch)
     }
-  }, [roomId, load])
+  }, [roomId, load, realtimeReady])
 
   /* นาฬิกาตัวนับถอยหลัง — อัปเดตใน interval (ห้ามอ่าน Date.now ตอน render) */
   useEffect(() => {

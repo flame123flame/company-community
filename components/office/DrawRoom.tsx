@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { apiFetch } from '@/lib/api/client'
 import { Button } from '@/components/ui/Button'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
+import { useRealtimeAuth } from '@/lib/supabase/realtime'
 import { MAX_MS } from '@/lib/office/draw'
 import { officeErrorText } from '@/lib/i18n/office-format'
 import { Untranslated, useOt } from '@/lib/i18n/office'
@@ -31,6 +32,8 @@ type Member = { id: string; name: string; avatarUrl: string | null; isMe: boolea
  *    หน้านี้จึงไม่มีการสุ่มอะไรเลย — ไม่มีทางที่สองเครื่องจะเห็นผลต่างกัน
  */
 export function DrawRoom({ roomId }: { roomId: string }) {
+  /* ★ Realtime พร้อมเมื่อ socket รู้จักผู้ใช้แล้วเท่านั้น */
+  const realtimeReady = useRealtimeAuth()
   const ot = useOt()
   const confirm = useConfirm()
   const router = useRouter()
@@ -116,6 +119,8 @@ export function DrawRoom({ roomId }: { roomId: string }) {
 
   /* ── Realtime: ทางเร็วเมื่อใช้ได้ ───────────────────────────── */
   useEffect(() => {
+    /* ★ รอ socket รู้จักผู้ใช้ก่อน — เปิดก่อน RLS จะกรองทุกแถวทิ้งเงียบ ๆ */
+    if (!realtimeReady) return
     const supabase = getSupabaseBrowserClient()
     const channel = supabase
       .channel(`draw-room:${roomId}`)
@@ -134,7 +139,7 @@ export function DrawRoom({ roomId }: { roomId: string }) {
     return () => {
       void supabase.removeChannel(channel)
     }
-  }, [roomId, load])
+  }, [roomId, load, realtimeReady])
 
   async function act(action: 'spin' | 'leave' | 'finish') {
     // ★ ยืนยันเฉพาะออกจากห้อง — หมุน/จบรอบคือตัวเกมเอง ไม่ต้องถาม

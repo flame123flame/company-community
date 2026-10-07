@@ -6,6 +6,7 @@ import { officeErrorText } from '@/lib/i18n/office-format'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
+import { useRealtimeAuth } from '@/lib/supabase/realtime'
 import { cn } from '@/lib/cn'
 import { useLocale } from '@/lib/i18n/client'
 import { useOnlinePeople } from './useOnlinePeople'
@@ -107,6 +108,8 @@ type Thread = {
 }
 
 export function OfficeChat() {
+  /* ★ Realtime พร้อมเมื่อ socket รู้จักผู้ใช้แล้วเท่านั้น */
+  const realtimeReady = useRealtimeAuth()
   const ot = useOt()
   const confirm = useConfirm()
   /* ★ วันที่หัวกลุ่มข้อความต้องเขียนด้วยปฏิทินและเดือนของภาษาที่คนอ่านเลือก
@@ -294,6 +297,8 @@ export function OfficeChat() {
 
   /* ── Realtime ────────────────────────────────────────────────── */
   useEffect(() => {
+    /* ★ รอ socket รู้จักผู้ใช้ก่อน — เปิดก่อน RLS จะกรองทุกแถวทิ้งเงียบ ๆ */
+    if (!realtimeReady) return
     const supabase = getSupabaseBrowserClient()
     const channel = supabase
       .channel('office-chat')
@@ -326,7 +331,7 @@ export function OfficeChat() {
     return () => {
       void supabase.removeChannel(channel)
     }
-  }, [openId, loadRooms, loadThread])
+  }, [openId, loadRooms, loadThread, realtimeReady])
 
   /* ── ถามซ้ำเป็นหลักประกัน ────────────────────────────────────── */
   useEffect(() => {

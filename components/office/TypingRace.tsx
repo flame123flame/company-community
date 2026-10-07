@@ -8,6 +8,7 @@ import { officeErrorText } from '@/lib/i18n/office-format'
 import { Untranslated, useOt } from '@/lib/i18n/office'
 import { useConfirm } from '@/components/ConfirmProvider'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
+import { useRealtimeAuth } from '@/lib/supabase/realtime'
 import { TypingCounter, compare, toChars, type TextLang } from '@/lib/games/typing'
 
 type Player = {
@@ -87,6 +88,8 @@ export function TypingRace({
   lang?: TextLang
   length?: 'short' | 'medium'
 }) {
+  /* ★ Realtime พร้อมเมื่อ socket รู้จักผู้ใช้แล้วเท่านั้น */
+  const realtimeReady = useRealtimeAuth()
   const ot = useOt()
   const confirm = useConfirm()
   const [room, setRoom] = useState<Room | null>(null)
@@ -161,6 +164,8 @@ export function TypingRace({
 
   /* ★ ฟังทั้งห้องและผู้เล่น — แถบความคืบหน้าของคนอื่นมาจากตารางผู้เล่น */
   useEffect(() => {
+    /* ★ รอ socket รู้จักผู้ใช้ก่อน — เปิดก่อน RLS จะกรองทุกแถวทิ้งเงียบ ๆ */
+    if (!realtimeReady) return
     const supabase = getSupabaseBrowserClient()
     const channel = supabase
       .channel(`typing:${roomId}`)
@@ -178,7 +183,7 @@ export function TypingRace({
     return () => {
       void supabase.removeChannel(channel)
     }
-  }, [roomId, load])
+  }, [roomId, load, realtimeReady])
 
   /*
    * ★★★ ถามซ้ำเป็นจังหวะ — Realtime เป็นทางเร็ว ไม่ใช่ทางเดียว

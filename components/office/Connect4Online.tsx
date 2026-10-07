@@ -8,6 +8,7 @@ import { officeErrorText } from '@/lib/i18n/office-format'
 import { Untranslated, useOt } from '@/lib/i18n/office'
 import { useConfirm } from '@/components/ConfirmProvider'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
+import { healthOf, useRealtimeAuth, useRefreshLoop, type ChannelHealth } from '@/lib/supabase/realtime'
 import type { Board, Player } from '@/lib/games/connect4'
 import { CheckersResult } from './CheckersBoard'
 import { Connect4Board, Connect4Seats } from './Connect4Board'
@@ -62,6 +63,8 @@ export function Connect4Online({
   const [busy, setBusy] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [secondsLeft, setSecondsLeft] = useState(TURN_SECONDS)
+  const realtimeReady = useRealtimeAuth()
+  const [health, setHealth] = useState<ChannelHealth>('connecting')
 
   const load = useCallback(async () => {
     try {
@@ -86,6 +89,7 @@ export function Connect4Online({
    *      ★★ เอามาวาดเองจะต้องเขียนกติกา "ฉันเป็นเบอร์ไหน" ซ้ำที่หน้าจอ
    */
   useEffect(() => {
+    if (!realtimeReady) return
     const supabase = getSupabaseBrowserClient()
     const channel = supabase
       .channel(`connect4:${gameId}`)
@@ -96,12 +100,21 @@ export function Connect4Online({
           void load()
         },
       )
-      .subscribe()
+      .subscribe((status) => setHealth(healthOf(status)))
 
     return () => {
+      setHealth('connecting')
       void supabase.removeChannel(channel)
     }
-  }, [gameId, load])
+  }, [gameId, load, realtimeReady])
+
+  /*
+   * ★★★ ของสำรองสำคัญที่สุดตรงนี้ — เกมผลัดตาที่ไม่รู้ว่าอีกฝ่ายเดินแล้ว
+   *     คือเกมที่ค้าง ★ ถี่กว่าที่อื่นเพราะนาฬิกาต่อตามีแค่ 60 วินาที
+   *       ★★ ดึงทุก 4 วินาทีตอน Realtime ยังไม่ติด แปลว่าแย่ที่สุดก็ยังรู้ทัน
+   *          ก่อนหมดเวลา
+   */
+  useRefreshLoop(() => void load(), health, { live: 25_000, down: 4_000 })
 
   /*
    * ── นาฬิกาต่อตา ──────────────────────────────────────────────

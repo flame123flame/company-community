@@ -7,6 +7,7 @@ import { cn } from '@/lib/cn'
 import { officeErrorText } from '@/lib/i18n/office-format'
 import { Untranslated, useOt } from '@/lib/i18n/office'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
+import { healthOf, useRealtimeAuth, useRefreshLoop, type ChannelHealth } from '@/lib/supabase/realtime'
 import { SectionTitle } from './CheckersIntro'
 import { PersonAvatar } from './PersonAvatar'
 
@@ -61,6 +62,8 @@ export function GameLobby({
   const [people, setPeople] = useState<Person[]>([])
   const [frequent, setFrequent] = useState<{ id: string; name: string; games: number }[]>([])
   const [meId, setMeId] = useState<string | null>(null)
+  const realtimeReady = useRealtimeAuth()
+  const [health, setHealth] = useState<ChannelHealth>('connecting')
   /*
    * ★★ จำ id ของคำท้าที่ "เราเป็นคนส่ง" ในรอบนี้
    *    ★ ใช้ตัดสินว่าควรพาเข้าเกมอัตโนมัติตอนอีกฝ่ายกดรับ
@@ -72,7 +75,6 @@ export function GameLobby({
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const timerRef = useRef<number | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -87,19 +89,15 @@ export function GameLobby({
 
   useEffect(() => {
     void load()
-    /*
-     * ★★ ยังดึงซ้ำเป็นระยะ แต่ตอนนี้มันเป็น "ตัวสำรอง" ไม่ใช่ตัวหลัก
-     *    ★ ตัวหลักคือ Realtime ข้างล่าง ★★ Realtime หลุดได้ (เน็ตสะดุด ·
-     *      เครื่องหลับ · channel ถูกตัด) และไม่มีทางรู้ว่าหลุดไปตอนไหน
-     *      ★ รอบดึงทุก 30 วินาทีจึงยังจำเป็น เพื่อให้หน้าจอกลับมาตรงเอง
-     *        โดยที่ผู้ใช้ไม่ต้องรีโหลด
-     *    ★ ยืดจาก 20 เป็น 30 วินาที — ของหลักเร็วแล้ว ตัวสำรองไม่ต้องถี่
-     */
-    timerRef.current = window.setInterval(() => void load(), 30_000)
-    return () => {
-      if (timerRef.current) window.clearInterval(timerRef.current)
-    }
   }, [load])
+
+  /*
+   * ★★ ของสำรองที่ถี่ขึ้นเองเมื่อ Realtime ยังพึ่งไม่ได้
+   *    ★ ติดแล้วดึงทุกนาที แค่กันกรณี event หล่น · ยังไม่ติดดึงทุก 5 วินาที
+   *      ★★ ผู้ใช้จะรู้สึกว่า "ช้าไปนิด" แทนที่จะรู้สึกว่า "มันไม่ทำงาน"
+   *    ★ และดึงทันทีตอนสลับกลับมาที่แท็บ ซึ่งเป็นจังหวะที่คนคาดหวังของล่าสุด
+   */
+  useRefreshLoop(() => void load(), health, { live: 60_000, down: 5_000 })
 
   /*
    * ── คำท้าเข้ามาแล้วเห็นทันที ──────────────────────────────────
@@ -119,7 +117,7 @@ export function GameLobby({
    *   ★★ จึงต้องแยกเป็นสองตัว ไม่ใช่ or ในตัวเดียว
    */
   useEffect(() => {
-    if (!meId) return
+    if (!meId || !realtimeReady) return
     const supabase = getSupabaseBrowserClient()
     const channel = supabase
       .channel(`challenges:${game}:${meId}`)
@@ -143,12 +141,13 @@ export function GameLobby({
           void load()
         },
       )
-      .subscribe()
+      .subscribe((status) => setHealth(healthOf(status)))
 
     return () => {
+      setHealth('connecting')
       void supabase.removeChannel(channel)
     }
-  }, [game, meId, load, onEnter])
+  }, [game, meId, load, onEnter, realtimeReady])
 
   /*
    * ── เกมที่ค้างอยู่ก็ต้องสด ────────────────────────────────────
@@ -162,7 +161,7 @@ export function GameLobby({
    *   ที่เราเป็นผู้เล่น แถวของคนอื่นไม่ถูกส่งมาแต่แรก
    */
   useEffect(() => {
-    if (!meId) return
+    if (!meId || !realtimeReady) return
     const supabase = getSupabaseBrowserClient()
     const channel = supabase
       .channel(`lobby:${game}:${meId}`)
@@ -178,7 +177,7 @@ export function GameLobby({
     return () => {
       void supabase.removeChannel(channel)
     }
-  }, [game, meId, load])
+  }, [game, meId, load, realtimeReady])
 
   useEffect(() => {
     void apiFetch<{ items: Person[] }>('/api/office/people')

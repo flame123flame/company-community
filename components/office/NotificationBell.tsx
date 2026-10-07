@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import Link from 'next/link'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
+import { healthOf, useRealtimeAuth, useRefreshLoop, type ChannelHealth } from '@/lib/supabase/realtime'
 import { apiFetch } from '@/lib/api/client'
 import { cn } from '@/lib/cn'
 import { TONE_EMOJI, isTone } from '@/lib/office/remind'
@@ -47,6 +48,9 @@ export function NotificationBell({ userId }: { userId: string }) {
   const [loading, setLoading] = useState(false)
   const [onlyUnread, setOnlyUnread] = useState(false)
   const [sound, setSound] = useState(false)
+  /* ★ Realtime พร้อมหรือยัง (socket รู้จักผู้ใช้แล้วหรือยัง) */
+  const realtimeReady = useRealtimeAuth()
+  const [health, setHealth] = useState<ChannelHealth>('connecting')
   const boxRef = useRef<HTMLDivElement | null>(null)
   /* ★ เปิดกล่องอยู่ไหม — อ่านจาก ref ไม่ใช่ state เพราะตัวฟัง realtime
        ถูกผูกครั้งเดียว ถ้าอ่าน state มันจะเห็นค่าตอนผูก ไม่ใช่ค่าตอนนี้ */
@@ -104,8 +108,17 @@ export function NotificationBell({ userId }: { userId: string }) {
     openRef.current = open
   }, [open])
 
-  /* ── realtime ────────────────────────────────────────────────────── */
+  /*
+   * ── realtime ──────────────────────────────────────────────────────
+   *
+   * ★★★ รอจนกว่า socket จะรู้จักผู้ใช้ก่อนค่อยเปิด channel
+   *
+   *     ★ เปิดก่อน = RLS กรองทุกแถวทิ้งเพราะ auth.uid() ยังว่าง
+   *       ★★ เงียบสนิท ไม่มี error ★ และเกิดบ่อยกว่าบน build จริงเพราะ
+   *          หน้า hydrate เร็วกว่าการกู้ session จากที่เก็บในเครื่อง
+   */
   useEffect(() => {
+    if (!realtimeReady) return
     const supabase = getSupabaseBrowserClient()
     const channel = supabase
       .channel(`notify:${userId}`)
@@ -142,12 +155,22 @@ export function NotificationBell({ userId }: { userId: string }) {
           playNotify()
         },
       )
-      .subscribe()
+      /* ★ รู้สถานะจริง ไม่ใช่ subscribe เปล่า ๆ แล้วหวังว่าจะติด */
+      .subscribe((status) => setHealth(healthOf(status)))
 
     return () => {
+      setHealth('connecting')
       void supabase.removeChannel(channel)
     }
-  }, [userId, load])
+  }, [userId, load, realtimeReady])
+
+  /*
+   * ★★ ของสำรอง — กระดิ่งเคยพึ่ง Realtime อย่างเดียว ไม่มีรอบดึงเลย
+   *    ★ แปลว่าถ้า Realtime ไม่ติดด้วยเหตุใดก็ตาม ตัวเลขบนกระดิ่งจะค้าง
+   *      อยู่อย่างนั้นจนกว่าจะรีโหลดหน้า ★★ ซึ่งคืออาการ "ไม่เรียลไทม์"
+   *      ที่ผู้ใช้เห็น และเป็นสิ่งที่โค้ดเดิมไม่มีทางกู้คืนได้เองเลย
+   */
+  useRefreshLoop(() => void load(), health, { live: 60_000, down: 10_000 })
 
   /* ── ปิดเมื่อคลิกนอกกล่อง ────────────────────────────────────────── */
   useEffect(() => {

@@ -11,6 +11,7 @@ import { priceLabel, statusLabel, type ListingKind, type ListingStatus } from '@
 import { ChatAvatar } from './ChatAvatar'
 import { FunGuide } from './FunGuide'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
+import { useRealtimeAuth } from '@/lib/supabase/realtime'
 import { cn } from '@/lib/cn'
 import { officeErrorText } from '@/lib/i18n/office-format'
 import { Untranslated, useOt, type Ot } from '@/lib/i18n/office'
@@ -52,6 +53,8 @@ type Room = {
 
 /** แชทตลาดนัด (FR-D08) + คำค้นแจ้งเตือน (FR-D09) */
 export function MarketChat({ initialListing }: { initialListing?: string }) {
+  /* ★ Realtime พร้อมเมื่อ socket รู้จักผู้ใช้แล้วเท่านั้น */
+  const realtimeReady = useRealtimeAuth()
   const ot = useOt()
   const locale = useLocale()
   const [threads, setThreads] = useState<Thread[]>([])
@@ -107,6 +110,8 @@ export function MarketChat({ initialListing }: { initialListing?: string }) {
 
   /* ── realtime: ข้อความใหม่ในห้องที่เปิดอยู่ ─────────────────── */
   useEffect(() => {
+    /* ★ รอ socket รู้จักผู้ใช้ก่อน — เปิดก่อน RLS จะกรองทุกแถวทิ้งเงียบ ๆ */
+    if (!realtimeReady) return
     const id = room?.threadId
     if (!id) return
 
@@ -131,7 +136,7 @@ export function MarketChat({ initialListing }: { initialListing?: string }) {
     return () => {
       void supabase.removeChannel(channel)
     }
-  }, [room?.threadId, openThread, loadThreads])
+  }, [room?.threadId, openThread, loadThreads, realtimeReady])
 
   /* ★ เลื่อนลงล่างสุดเมื่อมีข้อความใหม่ — แชทที่ไม่เลื่อนเองต้องลากทุกครั้ง */
   useEffect(() => {
