@@ -43,6 +43,59 @@ export function setMuted(value: boolean): void {
   }
 }
 
+/*
+ * ★★★ สวิตช์เสียงแจ้งเตือนแยกจากสวิตช์ปิดเสียงทั้งหมด
+ *
+ *     ★ เสียงเกมกับเสียงสุ่มดังเพราะ "ผู้ใช้กดเอง" — เขารู้ล่วงหน้าว่าจะมีเสียง
+ *       ★★ เสียงแจ้งเตือนดังขึ้นมาเองตอนไหนก็ได้ รวมถึงตอนอยู่ในห้องประชุม
+ *          ★ สองอย่างนี้จึงไม่ควรใช้สวิตช์เดียวกัน คนที่ปิดอันหลัง
+ *            ไม่ได้แปลว่าอยากให้วงล้อสุ่มเงียบไปด้วย
+ *
+ * ★★ ปิดเสียงทั้งหมด (isMuted) ยังคลุมอันนี้ด้วย — มันคือสวิตช์ใหญ่
+ */
+const NOTIFY_KEY = 'frameroom:office:notifySound'
+
+/** ★ ไม่มีค่าที่เก็บไว้ = เปิด — คนที่ไม่เคยตั้งค่าควรได้ยินว่ามีอะไรเข้ามา */
+export function isNotifySoundOn(): boolean {
+  if (typeof window === 'undefined') return false
+  if (isMuted()) return false
+  try {
+    return localStorage.getItem(NOTIFY_KEY) !== '0'
+  } catch {
+    return true
+  }
+}
+
+export function setNotifySoundOn(value: boolean): void {
+  try {
+    localStorage.setItem(NOTIFY_KEY, value ? '1' : '0')
+  } catch {
+    /* Safari โหมดส่วนตัวเขียนไม่ได้ — จำข้ามครั้งไม่ได้เท่านั้น */
+  }
+}
+
+/**
+ * ปลดล็อกเสียงตอนผู้ใช้แตะอะไรสักอย่าง
+ *
+ * ★★★ เบราว์เซอร์ไม่ยอมให้เล่นเสียงจนกว่าจะมี "ท่าทางของผู้ใช้" สักครั้ง
+ *
+ *     ★ เสียงเกมไม่เจอปัญหานี้ เพราะมันดังตอนกดปุ่มหมุนพอดี
+ *       ★★ แต่แจ้งเตือนมาเองโดยไม่มีใครกดอะไร ★ AudioContext ที่เพิ่งสร้าง
+ *          ตอนนั้นจะเกิดมาในสถานะ suspended แล้ว resume() ก็ไม่ผ่าน
+ *          — เสียงแรกจึงหายไปเงียบ ๆ โดยไม่มีอะไรฟ้อง
+ *     ★ เรียกตัวนี้ตอนผู้ใช้คลิกหรือกดปุ่มครั้งแรกในหน้า context จะพร้อม
+ *       ไว้ล่วงหน้าก่อนแจ้งเตือนใบแรกจะมาถึง
+ */
+export function unlockAudio(): void {
+  if (typeof window === 'undefined') return
+  try {
+    ctx ??= new AudioContext()
+    if (ctx.state === 'suspended') void ctx.resume()
+  } catch {
+    /* ไม่รองรับ Web Audio — เงียบไปเฉย ๆ ไม่ใช่เรื่องที่ต้องแจ้งใคร */
+  }
+}
+
 function audio(): AudioContext | null {
   if (typeof window === 'undefined') return null
   if (isMuted()) return null
@@ -55,6 +108,41 @@ function audio(): AudioContext | null {
   } catch {
     return null
   }
+}
+
+/**
+ * เสียงแจ้งเตือน — สองโน้ตขึ้น เบา ๆ สั้น ๆ
+ *
+ * ★★ ตั้งใจให้ "จบเร็ว" ไม่ใช่ไพเราะ
+ *    ★ เสียงที่ลากยาวหรือมีหลายโน้ตจะกลายเป็นเสียงรบกวนทันทีที่มีแจ้งเตือน
+ *      เข้ามาสามใบติดกัน ★★ สองโน้ตห่างกันคู่สี่ (A5 → D6) ฟังออกว่า
+ *      "มีของเข้ามา" โดยไม่แย่งความสนใจจากสิ่งที่กำลังทำอยู่
+ *
+ * ★ ดังกว่าเสียงติ๊กของวงล้อนิดเดียว (0.10 เทียบกับ 0.06)
+ *   ★★ ดังกว่านี้แล้วคนจะปิดทิ้งตั้งแต่ครั้งแรกที่ได้ยิน
+ */
+export function playNotify(): void {
+  if (!isNotifySoundOn()) return
+  const ac = audio()
+  if (!ac) return
+
+  const notes = [880, 1174.66] // A5 → D6
+  notes.forEach((freq, i) => {
+    const osc = ac.createOscillator()
+    const gain = ac.createGain()
+    const at = ac.currentTime + i * 0.11
+
+    osc.type = 'triangle'
+    osc.frequency.value = freq
+    /* ★ ไต่ขึ้นเร็วแต่ไม่กระชาก — ตั้งค่าเป็น 0 ตรง ๆ จะได้เสียง "ป๊อก" ตอนเริ่ม */
+    gain.gain.setValueAtTime(0.0001, at)
+    gain.gain.exponentialRampToValueAtTime(0.1, at + 0.012)
+    gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.26)
+
+    osc.connect(gain).connect(ac.destination)
+    osc.start(at)
+    osc.stop(at + 0.3)
+  })
 }
 
 /** เสียงติ๊กตอนผ่านแต่ละช่อง — สั้นและแหลม */

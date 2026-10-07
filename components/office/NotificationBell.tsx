@@ -7,6 +7,7 @@ import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { apiFetch } from '@/lib/api/client'
 import { cn } from '@/lib/cn'
 import { TONE_EMOJI, isTone } from '@/lib/office/remind'
+import { isNotifySoundOn, playNotify, setNotifySoundOn, unlockAudio } from '@/lib/office/sound'
 import { useLocale } from '@/lib/i18n/client'
 import { formatBaht } from '@/lib/office/wallet'
 import { Untranslated, useOt, type OfficeKey, type Ot } from '@/lib/i18n/office'
@@ -45,7 +46,13 @@ export function NotificationBell({ userId }: { userId: string }) {
   const [unread, setUnread] = useState(0)
   const [loading, setLoading] = useState(false)
   const [onlyUnread, setOnlyUnread] = useState(false)
+  const [sound, setSound] = useState(false)
   const boxRef = useRef<HTMLDivElement | null>(null)
+  /* ★ เปิดกล่องอยู่ไหม — อ่านจาก ref ไม่ใช่ state เพราะตัวฟัง realtime
+       ถูกผูกครั้งเดียว ถ้าอ่าน state มันจะเห็นค่าตอนผูก ไม่ใช่ค่าตอนนี้ */
+  const openRef = useRef(false)
+  /* ★ กันเสียงรัว — แจ้งเตือนสามใบมาพร้อมกันต้องได้ยินครั้งเดียว */
+  const lastPingRef = useRef(0)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -63,6 +70,39 @@ export function NotificationBell({ userId }: { userId: string }) {
   useEffect(() => {
     void load()
   }, [load])
+
+  /*
+   * ── เสียง ────────────────────────────────────────────────────────
+   *
+   * ★★★ อ่านค่าสวิตช์หลังขึ้นจอแล้วเท่านั้น
+   *
+   *     ★ ค่านี้อยู่ใน localStorage ซึ่ง server ไม่มี ★★ อ่านตอน render แรก
+   *        จะได้ HTML จาก server กับ HTML ในเบราว์เซอร์ไม่ตรงกัน (hydration)
+   *        ★ React จะทิ้งของฝั่ง client แล้ววาดใหม่ ซึ่งทำให้ปุ่มกระพริบ
+   */
+  useEffect(() => {
+    setSound(isNotifySoundOn())
+  }, [])
+
+  /*
+   * ★★ ปลดล็อกเสียงตอนผู้ใช้แตะอะไรก็ได้ครั้งแรก
+   *    ★ เบราว์เซอร์บล็อกเสียงจนกว่าจะมีท่าทางของผู้ใช้ ★★ แจ้งเตือนมาเอง
+   *      โดยไม่มีใครกดอะไร เสียงใบแรกจึงหายเงียบถ้าไม่เตรียมไว้ก่อน
+   *    ★ once: true — ทำครั้งเดียวแล้วถอดตัวเองออก
+   */
+  useEffect(() => {
+    const unlock = () => unlockAudio()
+    window.addEventListener('pointerdown', unlock, { once: true })
+    window.addEventListener('keydown', unlock, { once: true })
+    return () => {
+      window.removeEventListener('pointerdown', unlock)
+      window.removeEventListener('keydown', unlock)
+    }
+  }, [])
+
+  useEffect(() => {
+    openRef.current = open
+  }, [open])
 
   /* ── realtime ────────────────────────────────────────────────────── */
   useEffect(() => {
@@ -85,6 +125,21 @@ export function NotificationBell({ userId }: { userId: string }) {
         },
         () => {
           void load()
+          /*
+           * ★★★ ส่งเสียงเฉพาะใบที่ "มาถึงตอนเปิดหน้าอยู่"
+           *
+           *     ★ ตัวฟังนี้ยิงเฉพาะ INSERT ★★ ของที่สะสมไว้ตอนปิดแท็บ
+           *        เข้ามาทาง load() ตอนเปิดหน้า ซึ่งไม่ผ่านตรงนี้
+           *        ★ ถูกแล้ว — เปิดเว็บมาแล้วมีเสียงรัวสิบครั้งคือฝันร้าย
+           *
+           * ★★ เปิดกล่องอ่านอยู่ก็ไม่ต้องส่งเสียง — เขาเห็นมันโผล่มากับตาแล้ว
+           * ★ และกันเสียงซ้อนภายใน 3 วินาที เผื่อแจ้งเตือนมาเป็นชุด
+           */
+          if (openRef.current) return
+          const now = Date.now()
+          if (now - lastPingRef.current < 3000) return
+          lastPingRef.current = now
+          playNotify()
         },
       )
       .subscribe()
@@ -231,6 +286,40 @@ export function NotificationBell({ userId }: { userId: string }) {
                     <Untranslated>{unread > 0 ? ot('notify.popUnread', { n: unread }) : ot('notify.popAllClear')}</Untranslated>
                   </p>
                 </div>
+                {/*
+                  * ★★★ สวิตช์เสียงอยู่ตรงนี้ ไม่ได้ซ่อนในหน้าตั้งค่า
+                  *
+                  *     ★ คนนึกถึงมันตอนเดียวคือตอนที่มันเพิ่งดังแล้วไม่อยากให้ดังอีก
+                  *       ★★ ซึ่งเป็นวินาทีที่เขากำลังเปิดกล่องนี้อยู่พอดี
+                  *       ★ ถ้าต้องไปหาในหน้าโปรไฟล์ คนส่วนใหญ่จะทนรำคาญแทน
+                  *     ★ เก็บในเครื่อง ไม่ใช่ในบัญชี — มือถือในห้องประชุม
+                  *       กับคอมที่โต๊ะคือคนละสถานการณ์ของคนคนเดียวกัน
+                  */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !sound
+                    setSound(next)
+                    setNotifySoundOn(next)
+                    /* ★ เปิดแล้วได้ยินตัวอย่างทันที — ไม่ต้องรอแจ้งเตือนใบหน้า
+                         ★★ และการกดปุ่มนี้คือท่าทางที่ปลดล็อกเสียงให้ด้วยในตัว */
+                    if (next) playNotify()
+                  }}
+                  aria-pressed={sound}
+                  aria-label={ot('notify.sound')}
+                  title={sound ? ot('notify.soundOn') : ot('notify.soundOff')}
+                  className="pop-pill grid size-9 shrink-0 place-items-center rounded-full transition-transform hover:scale-105"
+                >
+                  <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M11 5 6 9H3v6h3l5 4z" />
+                    {sound ? (
+                      <path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13" />
+                    ) : (
+                      <path d="m16 9 5 6M21 9l-5 6" />
+                    )}
+                  </svg>
+                </button>
+
                 {unread > 0 ? (
                   /* ★ ปุ่มจริง ไม่ใช่ลิงก์ — มันเปลี่ยนสถานะของข้อมูล ไม่ได้พาไปหน้าอื่น */
                   <button type="button" onClick={markAll} className="pop-pill shrink-0 rounded-full px-3 py-1.5 text-[11px] font-bold transition-transform hover:scale-105">
