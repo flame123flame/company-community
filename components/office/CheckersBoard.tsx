@@ -20,6 +20,7 @@ import {
   outcome,
   rowOf,
   colOf,
+  realIndex,
   sideOf,
   type Board,
   type Cell,
@@ -180,6 +181,23 @@ export function CheckersBoard({
     setSelected(null)
   }
 
+  /*
+   * ★★★ กลับกระดานให้คนที่นั่งฝั่งบน
+   *
+   *     ★ ของเดิมวาด board.map(i) ตามลำดับดิบเสมอ — ช่อง 0 อยู่ซ้ายบนเสมอ
+   *       ★★ คนที่เป็นฝ่าย TOP จึงเห็นหมากตัวเองอยู่ "ข้างบน" แล้วต้องเดินลง
+   *          ซึ่งกลับหัวกลับหางกับเกมกระดานทุกเกมในโลก
+   *          ★ ผู้ใช้เจอเองแล้วถามว่า "ทำไมตัวเราไม่อยู่ฝั่งเรา"
+   *
+   * ★★ กลับแค่ "การวาด" ไม่แตะกติกาเลย
+   *    ★ ทุกอย่างที่คิดตาเดิน (legalMoves · applyMove · ดัชนีที่ส่งไป server)
+   *      ยังใช้ดัชนีจริงเหมือนเดิม ★★ การกลับข้อมูลจะทำให้ฝั่งเซิร์ฟเวอร์
+   *      กับฝั่งหน้าจอพูดคนละภาษา ซึ่งเป็นบั๊กที่ไล่ยากที่สุดแบบหนึ่ง
+   *
+   * ★ โหมดส่งเครื่องกันเล่น (mySide = null) ไม่กลับ — ไม่มี "ฝั่งเรา" ให้ยึด
+   */
+  const flip = mySide === 'TOP'
+
   const counts = useMemo(() => {
     let b = 0
     let t = 0
@@ -194,8 +212,14 @@ export function CheckersBoard({
 
   return (
     <div className="mx-auto w-full max-w-[min(94vw,540px)]">
-      {/* ★ แต่ละแถบโชว์หมากของอีกฝ่ายที่คนนั้นกินได้ — เหมือนกองหมากข้างกระดานจริง */}
-      <Seat who={top} side="TOP" took={counts.bottomLost} active={!finished && turn === 'TOP'} />
+      {/* ★ แต่ละแถบโชว์หมากของอีกฝ่ายที่คนนั้นกินได้ — เหมือนกองหมากข้างกระดานจริง
+             ★★ สลับที่นั่งตามการกลับกระดาน ไม่งั้นชื่อเราไปอยู่บนหัวกระดานที่เป็นของเรา */}
+      <Seat
+        who={flip ? bottom : top}
+        side={flip ? 'BOTTOM' : 'TOP'}
+        took={flip ? counts.topLost : counts.bottomLost}
+        active={!finished && turn === (flip ? 'BOTTOM' : 'TOP')}
+      />
 
       <div className="ck-stage mt-3 mb-3">
         <div className="ck-frame">
@@ -212,9 +236,18 @@ export function CheckersBoard({
             aria-label={ot('game.checkers.board')}
             className="ck-board grid aspect-square w-full grid-cols-8 grid-rows-8 overflow-hidden"
           >
-            {board.map((cell, i) => {
+            {Array.from({ length: SIZE * SIZE }, (_, v) => {
+              /*
+               * ★ v = ตำแหน่งที่ "มองเห็น" · i = ดัชนีจริงบนกระดาน
+               *   ★★ ทุกตรรกะข้างล่างใช้ i เสมอ — v ใช้แค่ตัดสินว่าพิกัดตัวเลข
+               *      กับตัวอักษรควรไปอยู่ขอบไหนของจอ
+               */
+              const i = realIndex(v, flip)
+              const cell = board[i]!
               const r = rowOf(i)
               const c = colOf(i)
+              const vr = Math.floor(v / SIZE)
+              const vc = v % SIZE
               const target = targets.get(i)
               const isFrom = selected === i
               const isLast = lastMove && (lastMove.from === i || lastMove.to === i)
@@ -240,12 +273,14 @@ export function CheckersBoard({
                     arriving && 'z-10',
                   )}
                 >
-                  {c === 0 ? (
+                  {/* ★ พิกัดเกาะขอบซ้ายและขอบล่างของ "จอ" ไม่ใช่ของกระดานดิบ
+                         ★★ ไม่งั้นพอกลับกระดาน ตัวเลขจะไปอยู่ขอบขวาและตัวอักษรไปอยู่ข้างบน */}
+                  {vc === 0 ? (
                     <span aria-hidden="true" className="ck-coord start-[7%] top-[7%]">
                       {SIZE - r}
                     </span>
                   ) : null}
-                  {r === SIZE - 1 ? (
+                  {vr === SIZE - 1 ? (
                     <span aria-hidden="true" className="ck-coord bottom-[7%] end-[9%]">
                       {FILES[c]}
                     </span>
@@ -269,8 +304,12 @@ export function CheckersBoard({
                         className={cn('ck-slide', arriving.captured.length > 0 && 'ck-hop')}
                         style={
                           {
-                            '--dx': colOf(arriving.from) - c,
-                            '--dy': rowOf(arriving.from) - r,
+                            /* ★ ระยะเลื่อนคิดในพิกัดของจอ ★★ ตอนกลับกระดาน
+                                 ทิศจริงกับทิศที่เห็นตรงข้ามกัน ถ้าใช้ค่าดิบ
+                                 หมากจะวิ่งออกจากช่องปลายทางไปทางตรงกันข้าม
+                                 แทนที่จะวิ่งเข้ามาจากช่องต้นทาง */
+                            '--dx': (colOf(arriving.from) - c) * (flip ? -1 : 1),
+                            '--dy': (rowOf(arriving.from) - r) * (flip ? -1 : 1),
                           } as CSSProperties
                         }
                       >
@@ -298,7 +337,12 @@ export function CheckersBoard({
         </div>
       </div>
 
-      <Seat who={bottom} side="BOTTOM" took={counts.topLost} active={!finished && turn === 'BOTTOM'} />
+      <Seat
+        who={flip ? top : bottom}
+        side={flip ? 'TOP' : 'BOTTOM'}
+        took={flip ? counts.bottomLost : counts.topLost}
+        active={!finished && turn === (flip ? 'TOP' : 'BOTTOM')}
+      />
 
       {mustCapture ? (
         <p className="mt-2 flex items-center justify-center gap-1.5 text-center text-xs font-medium text-warn">

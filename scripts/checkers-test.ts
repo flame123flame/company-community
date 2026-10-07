@@ -10,7 +10,7 @@
 import {
   EMPTY, B_MAN, B_KING, W_MAN, W_KING, SIZE,
   initialBoard, legalMoves, applyMove, findLegal, outcome, botMove, evaluate,
-  isDark, sideOf, type Board, type Cell,
+  isDark, sideOf, realIndex, type Board, type Cell,
 } from '../lib/games/checkers'
 
 let pass = 0
@@ -221,6 +221,60 @@ head('บอท')
 head('ช่วยยืนยันชนิดข้อมูล')
 check(sideOf(B_KING) === 'BOTTOM' && sideOf(W_KING) === 'TOP', 'แยกฝ่ายของฮอสถูก')
 check(!isDark(0) && isDark(1), 'ช่องสีเข้มคือ (แถว+คอลัมน์) เป็นคี่')
+
+/*
+ * ── ทิศของกระดานเมื่อมองจากที่นั่ง ───────────────────────────────
+ *
+ * ★★★ มีด่านนี้เพราะคนที่นั่งฝั่ง TOP เคยเห็นหมากตัวเองอยู่ "ข้างบนจอ"
+ *     แล้วต้องเดินลงมาหาตัวเอง ซึ่งอ่านไม่ออกว่าใครเป็นใคร
+ *
+ *     ★ พิสูจน์ด้วยเบราว์เซอร์ต้องมีสองบัญชีจริงที่ถูกจับให้นั่งฝั่ง TOP
+ *       ★★ ซึ่งแพงและไม่แน่นอน — ส่วนที่ผิดได้จริงคือการจับคู่ลำดับ
+ *          บนจอกับดัชนีจริง ซึ่งเป็นคณิตศาสตร์ล้วน ๆ จึงตรวจตรงนั้น
+ */
+head('ทิศกระดานตามที่นั่ง')
+{
+  /* ★ ไม่กลับ = ลำดับบนจอตรงกับดัชนีจริงทุกช่อง */
+  check(
+    Array.from({ length: 64 }, (_, v) => realIndex(v, false) === v).every(Boolean),
+    'นั่งฝั่งล่าง — วาดตามดัชนีจริงทุกช่อง',
+  )
+
+  /* ★ กลับแล้วต้องยังเป็นการสลับที่ครบ 64 ช่อง ไม่ซ้ำ ไม่ขาด
+       ★★ ถ้าสูตรผิด บางช่องจะถูกวาดสองครั้งและบางช่องหายไปเลย */
+  const seen = new Set(Array.from({ length: 64 }, (_, v) => realIndex(v, true)))
+  check(seen.size === 64, 'กลับกระดานแล้วยังครบ 64 ช่องไม่ซ้ำ', `${seen.size} ช่อง`)
+
+  /* ★ กลับสองครั้งได้ของเดิม — เป็นสมบัติที่การหมุน 180 องศาต้องมี */
+  check(
+    Array.from({ length: 64 }, (_, v) => realIndex(realIndex(v, true), true) === v).every(Boolean),
+    'กลับสองครั้งได้กระดานเดิม',
+  )
+
+  /*
+   * ★★★ ใจความจริงของด่านนี้: หมากของคนที่นั่งอยู่ ต้องถูกวาดในครึ่งล่างของจอ
+   *
+   *     ★ ครึ่งล่างของจอ = ลำดับการวาด v ตั้งแต่ 32 ขึ้นไป
+   *       ★★ เทียบกับฝ่ายที่ sideOf บอก ไม่ใช่เทียบกับช่วงดัชนีที่จำมาเอง
+   */
+  const b = initialBoard()
+  for (const [seat, flip] of [['BOTTOM', false], ['TOP', true]] as const) {
+    const mineBelow = Array.from({ length: 64 }, (_, v) => v)
+      .filter((v) => sideOf(b[realIndex(v, flip)]!) === seat)
+    check(
+      mineBelow.length === 8 && mineBelow.every((v) => v >= 32),
+      `นั่งฝั่ง ${seat} — หมากตัวเองอยู่ครึ่งล่างของจอทั้ง 8 ตัว`,
+      `แถวที่วาด ${[...new Set(mineBelow.map((v) => Math.floor(v / SIZE)))].join(',')}`,
+    )
+    /* ★ และหมากฝ่ายตรงข้ามต้องอยู่ครึ่งบนทั้งหมด — ไม่ใช่แค่ของเราถูก */
+    const theirs = Array.from({ length: 64 }, (_, v) => v)
+      .filter((v) => { const s = sideOf(b[realIndex(v, flip)]!); return s !== null && s !== seat })
+    check(
+      theirs.length === 8 && theirs.every((v) => v < 32),
+      `นั่งฝั่ง ${seat} — หมากคู่ต่อสู้อยู่ครึ่งบนของจอทั้ง 8 ตัว`,
+    )
+  }
+}
 
 console.log(`\n\x1b[1mผ่าน ${pass} · ล้ม ${fail}\x1b[0m`)
 process.exit(fail ? 1 : 0)

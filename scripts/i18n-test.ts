@@ -364,6 +364,16 @@ async function main() {
         // ★ ปุ่มสร้างห้องกดไม่ได้จนกว่าจะมีชื่อห้อง — ตั้งใจให้เป็นอย่างนั้น
         await p.locator('#create input').first().fill(`ห้อง ${locale}`)
         await p.locator('#create button[type="submit"]').first().click()
+        /*
+         * ★★★ มีกล่องยืนยันคั่นก่อนสร้างห้องจริงแล้ว
+         *
+         *     ★ ไม่กดยืนยัน = ไม่มีคำขอออกไปเลยสักอัน ★★ ด่านจะค้างที่
+         *       waitForURL จนหมดเวลา แล้วรายงานว่า "fill timeout"
+         *       ซึ่งอ่านไม่ออกว่าสาเหตุคืออะไร
+         *     ★ จับจาก role="alertdialog" + .cfm-ok ไม่ใช่จากข้อความบนปุ่ม
+         *       ★★ ข้อความเปลี่ยนตามภาษา และด่านนี้รันทั้ง 16 ภาษา
+         */
+        await p.locator('[role="alertdialog"] .cfm-ok').click({ timeout: NAV_TIMEOUT })
         await p.waitForURL(/\/room\/[A-Za-z0-9]+/, { timeout: NAV_TIMEOUT })
         await sleep(3_000)
         await audit(p, locale, `${locale}/หน้าห้อง`)
