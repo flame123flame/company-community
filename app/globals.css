@@ -7385,3 +7385,17 @@ html:not([data-reveal='off']) .result-pop {
 @media (prefers-reduced-motion: reduce) {
   .turn-dot-on { animation: none; }
 }
+
+/* ★ ปุ่มในกล่องดูรูปเต็มจอ — เป้า 44px บนพื้นมืด ใช้ร่วมทุกแกลเลอรี */
+.lb-btn {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 9999px;
+  color: #fff;
+  background: rgb(255 255 255 / 0.15);
+  backdrop-filter: blur(6px);
+  transition: background-color 160ms;
+}
+.lb-btn:hover { background: rgb(255 255 255 / 0.28); }

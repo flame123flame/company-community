@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { cn } from '@/lib/cn'
 import { Untranslated, useOt } from '@/lib/i18n/office'
+import { PhotoLightbox } from '@/components/ui/PhotoLightbox'
 import { ListingImage } from './ListingImage'
 
 /**
@@ -135,6 +136,17 @@ export function ListingGallery({
 export function GalleryWithThumbs({ images, alt }: { images: string[]; alt: string }) {
   const ot = useOt()
   const [i, setI] = useState(0)
+  /*
+   * ★★★ กดรูปใหญ่แล้วดูเต็มจอได้
+   *
+   *     ★ ของมือสองขายด้วยรายละเอียด — รอยขีดข่วน · เลขรุ่นบนฉลาก ·
+   *       สภาพขอบ ★★ รูปในกรอบ 4/3 ที่ครอบด้วย object-cover ตัดขอบทิ้ง
+   *       และย่อเล็กจนอ่านอะไรไม่ได้
+   *       ★ คนจึงต้องกดขวาเปิดรูปในแท็บใหม่ ซึ่งบนมือถือทำไม่ได้เลย
+   *     ★ null = ปิดอยู่ ★★ ไม่ใช้ boolean แยกกับดัชนี เพราะสองค่าที่ต้อง
+   *       ตรงกันเสมอคือสองค่าที่วันหนึ่งจะไม่ตรงกัน
+   */
+  const [zoom, setZoom] = useState<number | null>(null)
   const total = images.length
 
   /* ★ เหตุผลเดียวกับใน ListingGallery ข้างบน */
@@ -151,7 +163,19 @@ export function GalleryWithThumbs({ images, alt }: { images: string[]; alt: stri
   return (
     <div>
       <div className="relative overflow-hidden rounded-2xl border border-line">
-        <ListingImage src={images[Math.min(i, total - 1)]!} alt={alt} />
+        {/*
+          * ★★ ตัวรูปเป็นปุ่ม ไม่ใช่ครอบทั้งกล่องด้วยปุ่ม
+          *    ★ ครอบทั้งกล่องจะกินปุ่มลูกศรกับตัวนับที่วางทับอยู่ข้างใน
+          *      ★★ แล้วการกดลูกศรจะเปิดรูปเต็มจอขึ้นมาแทนที่จะเลื่อนรูป
+          */}
+        <button
+          type="button"
+          onClick={() => setZoom(Math.min(i, total - 1))}
+          aria-label={ot('market.openPhoto')}
+          className="block w-full cursor-zoom-in"
+        >
+          <ListingImage src={images[Math.min(i, total - 1)]!} alt={alt} />
+        </button>
         {total > 1 ? (
           <>
             <button type="button" onClick={() => go(-1)} aria-label={ot('market.prevPhoto')} className="gal-arrow start-2">
@@ -189,6 +213,21 @@ export function GalleryWithThumbs({ images, alt }: { images: string[]; alt: stri
             </button>
           ))}
         </div>
+      ) : null}
+
+      {zoom !== null ? (
+        <PhotoLightbox
+          photos={images}
+          index={zoom}
+          /* ★ เลื่อนในรูปเต็มจอแล้วรูปใหญ่ข้างหลังเลื่อนตาม — ปิดออกมาแล้ว
+               อยู่ที่รูปใบเดียวกับที่เพิ่งดู ไม่ใช่ดีดกลับไปใบเดิม */
+          onIndex={(k) => {
+            setZoom(k)
+            setI(k)
+          }}
+          onClose={() => setZoom(null)}
+          label={alt}
+        />
       ) : null}
     </div>
   )

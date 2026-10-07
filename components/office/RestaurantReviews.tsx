@@ -10,6 +10,7 @@ import { cn } from '@/lib/cn'
 import { shrinkImage } from '@/lib/image/shrink'
 import { officeErrorText } from '@/lib/i18n/office-format'
 import { Untranslated, useOt } from '@/lib/i18n/office'
+import { PhotoLightbox } from '@/components/ui/PhotoLightbox'
 /* ★ สูตรเดียวกับที่เฟสระยะทางใช้ จึงอยู่ที่ lib/office/geo.ts ตั้งแต่แรก */
 import { haversineMeters } from '@/lib/office/geo'
 
@@ -237,7 +238,7 @@ export function RestaurantReviews({
       )}
 
       {lightbox ? (
-        <Lightbox
+        <PhotoLightbox
           photos={lightbox.photos}
           index={lightbox.index}
           onIndex={(i) => setLightbox((p) => (p ? { ...p, index: i } : p))}
@@ -540,92 +541,4 @@ function pathFromPublicUrl(url: string): string | null {
   const marker = '/public/reviews/'
   const i = url.indexOf(marker)
   return i === -1 ? null : url.slice(i + marker.length)
-}
-
-/* ═══════════════════════════════════════════════════════════════════
- * ดูรูปเต็มจอ
- * ═══════════════════════════════════════════════════════════════════ */
-
-function Lightbox({
-  photos,
-  index,
-  onIndex,
-  onClose,
-}: {
-  photos: string[]
-  index: number
-  onIndex: (i: number) => void
-  onClose: () => void
-}) {
-  const ot = useOt()
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-      if (e.key === 'ArrowRight') onIndex((index + 1) % photos.length)
-      if (e.key === 'ArrowLeft') onIndex((index - 1 + photos.length) % photos.length)
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [index, photos.length, onIndex, onClose])
-
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      className="fixed inset-0 z-80 flex items-center justify-center bg-black/90 p-4"
-      onClick={onClose}
-    >
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label={ot('common.close')}
-        className="absolute end-3 top-3 grid size-11 place-items-center rounded-full bg-white/10 text-white"
-      >
-        <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M6 6l12 12M18 6L6 18" />
-        </svg>
-      </button>
-
-      {photos.length > 1 ? (
-        <>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              onIndex((index - 1 + photos.length) % photos.length)
-            }}
-            aria-label={ot('common.prev')}
-            className="absolute start-2 grid size-11 place-items-center rounded-full bg-white/10 text-white"
-          >
-            ‹
-          </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              onIndex((index + 1) % photos.length)
-            }}
-            aria-label={ot('common.next')}
-            className="absolute end-2 grid size-11 place-items-center rounded-full bg-white/10 text-white"
-          >
-            ›
-          </button>
-        </>
-      ) : null}
-
-      {/* ★ กดที่รูปไม่ปิด — คนซูมดูรายละเอียดอยู่ การปิดเมื่อแตะรูปคือกับดัก */}
-      <div className="relative h-full w-full" onClick={(e) => e.stopPropagation()}>
-        {photos[index] ? (
-          <Image src={photos[index]} alt="" fill sizes="100vw" className="object-contain" unoptimized />
-        ) : null}
-      </div>
-
-      {photos.length > 1 ? (
-        <p className="absolute bottom-4 text-sm text-white/80">
-          {index + 1} / {photos.length}
-        </p>
-      ) : null}
-    </div>
-  )
 }

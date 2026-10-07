@@ -9,7 +9,8 @@ import { cn } from '@/lib/cn'
 import { officeErrorText } from '@/lib/i18n/office-format'
 import { Untranslated, useOt } from '@/lib/i18n/office'
 import { cuisineStyle } from '@/lib/office/cuisine'
-import { Lightbox, ShopPhotos } from './ShopPhotos'
+import { ShopPhotos } from './ShopPhotos'
+import { PhotoLightbox } from '@/components/ui/PhotoLightbox'
 import { Stars, StarInput } from './Stars'
 import { distanceLabel, type KaraokePricing } from '@/lib/office/food'
 import { KaraokePrices } from './KaraokeFields'
@@ -167,9 +168,7 @@ export function FoodDetail({ id }: { id: string }) {
   const style = cuisineStyle(r.name, r.cuisine)
   const dist = distanceParts(r.travelMeters)
   /* ★ รูปเมนูทั้งหมดของร้าน — lightbox เลื่อนไปรูปเมนูถัดไปได้ */
-  const dishPhotos = (r.dishes ?? [])
-    .filter((d) => d.photoUrl)
-    .map((d) => ({ id: d.name, url: d.photoUrl! }))
+  const dishPhotos = (r.dishes ?? []).filter((d) => d.photoUrl).map((d) => d.photoUrl!)
 
   return (
     /*
@@ -238,7 +237,7 @@ export function FoodDetail({ id }: { id: string }) {
                 {d.photoUrl ? (
                   <button
                     type="button"
-                    onClick={() => setDishView(dishPhotos.findIndex((p) => p.url === d.photoUrl))}
+                    onClick={() => setDishView(dishPhotos.indexOf(d.photoUrl!))}
                     aria-label={d.name}
                     className="size-12 shrink-0 overflow-hidden rounded-lg ring-1 ring-line"
                   >
@@ -434,7 +433,7 @@ export function FoodDetail({ id }: { id: string }) {
       />
 
       {dishView !== null && dishPhotos[dishView] ? (
-        <Lightbox photos={dishPhotos} index={dishView} onIndex={setDishView} onClose={() => setDishView(null)} />
+        <PhotoLightbox photos={dishPhotos} index={dishView} onIndex={setDishView} onClose={() => setDishView(null)} />
       ) : null}
 
       <Toast toast={toast} />

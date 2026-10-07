@@ -855,6 +855,7 @@ export const th = {
   'market.photoOf': 'รูปที่ {n} จาก {total}',
   'market.prevPhoto': 'รูปก่อนหน้า',
   'market.nextPhoto': 'รูปถัดไป',
+  'market.openPhoto': 'ดูรูปเต็มจอ',
   'market.queueList': 'คิวคนที่สนใจ',
   'market.queueAt': 'จองเมื่อ {when}',
   'market.noQueue': 'ยังไม่มีใครจอง',

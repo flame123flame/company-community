@@ -1,11 +1,11 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { cn } from '@/lib/cn'
 import { useConfirm } from '@/components/ConfirmProvider'
 import { officeErrorText } from '@/lib/i18n/office-format'
 import { Untranslated, useOt } from '@/lib/i18n/office'
+import { PhotoLightbox } from '@/components/ui/PhotoLightbox'
 import { shrinkImage } from '@/lib/image/shrink'
 
 /** เพดานเดียวกับที่ add_restaurant_photos บังคับในฐานข้อมูล */
@@ -225,100 +225,13 @@ export function ShopPhotos({
       ) : null}
 
       {lightbox !== null && photos[lightbox] ? (
-        <Lightbox
-          photos={photos}
+        <PhotoLightbox
+          photos={photos.map((ph) => ph.url)}
           index={lightbox}
           onIndex={setLightbox}
           onClose={() => setLightbox(null)}
         />
       ) : null}
     </div>
-  )
-}
-
-/**
- * ดูรูปเต็มจอ
- *
- * ★ เลื่อนซ้าย/ขวาได้ด้วยปุ่มและคีย์บอร์ด ★★ รูปอาหารเป็นของที่คนดูต่อเนื่อง
- *   การต้องปิดแล้วเปิดใหม่ทีละใบคือการทำให้แกลเลอรีไม่เป็นแกลเลอรี
- */
-/** ดูรูปเต็มจอ — ใช้ร่วมกับรูปเมนูในหน้ารายละเอียดร้าน */
-export function Lightbox({
-  photos,
-  index,
-  onIndex,
-  onClose,
-}: {
-  photos: ShopPhoto[]
-  index: number
-  onIndex: (i: number) => void
-  onClose: () => void
-}) {
-  const ot = useOt()
-  const go = (d: number) => onIndex((index + d + photos.length) % photos.length)
-
-  return createPortal(
-    <div
-      className="fixed inset-0 z-70 grid place-items-center bg-black/85 p-4 backdrop-blur-sm"
-      role="dialog"
-      aria-modal="true"
-      aria-label={ot('food.photos.open')}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-      onKeyDown={(e) => {
-        if (e.key === 'ArrowRight') go(1)
-        if (e.key === 'ArrowLeft') go(-1)
-        if (e.key === 'Escape') onClose()
-      }}
-      tabIndex={-1}
-      ref={(el) => el?.focus()}
-    >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={photos[index]!.url}
-        alt=""
-        className="max-h-[85dvh] max-w-full rounded-2xl object-contain"
-      />
-
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label={ot('common.close')}
-        className="absolute end-4 top-4 grid size-11 place-items-center rounded-full bg-white/15 text-white backdrop-blur hover:bg-white/25"
-      >
-        <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-          <path d="M6 6l12 12M18 6 6 18" />
-        </svg>
-      </button>
-
-      {photos.length > 1 ? (
-        <>
-          <Nav dir="prev" onClick={() => go(-1)} label={ot('wallet.owed.pagePrev')} />
-          <Nav dir="next" onClick={() => go(1)} label={ot('wallet.owed.pageNext')} />
-          <p className="absolute bottom-5 rounded-full bg-white/15 px-3 py-1 text-xs tabular-nums text-white backdrop-blur">
-            {index + 1} / {photos.length}
-          </p>
-        </>
-      ) : null}
-    </div>,
-    document.body,
-  )
-}
-
-function Nav({ dir, onClick, label }: { dir: 'prev' | 'next'; onClick: () => void; label: string }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={label}
-      className={cn(
-        'absolute top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-full',
-        'bg-white/15 text-white backdrop-blur hover:bg-white/25',
-        dir === 'prev' ? 'start-4' : 'end-4',
-      )}
-    >
-      <svg viewBox="0 0 24 24" className="size-5 rtl:-scale-x-100" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <path d={dir === 'prev' ? 'm15 6-6 6 6 6' : 'm9 6 6 6-6 6'} />
-      </svg>
-    </button>
   )
 }
