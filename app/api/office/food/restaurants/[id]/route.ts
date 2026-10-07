@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { getSupabaseAdminClient } from '@/lib/supabase/admin'
+import { bangkokMonthStart } from '@/lib/time/bangkok'
 import { AppError, fromPostgresError } from '@/lib/http/errors'
 import { assertSameOrigin, parseJsonBody } from '@/lib/http/guard'
 import { ok, withErrorHandling } from '@/lib/http/respond'
@@ -85,8 +86,12 @@ export const GET = withErrorHandling(
     if (!r) throw new AppError('ROOM_NOT_FOUND')
 
     /* ★ ต้นเดือนนี้ตามเวลาเครื่อง server — ตรงกับช่วงที่หน้าสรุปค่าข้าวใช้ */
-    const now = new Date()
-    const monthFrom = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+    /*
+     * ★★ ขอบเดือนตามเวลาไทย ไม่ใช่ UTC
+     *    ★ ช่วงเที่ยงคืนถึงเจ็ดโมงเช้าของวันที่ 1 ตามเวลาไทย server ที่เป็น UTC
+     *      ยังนับว่าเป็นเดือนก่อน — "กินร้านนี้กี่ครั้งเดือนนี้" จึงผิดทุกต้นเดือน
+     */
+    const monthFrom = bangkokMonthStart()
 
     const [{ data: votes }, { data: bills }, { data: adder }] = await Promise.all([
       admin.from('restaurant_votes').select('user_id').eq('restaurant_id', id).eq('user_id', actor.id),

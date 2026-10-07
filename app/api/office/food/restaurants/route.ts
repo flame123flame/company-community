@@ -7,6 +7,7 @@ import { ok, withErrorHandling } from '@/lib/http/respond'
 import { enforceRateLimit } from '@/lib/ratelimit'
 import { requireOfficeUser } from '@/lib/office/guard'
 import { directionsUrl, distanceTag, isOpenNow } from '@/lib/office/geo'
+import { bangkokWallClock } from '@/lib/time/bangkok'
 import { CUISINES } from '@/lib/office/food'
 import { cuisineSchema, karaokeSchema, karaokeToStore, readKaraoke } from '@/lib/office/food-schema'
 
@@ -340,7 +341,14 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
   }
 
   if (openNow) {
-    const now = new Date()
+    /*
+     * ★★★ เทียบกับหน้าปัดนาฬิกาไทย ไม่ใช่นาฬิกาของ server
+     *
+     *     ★ Vercel รันด้วย UTC ★★ บ่ายสามที่กรุงเทพคือ 08:00 UTC ซึ่งยังไม่ถึง
+     *       เวลาเปิดของร้านที่เปิด 10:00 — ร้านที่เปิดอยู่จริงถูกกรองทิ้งทั้งหมด
+     *       ★ และตั้ง TZ ใน Vercel ไม่ได้ (เป็นชื่อที่สงวนไว้) จึงต้องแก้ที่นี่
+     */
+    const now = bangkokWallClock()
     shown = shown.filter((r) => isOpenNow(r.openHours, now) === true)
   }
 

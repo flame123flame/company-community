@@ -1,6 +1,8 @@
 import type { CSSProperties } from 'react'
 import Link from 'next/link'
 import { getT } from '@/lib/i18n/server'
+import { getLocale } from '@/lib/i18n/server'
+import { markThai } from '@/lib/i18n/untranslated'
 import type { DictKey } from '@/lib/i18n/dict'
 
 /** href ว่าง = ฟังก์ชันที่อยู่บนแถบบนของทุกหน้า (กระดิ่ง ภาษา ธีม) ไม่มีหน้าของตัวเอง */
@@ -158,7 +160,23 @@ export function catalogModules(isAdmin: boolean): Module[] {
 
 export async function FeatureCatalog({ isAdmin }: { isAdmin: boolean }) {
   const { t } = await getT()
+  const locale = await getLocale()
   const modules = catalogModules(isAdmin)
+
+  /*
+   * ★★★ ข้อความทั้งแค็ตตาล็อกยังเป็นภาษาไทยทุกภาษา ตามกติกาของโปรเจกต์
+   *
+   *     ★ AGENTS.md สั่งให้เขียนไทยอย่างเดียวก่อน แต่บังคับว่าข้อความไทย
+   *       ที่ "มองเห็นบนจอ" ต้องติดป้าย lang="th"
+   *       ★★ ไม่ติดแล้วโปรแกรมอ่านหน้าจอจะออกเสียงไทยด้วยกฎภาษาอาหรับ
+   *     ★ scripts/i18n-test.ts จับได้จริง — หน้าแรกของคนที่ล็อกอินแล้วมี
+   *       ข้อความไทยหลุด 101 ชิ้นบนภาษา ar
+   *
+   * ★★ ห่อที่จุด render ไม่ใช่ที่จุดเรียก t()
+   *    ★ ข้อความพวกนี้มาจากการวนลูป — 101 ชิ้นมาจากจุด render ไม่กี่จุด
+   *      ★★ และ t() ยังถูกใช้ใน aria-label ซึ่งรับ ReactNode ไม่ได้
+   */
+  const th = (s: string) => markThai(locale, s)
 
   return (
     <div className="mx-auto w-full max-w-[1120px] px-4">
@@ -172,7 +190,7 @@ export async function FeatureCatalog({ isAdmin }: { isAdmin: boolean }) {
             className="cat-jump inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-[13px] font-semibold text-ink sm:min-h-9"
           >
             <span aria-hidden="true" className="size-2.5 rounded-full bg-[rgb(var(--tint))]" />
-            {t(m.titleKey)}
+            {th(t(m.titleKey))}
             <span className="tabular-nums text-ink-faint">{m.items.length}</span>
           </a>
         ))}
@@ -193,17 +211,17 @@ export async function FeatureCatalog({ isAdmin }: { isAdmin: boolean }) {
                   <path d={m.icon} />
                 </svg>
               </span>
-              <h3 className="mt-4 text-[26px] font-black leading-tight tracking-tight text-ink">{t(m.titleKey)}</h3>
-              <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">{t(m.tagKey)}</p>
+              <h3 className="mt-4 text-[26px] font-black leading-tight tracking-tight text-ink">{th(t(m.titleKey))}</h3>
+              <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">{th(t(m.tagKey))}</p>
               <div className="mt-4 flex flex-wrap items-center gap-2">
                 <span className="cat-count rounded-full px-3 py-1 text-xs font-bold">
-                  {t('cat.count', { n: m.items.length })}
+                  {th(t('cat.count', { n: m.items.length }))}
                 </span>
                 <Link
                   href={m.href}
                   className="cat-open inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 text-[13px] font-bold sm:min-h-9"
                 >
-                  {t('cat.open', { name: t(m.titleKey) })}
+                  {th(t('cat.open', { name: t(m.titleKey) }))}
                   <svg viewBox="0 0 24 24" className="size-4 rtl:-scale-x-100" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                     <path d="M5 12h14M13 6l6 6-6 6" />
                   </svg>
@@ -217,11 +235,11 @@ export async function FeatureCatalog({ isAdmin }: { isAdmin: boolean }) {
                 <li key={it.key}>
                   {it.href ? (
                     <Link href={it.href} className="cat-item group flex h-full items-start gap-3.5 rounded-2xl p-4">
-                      <ItemBody emoji={it.emoji} title={t(`${it.key}.t` as DictKey)} detail={t(`${it.key}.d` as DictKey)} arrow />
+                      <ItemBody emoji={it.emoji} title={th(t(`${it.key}.t` as DictKey))} detail={th(t(`${it.key}.d` as DictKey))} arrow />
                     </Link>
                   ) : (
                     <div className="cat-item cat-item-static flex h-full items-start gap-3.5 rounded-2xl p-4">
-                      <ItemBody emoji={it.emoji} title={t(`${it.key}.t` as DictKey)} detail={t(`${it.key}.d` as DictKey)} />
+                      <ItemBody emoji={it.emoji} title={th(t(`${it.key}.t` as DictKey))} detail={th(t(`${it.key}.d` as DictKey))} />
                     </div>
                   )}
                 </li>
@@ -234,7 +252,7 @@ export async function FeatureCatalog({ isAdmin }: { isAdmin: boolean }) {
   )
 }
 
-function ItemBody({ emoji, title, detail, arrow = false }: { emoji: string; title: string; detail: string; arrow?: boolean }) {
+function ItemBody({ emoji, title, detail, arrow = false }: { emoji: string; title: React.ReactNode; detail: React.ReactNode; arrow?: boolean }) {
   return (
     <>
       <span aria-hidden="true" className="cat-emoji grid size-12 shrink-0 place-items-center rounded-2xl text-2xl">

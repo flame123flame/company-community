@@ -263,7 +263,16 @@ async function signUp(p: Page, locale: Locale, tag: string) {
   const pw = p.locator('input[autocomplete="new-password"]')
   await pw.nth(0).fill('I18nTest123!')
   await pw.nth(1).fill('I18nTest123!')
-  await p.locator('input[maxlength="40"]').fill(`ทดสอบ ${locale}`)
+  /*
+   * ★★★ จับจาก data-field ไม่ใช่จาก maxlength
+   *
+   *     ★ ของเดิมใช้ input[maxlength="40"] ★★ ซึ่งผูกกับกฎการตรวจ ไม่ใช่
+   *       กับตัวช่อง — พอเพดานชื่อเล่นถูกแก้เป็น 30 ให้ตรงกับ CHECK
+   *       ในฐานข้อมูล ตัวจับก็ตายทันที
+   *       ★ ด่านล้มด้วย "locator.fill timeout" ซึ่งอ่านไม่ออกเลยว่าสาเหตุคืออะไร
+   *     ★★ data-field เป็นชื่อของช่อง ซึ่งเป็นความหมาย ไม่ใช่รายละเอียดการตรวจ
+   */
+  await p.locator('[data-field="nickname"] input').fill(`ทดสอบ ${locale}`)
   await p.locator('select').first().selectOption({ index: 1 })
   await p.locator('input[type="checkbox"]').first().check()
   await p.locator('form button[type="submit"]').first().click()

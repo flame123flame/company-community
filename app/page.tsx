@@ -144,21 +144,21 @@ export default async function HomePage() {
       </main>
 
       {summary ? (
-        <HomeSection {...sec('today')}>
+        <HomeSection {...sec('today')} locale={locale}>
           <OfficeSummary ot={ot} locale={locale} data={summary} />
         </HomeSection>
       ) : null}
 
       {/* ★ id="systems" — ปุ่มหลักบนหัวหน้าและปุ่มปิดท้ายเลื่อนมาที่นี่ */}
-      <HomeSection {...sec('systems')} band>
+      <HomeSection {...sec('systems')} locale={locale} band>
         <SystemHub />
       </HomeSection>
 
-      <HomeSection {...sec('features')}>
+      <HomeSection {...sec('features')} locale={locale}>
         <FeatureCatalog isAdmin={isAdmin} />
       </HomeSection>
 
-      <HomeSection {...sec('start')} band>
+      <HomeSection {...sec('start')} locale={locale} band>
         <HomeOutro />
       </HomeSection>
 

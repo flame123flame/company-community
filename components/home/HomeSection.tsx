@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/cn'
+import { markThai } from '@/lib/i18n/untranslated'
 
 /**
  * หนึ่ง "ส่วน" ของหน้าแรก — หัวข้อมีเลขลำดับ + คำอธิบาย แล้วตามด้วยเนื้อหา
@@ -16,6 +17,19 @@ export function HomeSection({
   title,
   detail,
   band = false,
+  /**
+   * ภาษาที่หน้ากำลังแสดงอยู่
+   *
+   * ★★★ ต้องรู้ เพราะหัวข้อกับคำอธิบายของหน้าแรกยังเป็นภาษาไทยทุกภาษา
+   *
+   *     ★ ตามกติกาของโปรเจกต์ (AGENTS.md) ข้อความใหม่เขียนไทยอย่างเดียวก่อน
+   *       ★★ แต่ข้อความไทยที่ "มองเห็นบนจอ" ต้องติดป้าย lang="th"
+   *          ไม่งั้นโปรแกรมอ่านหน้าจอจะออกเสียงไทยด้วยกฎภาษาอาหรับ
+   *     ★ scripts/i18n-test.ts จับได้แล้วจริง: "วันนี้ของคุณ" และอีกสามข้อความ
+   *       หลุดบนหน้าภาษา ar ทั้งจอกว้างและจอแคบ
+   *       ★★ ป้ายหายเองวันที่แปลเสร็จ เพราะ markThai เช็กจากตัวอักษรจริง
+   */
+  locale,
   children,
 }: {
   id: string
@@ -23,6 +37,7 @@ export function HomeSection({
   title: string
   detail: string
   band?: boolean
+  locale: string
   children: ReactNode
 }) {
   return (
@@ -38,9 +53,11 @@ export function HomeSection({
           </span>
           <div className="min-w-0 pb-1">
             <h2 id={`${id}-title`} className="text-[26px] font-black leading-tight tracking-tight text-ink sm:text-[36px]">
-              {title}
+              {markThai(locale, title)}
             </h2>
-            <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-ink-soft sm:text-[15px]">{detail}</p>
+            <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-ink-soft sm:text-[15px]">
+              {markThai(locale, detail)}
+            </p>
           </div>
         </div>
         <span aria-hidden="true" className="home-rule mt-6 block h-px" />
