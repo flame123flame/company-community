@@ -33,16 +33,24 @@ import { FunGuide } from './FunGuide'
 import { useGameFullscreen } from './useGameFullscreen'
 
 /*
- * ★ สีบอลมาจาก token ของธีม — canvas อ่าน CSS variable ตรง ๆ ไม่ได้
- *   จึงให้เบราว์เซอร์แปลงเป็น rgb ผ่าน element ชั่วคราวตอนเริ่มเกม
+ * ★ สีบอลมาจาก --bub-* ซึ่งเป็นชุดของเกมนี้เอง (ดู globals.css)
+ *   canvas อ่าน CSS variable ตรง ๆ ไม่ได้ จึงให้เบราว์เซอร์แปลงเป็น rgb
+ *   ผ่าน element ชั่วคราวตอนเริ่มเกม
+ *
+ * ★★★ ของเดิมยืม token ของ UI มาใช้ (--color-warn · --ck-gold · --quiz-green)
+ *     ★ ระดับยากใช้ครบ 6 สี แล้วสองสีในนั้นห่างกันแค่ 2 องศาบนวงล้อสี
+ *       ★★ แยกไม่ออกด้วยตา — ยิงผิดโดยไม่รู้ว่าทำไมไม่แตก
+ *     ★★ เหตุผลที่ลึกกว่านั้น: token พวกนั้นมีหน้าที่อื่น (สีคำเตือน · สีลิงก์)
+ *        ★ วันที่มีคนปรับให้อ่านง่ายขึ้น เกมนี้จะพังอีกโดยไม่มีใครรู้
+ *          ★★ เกมต้องเป็นเจ้าของสีของตัวเอง
  */
 const COLOR_VARS = [
-  'var(--color-accent)',
-  'var(--color-link)',
-  'var(--ck-gold)',
-  'var(--quiz-green)',
-  'rgb(var(--aurora-2))',
-  'var(--color-warn)',
+  'var(--bub-1)',
+  'var(--bub-2)',
+  'var(--bub-3)',
+  'var(--bub-4)',
+  'var(--bub-5)',
+  'var(--bub-6)',
 ]
 
 type RGB = [number, number, number]
