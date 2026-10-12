@@ -7644,3 +7644,23 @@ button:not(:disabled):not(.ck-sq-dark):not(.ck-sq-light):not(.c4-col):not(.gal-t
 .text-money-out { color: var(--money-out); }
 .bg-money-in-soft { background: color-mix(in srgb, var(--money-in) 14%, transparent); }
 .bg-money-out-soft { background: color-mix(in srgb, var(--money-out) 14%, transparent); }
+
+/* ── สีทึบของทิศทางเงิน (ใช้กับป้ายและจุดบนเส้นเวลา) ───────────── */
+.bg-money-in-solid { background: var(--money-in); }
+.bg-money-out-solid { background: var(--money-out); }
+
+/* ── หัวกล่องรายละเอียดรายการเงิน ─────────────────────────────────
+ *
+ * ★★ พื้นไล่สีจาง ๆ ตามทิศทางเงิน — แดงจาง = จ่ายออก · เขียวจาง = รับเข้า
+ *    ★ อ่านออกจากหางตาก่อนจะทันอ่านตัวเลข ★★ ซึ่งเป็นคำถามแรกที่คนเปิดมาถาม
+ * ★ จางมาก (10%) เพราะตัวเลขกับตัวหนังสือต้องอ่านง่ายกว่าพื้น
+ */
+.dsheet-hero { border-bottom: 1px solid var(--color-line); }
+.dsheet-out {
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--money-out) 10%, transparent), transparent);
+}
+.dsheet-in {
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--money-in) 10%, transparent), transparent);
+}

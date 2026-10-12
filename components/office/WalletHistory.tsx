@@ -273,6 +273,9 @@ export function WalletHistory() {
             otherName: open.otherName,
             otherAvatar: open.otherAvatar,
             isSettlement: open.isSettlement,
+            /* ★ ส่งทิศทางกับสถานะไปด้วย — แผ่นจะได้ไม่ต้องเดาและไม่ขัดกับลิสต์ */
+            direction: open.direction,
+            status: open.status,
           }}
           onClose={() => setOpen(null)}
         />

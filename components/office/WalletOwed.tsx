@@ -224,7 +224,15 @@ export function WalletOwed() {
   const settled = useMemo(() => {
     if (!data) return []
     const q = settledQuery.trim().toLowerCase()
-    const all = [...data.iOwe, ...data.owedToMe].filter((d) => d.status === 'SETTLED')
+    /*
+     * ★★ ติดทิศทางตั้งแต่ตอนรวมสองกอง — กองไหนมาจาก iOwe คือเงินที่เราจ่ายออก
+     *    ★ พอรวมแล้วไม่มีทางรู้อีกเลยว่าใบไหนมาจากกองไหน
+     *      ★★ แผ่นรายละเอียดต้องใช้ค่านี้บอกทิศทางเงิน ไม่งั้นมันเดาไม่ได้
+     */
+    const all = [
+      ...data.iOwe.map((d) => ({ ...d, direction: 'out' as const })),
+      ...data.owedToMe.map((d) => ({ ...d, direction: 'in' as const })),
+    ].filter((d) => d.status === 'SETTLED')
     return q
       ? all.filter((d) => `${d.otherName} ${d.description ?? ''}`.toLowerCase().includes(q))
       : all
