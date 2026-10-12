@@ -16,6 +16,7 @@ import { prefersReducedMotion } from '@/lib/office/draw'
 import type { ExpenseCategory } from '@/types/database'
 import { SpendChart, type SpendItem } from './SpendChart'
 import { ChatAvatar } from './ChatAvatar'
+import { WalletHistory } from './WalletHistory'
 
 /*
  * ═══════════════════════════════════════════════════════════════════════
@@ -542,6 +543,18 @@ export function WalletSummary() {
 
           {/* ── รายการทั้งหมด ─────────────────────────────────────── */}
           <Transactions items={filtered} filter={filter} onClear={() => setFilter({ kind: 'all' })} />
+
+          {/*
+            * ★★★ ประวัติการโอนอยู่ท้ายสุด และมีช่วงเวลาของตัวเอง
+            *
+            *     ★ ทั้งหน้าข้างบนผูกกับ "เดือนที่เลือก" ★★ แต่คำถาม
+            *       "เคยโอนให้คนนี้เมื่อไหร่" ไม่ได้ผูกกับเดือน — มันคือ
+            *       การค้นย้อนหลังทั้งหมด ★ บังคับให้ไปเปลี่ยนเดือนก่อนค้น
+            *       คือการให้ทำงานที่ระบบทำแทนได้
+            *     ★★ และมันคิดจาก debts ไม่ใช่ bills เหมือนทุกอย่างข้างบน
+            *        — คนละตาราง คนละคำถาม จึงเป็นเซกชันของตัวเอง
+            */}
+          <WalletHistory />
 
           <p className="text-center text-[11.5px] leading-relaxed text-ink-soft">{ot('wallet.summary.explain')}</p>
         </>

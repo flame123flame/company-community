@@ -7,6 +7,7 @@ import { cn } from '@/lib/cn'
 import { useLocale } from '@/lib/i18n/client'
 import { officeErrorText } from '@/lib/i18n/office-format'
 import { Untranslated, useOt } from '@/lib/i18n/office'
+import { PhotoLightbox } from '@/components/ui/PhotoLightbox'
 import { formatBaht } from '@/lib/office/wallet'
 import { ChatAvatar } from './ChatAvatar'
 
@@ -197,12 +198,20 @@ function Row({
  *   ★★ ซึ่งเป็นสิ่งเดียวที่คนเปิดมันมาดู
  */
 function Proof({ url, label }: { url: string; label: string }) {
+  const [zoom, setZoom] = useState(false)
   return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="group block overflow-hidden rounded-2xl border border-line bg-surface transition-colors hover:border-line-strong"
+    <>
+    {/*
+      * ★★★ เปิดในกล่องดูรูปเต็มจอ ไม่ใช่แท็บใหม่
+      *     ★ แท็บใหม่พาออกจากหน้าไปเลย ★★ ปิดแล้วกลับมาเจอว่าแผ่นรายละเอียด
+      *       ปิดไปแล้วด้วย ต้องไล่หารายการเดิมใหม่
+      *     ★ และลิงก์สลิปเป็น signed URL อายุห้านาที — แท็บที่เปิดค้างไว้
+      *       จะกลายเป็นหน้าเสียเงียบ ๆ โดยไม่บอกว่าทำไม
+      */}
+    <button
+      type="button"
+      onClick={() => setZoom(true)}
+      className="group block w-full cursor-zoom-in overflow-hidden rounded-2xl border border-line bg-surface text-start transition-colors hover:border-line-strong"
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
@@ -212,10 +221,16 @@ function Proof({ url, label }: { url: string; label: string }) {
       />
       <span className="flex items-center justify-between gap-2 px-3 py-2 text-[12px] text-ink-soft">
         <Untranslated>{label}</Untranslated>
+        {/* ★ แว่นขยาย ไม่ใช่ไอคอน "เปิดแท็บใหม่" — บอกให้ตรงกับที่มันทำจริง */}
         <svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M14 4h6v6M20 4l-8 8M10 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-5" />
+          <circle cx="11" cy="11" r="7" />
+          <path d="m20 20-3.5-3.5M11 8v6M8 11h6" />
         </svg>
       </span>
-    </a>
+    </button>
+    {zoom ? (
+      <PhotoLightbox photos={[url]} index={0} onIndex={() => undefined} onClose={() => setZoom(false)} label={label} />
+    ) : null}
+    </>
   )
 }

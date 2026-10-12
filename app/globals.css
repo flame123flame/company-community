@@ -7616,3 +7616,31 @@ button:not(:disabled):not(.ck-sq-dark):not(.ck-sq-light):not(.c4-col):not(.gal-t
 @media (prefers-reduced-motion: reduce) {
   button:active { transform: none !important; }
 }
+
+/* ── สีของทิศทางเงิน ──────────────────────────────────────────────
+ *
+ * ★★★ แดง = ออกจากกระเป๋า · เขียว = เข้ากระเป๋า
+ *     ★ เป็นรหัสสีที่คนรู้อยู่แล้วจากสมุดบัญชีและแอปธนาคารทุกตัว
+ *
+ * ★★ ค่าพวกนี้ฮาร์ดโค้ดกระจายอยู่ 4 ที่ (การ์ดหน้าแรก · กระดิ่ง · หน้าเข้าระบบ ·
+ *    กล่องยืนยัน) ในรูป '52 199 123' ★ รวบมาไว้ที่นี่เพื่อให้ของใหม่
+ *    อ้างที่เดียว ★★ ของเดิมยังไม่แตะ — การไล่แก้สี่ที่พร้อมกันโดยไม่มีด่าน
+ *    ตรวจคือความเสี่ยงที่ไม่ได้อะไรกลับมาตอนนี้
+ *
+ * ★★★ ไม่ยืม --color-warn หรือ token ความหมายอื่นมาใช้
+ *     ★ บทเรียนสด ๆ จากเกมยิงบอลสี: token ที่มีหน้าที่อื่นจะถูกปรับเพื่อ
+ *       งานของมันเอง แล้วของที่ยืมไปใช้จะพังโดยไม่มีใครรู้
+ */
+:root {
+  --money-in: #34c77b;
+  --money-out: #ff3b30;
+}
+:root[data-theme='light'] {
+  /* ★ เข้มขึ้นบนพื้นสว่างเพื่อให้ตัวเลขอ่านออก (อัตราส่วนความต่างผ่านเกณฑ์) */
+  --money-in: #1a8f52;
+  --money-out: #d92b20;
+}
+.text-money-in { color: var(--money-in); }
+.text-money-out { color: var(--money-out); }
+.bg-money-in-soft { background: color-mix(in srgb, var(--money-in) 14%, transparent); }
+.bg-money-out-soft { background: color-mix(in srgb, var(--money-out) 14%, transparent); }

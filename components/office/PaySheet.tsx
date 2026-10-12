@@ -123,7 +123,13 @@ export function PaySheet({
       const small = await shrinkImage(file, 1280)
       const form = new FormData()
       form.append('file', small)
-      const res = await fetch('/api/office/wallet/receipt', { method: 'POST', body: form })
+      /*
+       * ★★★ ต้องเป็น /slip ไม่ใช่ /receipt
+       *     ★ ของเดิมยิงไป /receipt ซึ่งเก็บลงถัง receipts ★★ แต่ตอนอ่าน
+       *       ระบบไปหาใน slips ตาม debts.slip_path — ไฟล์อยู่จริงแต่คนละถัง
+       *       ★ ผลคือสลิปที่อัปสำเร็จแล้ว "ไม่ขึ้น" ทุกใบ และไม่มี error ให้เห็น
+       */
+      const res = await fetch('/api/office/wallet/slip', { method: 'POST', body: form })
       const payload = (await res.json()) as
         | { ok: true; data: { path: string } }
         | { ok: false; error: { message: string } }

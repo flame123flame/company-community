@@ -52,10 +52,28 @@ export const POST = withErrorHandling(
     const admin = getSupabaseAdminClient()
 
     if (body.action === 'markPaid') {
+      /*
+       * ★★★ ตรวจ path ที่ client ส่งมาก่อนเขียนลงฐานข้อมูล
+       *
+       *     ★ ของเดิมรับสตริงอะไรก็ได้ยาวไม่เกิน 300 ตัวแล้วเขียนลง slip_path
+       *       ตรง ๆ ★★ ซึ่งเปิดช่องสองอย่างพร้อมกัน
+       *       ★ หนึ่ง — path ที่ไม่มีไฟล์จริงถูกบันทึกได้ แล้วหน้าจอจะบอกว่า
+       *         "มีสลิป" ตลอดไปโดยที่ไม่มีอะไรให้ดู (บั๊กที่เพิ่งเจอ)
+       *       ★ สอง — ส่ง path ของคนอื่นมาได้ แล้วเจ้าหนี้จะเห็นไฟล์
+       *         ที่ไม่ใช่ของลูกหนี้คนนี้เลย
+       *
+       * ★★ กติกาคือ path ต้องขึ้นต้นด้วย id ของคนที่กำลังเรียก
+       *    ★ uploadPrivate ตั้งโครงนี้ให้เสมอ — ของที่ผ่านทางปกติจึงผ่านด่านนี้
+       *      ★★ ไม่ผ่านก็ไม่ล้มทั้งคำขอ แค่ไม่ผูกสลิป เพราะ "แจ้งว่าจ่ายแล้ว"
+       *         สำคัญกว่ารูปแนบ — ล้มทั้งใบเพราะรูปคือการลงโทษผิดคน
+       */
+      const slip =
+        body.slipPath && body.slipPath.startsWith(`${actor.id}/`) ? body.slipPath : null
+
       const { data, error } = await admin.rpc('mark_debt_paid', {
         p_actor: actor.id,
         p_id: id,
-        p_slip: body.slipPath ?? null,
+        p_slip: slip,
       })
       if (error) throw fromPostgresError(error)
       return ok({ status: data?.status })
