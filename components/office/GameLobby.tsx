@@ -8,6 +8,7 @@ import { officeErrorText } from '@/lib/i18n/office-format'
 import { Untranslated, useOt } from '@/lib/i18n/office'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { healthOf, useRealtimeAuth, useRefreshLoop, type ChannelHealth } from '@/lib/supabase/realtime'
+import { Reveal } from '@/components/ui/Reveal'
 import { SectionTitle } from './CheckersIntro'
 import { PersonAvatar } from './PersonAvatar'
 
@@ -450,7 +451,8 @@ export function GameBoardTable({ game }: { game: OnlineGameKey }) {
   if (rows.length === 0) return null
 
   return (
-    <section>
+    /* ★ กระดานอันดับอยู่ล่างสุดของคอลัมน์ซ้าย — เลื่อนมาถึงแล้วค่อยไหลขึ้น */
+    <Reveal as="section">
       <SectionTitle>
         <Untranslated>{ot('game.online.monthBoard')}</Untranslated>
       </SectionTitle>
@@ -483,6 +485,6 @@ export function GameBoardTable({ game }: { game: OnlineGameKey }) {
       <p className="mt-1 px-4 text-[11px] text-ink-faint">
         <Untranslated>{ot('game.online.boardLegend')}</Untranslated>
       </p>
-    </section>
+    </Reveal>
   )
 }

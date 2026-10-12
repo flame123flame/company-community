@@ -152,7 +152,9 @@ export function GuideView({ id, art, text }: { id: string; art: GuideArt; text: 
   const { uses, tips } = text
 
   return (
-    <section className="@container room-hero relative mt-2 rounded-[28px] p-5 sm:p-7">
+    /* ★ กางออกแล้วไหลขึ้นมา ไม่ใช่โผล่ปุบปับ — แผงนี้สูงมาก การโผล่ทันที
+         ดันเนื้อหาข้างล่างกระโดดลงไปโดยไม่มีอะไรอธิบายว่าเกิดอะไรขึ้น */
+    <section className="@container room-hero sys-page relative mt-2 rounded-[28px] p-5 sm:p-7">
       {/* ★★ จัดตามความกว้าง "ของแผงเอง" ไม่ใช่ของจอ — แผงนี้อยู่ได้ทั้งหน้ากว้างเต็มและคอลัมน์แคบในห้องเพลง */}
       <div className="grid items-center gap-6 @4xl:grid-cols-[minmax(0,1fr)_280px] @4xl:gap-8">
       <button

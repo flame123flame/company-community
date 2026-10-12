@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/Input'
 import { cn } from '@/lib/cn'
 import { useLocale } from '@/lib/i18n/client'
 import { Untranslated, useOt } from '@/lib/i18n/office'
+import { CountUp } from '@/components/ui/CountUp'
 import { categoryLabel, formatBaht } from '@/lib/office/wallet'
 import { prefersReducedMotion } from '@/lib/office/draw'
 import type { ExpenseCategory } from '@/types/database'
@@ -586,7 +587,13 @@ function Hero({
           <p className="text-sm font-medium text-ink-soft">{ot('wallet.summary.total')}</p>
           <p className="mt-1 text-[clamp(2.5rem,9vw,3.75rem)] font-black leading-none tracking-tight text-ink tabular-nums">
             <span className="text-[0.55em] align-top font-bold text-accent">฿</span>
-            {formatBaht(locale, shown)}
+            {/*
+              * ★★ ยอดรวมวิ่งขึ้นมาหาค่าจริง — ตัวเลขนี้คือสิ่งที่คนเปิดหน้านี้มาดู
+              *    ★ วิ่งจากค่าเดิมไปค่าใหม่ ไม่ใช่จากศูนย์ทุกครั้ง
+              *      ★★ เปลี่ยนเดือนแล้ววิ่งจากศูนย์ อ่านว่า "ยอดถูกล้าง"
+              *         ไม่ใช่ "เดือนนี้ใช้ไปเท่านี้"
+              */}
+            <CountUp value={shown} format={(n) => formatBaht(locale, n)} />
           </p>
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -790,7 +797,9 @@ function BudgetRing({
           />
         </svg>
         <span className="relative">
-          <span className={cn('block text-2xl font-black tabular-nums md:text-3xl', over ? 'text-danger' : 'text-ink')}>{Math.round(ratio * 100)}%</span>
+          <span className={cn('block text-2xl font-black tabular-nums md:text-3xl', over ? 'text-danger' : 'text-ink')}>
+            <CountUp value={Math.round(ratio * 100)} />%
+          </span>
           <span className="block text-[11px] text-ink-soft">
             <Untranslated>{ot('summary.ofBudget')}</Untranslated>
           </span>

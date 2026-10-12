@@ -7479,3 +7479,140 @@ html:not([data-reveal='off']) .result-pop {
   .guide-peek:hover { transform: none; }
   .guide-peek:hover .guide-peek-arrow { transform: none; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+ * ชั้นแอนิเมชันของทั้งระบบ (sys-*)
+ *
+ * ★★★ ระบบนี้มีแอนิเมชันเยอะมากอยู่แล้ว — เกือบ 180 keyframes
+ *     ★ แต่ทั้งหมดเป็นของ "เฉพาะฟีเจอร์": หมากฮอสมีของตัวเอง วงล้อสุ่ม
+ *       มีของตัวเอง กระดิ่งมีของตัวเอง ★★ สิ่งที่ไม่เคยมีคือชั้นที่ทำให้
+ *       "ทุกหน้า ทุกการ์ด ทุกปุ่ม" ขยับเหมือนกันโดยไม่ต้องไปเขียนทีละที่
+ *
+ * ★★ ชั้นนี้จึงไม่ไปแตะของเดิมเลย มันเป็นของที่เพิ่มเข้ามารอบ ๆ
+ *    ★ ชื่อขึ้นต้น sys- ทั้งหมด กันชนกับ 180 ตัวที่มีอยู่
+ *
+ * ★★★ กฎที่ยอมไม่ได้สองข้อ
+ *     ★ ขยับได้เฉพาะ transform กับ opacity ★★ สองอย่างนี้การ์ดจอทำให้เอง
+ *        ไม่ต้องคำนวณผังหน้าใหม่ ★ ขยับ height/top/margin = หน้ากระตุกทั้งหน้า
+ *        ทุกเฟรม ซึ่งบนมือถือรู้สึกได้ทันที
+ *     ★ ทุกตัวต้องหยุดเมื่อผู้ใช้ตั้งค่า "ลดการเคลื่อนไหว"
+ *        ★★ คนที่เวียนหัวจากภาพเคลื่อนไหวไม่ได้ขอให้ของหายไป เขาขอให้มันนิ่ง
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── ท่าพื้นฐาน ───────────────────────────────────────────────────── */
+@keyframes sys-rise {
+  from { opacity: 0; transform: translate3d(0, 16px, 0) scale(0.985); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes sys-pop {
+  0%   { opacity: 0; transform: scale(0.9); }
+  60%  { opacity: 1; transform: scale(1.03); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes sys-sheen {
+  from { transform: translateX(-120%) skewX(-18deg); }
+  to   { transform: translateX(260%) skewX(-18deg); }
+}
+
+/* ── เข้าหน้าใหม่ ─────────────────────────────────────────────────
+ * ★ ผูกกับ pathname ที่ React — เปลี่ยนหน้า = กล่องใหม่ = เล่นใหม่
+ *   ★★ ไม่ต้องมี router event ไม่ต้องมี state ไม่มีอะไรให้ค้าง
+ */
+.sys-page { animation: sys-rise 420ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* ── ลูกไล่กันเข้ามา ───────────────────────────────────────────────
+ * ★★ หน่วงด้วย nth-child ล้วน ๆ ไม่ใช้ JS
+ *    ★ JS ต้องรอ hydrate ★★ ซึ่งแปลว่าการ์ดจะนิ่งอยู่พักหนึ่งแล้วค่อยกระตุก
+ *      ขึ้นมาพร้อมกันทีเดียว — แย่กว่าไม่มีแอนิเมชันเลย
+ * ★ หยุดหน่วงที่ใบที่ 14 ★★ รายการ 60 แถวที่หน่วงเรื่อย ๆ แปลว่าแถวท้าย
+ *   โผล่ตอนวินาทีที่สี่ ซึ่งผู้ใช้อ่านว่า "โหลดไม่ขึ้น"
+ */
+.sys-stagger > * { animation: sys-rise 460ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.sys-stagger > *:nth-child(1)  { animation-delay: 20ms; }
+.sys-stagger > *:nth-child(2)  { animation-delay: 60ms; }
+.sys-stagger > *:nth-child(3)  { animation-delay: 100ms; }
+.sys-stagger > *:nth-child(4)  { animation-delay: 140ms; }
+.sys-stagger > *:nth-child(5)  { animation-delay: 180ms; }
+.sys-stagger > *:nth-child(6)  { animation-delay: 220ms; }
+.sys-stagger > *:nth-child(7)  { animation-delay: 255ms; }
+.sys-stagger > *:nth-child(8)  { animation-delay: 285ms; }
+.sys-stagger > *:nth-child(9)  { animation-delay: 310ms; }
+.sys-stagger > *:nth-child(10) { animation-delay: 330ms; }
+.sys-stagger > *:nth-child(11) { animation-delay: 345ms; }
+.sys-stagger > *:nth-child(12) { animation-delay: 355ms; }
+.sys-stagger > *:nth-child(13) { animation-delay: 362ms; }
+.sys-stagger > *:nth-child(n + 14) { animation-delay: 368ms; }
+
+/* ── โผล่ตอนเลื่อนมาถึง ────────────────────────────────────────────
+ * ★ เริ่มที่จางและต่ำกว่าเล็กน้อย แล้วคืนสภาพเมื่อ JS ติดคลาส -on ให้
+ *   ★★ ถ้า JS ไม่ทำงานเลย (ปิด JS · สคริปต์ล้ม) จะเห็นของจาง ๆ ค้าง
+ *      ★ จึงตั้ง opacity เริ่มต้นไว้ที่ 1 แล้วให้ JS เป็นคนหรี่ลงก่อน
+ *        — ไม่มี JS = เห็นปกติทุกอย่าง ซึ่งสำคัญกว่าได้แอนิเมชัน
+ */
+.sys-reveal { transition: opacity 520ms, transform 520ms cubic-bezier(0.22, 1, 0.36, 1); }
+.sys-reveal-off { opacity: 0; transform: translate3d(0, 22px, 0); }
+
+/* ── กดปุ่มแล้วยุบ ────────────────────────────────────────────────
+ * ★ ตอบสนองทันทีที่นิ้วแตะ ไม่ต้องรอให้คำขอกลับมา
+ *   ★★ ปุ่มที่ไม่ขยับเลยตอนกด ทำให้คนไม่แน่ใจว่ากดโดนไหมแล้วกดซ้ำ
+ */
+.sys-press { transition: transform 110ms ease-out; }
+.sys-press:active:not(:disabled) { transform: scale(0.96); }
+
+/* ── แสงกวาดผ่าน ──────────────────────────────────────────────────
+ * ★ ใช้กับของที่อยากให้สะดุดตาเป็นพิเศษ เช่นการ์ดที่มีเรื่องรออยู่
+ *   ★★ pointer-events: none — แสงต้องไม่กินการกดของสิ่งที่มันพาดอยู่
+ */
+.sys-shine { position: relative; overflow: hidden; isolation: isolate; }
+.sys-shine::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 42%;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.14), transparent);
+  animation: sys-sheen 2.6s ease-in-out 1.2s infinite;
+}
+
+/* ── ตัวเลขวิ่ง ───────────────────────────────────────────────────
+ * ★ ความกว้างตัวเลขเท่ากันทุกตัว ไม่งั้นข้อความข้าง ๆ ขยับตามทุกเฟรม
+ */
+.sys-count { font-variant-numeric: tabular-nums; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sys-page,
+  .sys-stagger > *,
+  .sys-shine::after { animation: none; }
+  .sys-reveal { transition: none; }
+  /* ★★ สำคัญ: ต้องคืน opacity ด้วย ไม่งั้นของที่รอ JS จะจางค้างตลอดไป */
+  .sys-reveal-off { opacity: 1; transform: none; }
+  .sys-press { transition: none; }
+  .sys-press:active:not(:disabled) { transform: none; }
+}
+
+/* ── ทุกปุ่มในระบบยุบตอนกด ─────────────────────────────────────────
+ *
+ * ★★★ ใส่ที่คอมโพเนนต์ Button ไม่พอ — นับแล้วหน้าหนึ่งมีปุ่ม 28 ปุ่ม
+ *     แต่ใช้คอมโพเนนต์กลางแค่ 2 ★ ที่เหลือเป็น <button> เขียนเองทั้งหมด
+ *     ★★ จะไล่แก้ทีละที่ก็ได้ แต่ของใหม่ที่เขียนพรุ่งนี้จะไม่มีอีก
+ *        ★ กฎระดับ element จึงเป็นที่เดียวที่ครอบได้จริงและครอบตลอดไป
+ *
+ * ★★ ยกเว้นช่องกระดานเกม
+ *    ★ ช่องหมากฮอสกับคอลัมน์เรียง 4 เป็น <button> เหมือนกัน แต่มันคือ
+ *      "พื้นที่ของกระดาน" ไม่ใช่ปุ่ม ★★ ย่อลงตอนกดจะเห็นเป็นกระดานยุบ
+ *      ทั้งช่อง ซึ่งขัดกับแอนิเมชันหมากที่กำลังเล่นอยู่พอดี
+ *    ★ รูปย่อในแกลเลอรีก็ยกเว้น — มันเล็กอยู่แล้ว ย่ออีกจะกดพลาด
+ *
+ * ★ :active เท่านั้น ไม่แตะ :hover ★★ ปุ่มที่ขยับตอนเอาเมาส์ผ่านเฉย ๆ
+ *   ทำให้หน้าทั้งหน้ากระดิกตามเมาส์
+ */
+button:not(:disabled):not(.ck-sq-dark):not(.ck-sq-light):not(.c4-col):not(.gal-thumb):not(.no-press) {
+  transition: transform 110ms ease-out;
+}
+button:not(:disabled):not(.ck-sq-dark):not(.ck-sq-light):not(.c4-col):not(.gal-thumb):not(.no-press):active {
+  transform: scale(0.96);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button:active { transform: none !important; }
+}

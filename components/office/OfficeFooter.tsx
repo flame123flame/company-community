@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/cn'
 import { useOt } from '@/lib/i18n/office'
 import { OFFICE_NAV, columnClass } from '@/lib/office/nav'
+import { Reveal } from '@/components/ui/Reveal'
 
 /**
  * ท้ายหน้าของทุกหน้าในระบบออฟฟิศ
@@ -30,7 +31,9 @@ export function OfficeFooter() {
 
   return (
     <footer className="office-footer mt-10">
-      <div
+      {/* ★ ท้ายหน้าอยู่ใต้ขอบจอของทุกหน้า — ให้มันไหลขึ้นมาตอนเลื่อนมาถึง
+             ★★ เป็นที่ที่คุ้มที่สุดของ Reveal เพราะไม่มีหน้าไหนที่มันอยู่ในจอตั้งแต่แรก */}
+      <Reveal
         className={cn(
           'mx-auto w-full px-4 py-8',
           columnClass(pathname),
@@ -58,7 +61,7 @@ export function OfficeFooter() {
         <p className="mt-3 text-[11px] leading-relaxed text-ink-faint">
           {ot('footer.office', { year: new Date().getFullYear() })}
         </p>
-      </div>
+      </Reveal>
     </footer>
   )
 }

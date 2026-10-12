@@ -65,6 +65,13 @@ export function Button({
       className={cn(
         'inline-flex items-center justify-center rounded-full font-medium',
         'transition-colors duration-100',
+        /*
+         * ★★ ยุบลงตอนกด — ทุกปุ่มในระบบได้จากบรรทัดเดียวนี้
+         *    ★ ตอบสนองทันทีที่นิ้วแตะ ไม่ต้องรอคำขอกลับมา
+         *      ★★ ปุ่มที่ไม่ขยับเลยตอนกดทำให้คนไม่แน่ใจว่ากดโดนไหม แล้วกดซ้ำ
+         *         ซึ่งเป็นต้นทางของการส่งคำขอซ้ำสอง
+         */
+        'sys-press',
         'disabled:opacity-40 disabled:pointer-events-none',
         'touch-manipulation select-none whitespace-nowrap',
         VARIANTS[variant],
@@ -93,6 +100,7 @@ export function IconButton({
       aria-label={label}
       title={label}
       className={cn(
+        'sys-press',
         'grid size-11 shrink-0 place-items-center rounded-full sm:size-10',
         'text-ink transition-colors duration-100 hover:bg-surface',
         'disabled:opacity-40 disabled:pointer-events-none',

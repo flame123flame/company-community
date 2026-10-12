@@ -65,9 +65,16 @@ export function cardClass({ tone = 'plain', interactive = false, pad = true }: C
     'rounded-2xl border backdrop-blur-md transition-all duration-200',
     pad && 'p-4',
     TONE[tone],
+    /*
+     * ★★ การ์ดโทนเน้น = การ์ดที่มีเรื่องรอผู้ใช้อยู่ (คำท้า · ของค้าง)
+     *    ★ ให้มันมีแสงกวาดผ่านเบา ๆ เพื่อดึงตาในหน้าที่มีการ์ดสิบกว่าใบ
+     *      ★★ ใส่เฉพาะโทนนี้ ไม่ใส่ทุกใบ — ถ้าทุกใบวิบวับ ก็เท่ากับ
+     *         ไม่มีใบไหนเด่น ซึ่งแย่กว่าไม่มีแสงเลย
+     */
+    tone === 'accent' && 'sys-shine',
     interactive &&
       (tone === 'accent'
-        ? 'hover:border-accent hover:bg-accent/15'
+        ? 'hover:border-accent hover:bg-accent/15 hover:-translate-y-0.5'
         : 'hover:-translate-y-0.5 hover:border-line-strong hover:bg-surface'),
   )
 }
@@ -91,7 +98,12 @@ export function CardGrid({
   return (
     <div
       className={cn(
-        'grid gap-3',
+        /*
+         * ★★ ทุกตารางการ์ดในระบบไล่กันโผล่ขึ้นมา — ใส่ที่เดียวได้ทั้งระบบ
+         *    ★ หน่วงด้วย CSS ล้วน ไม่ใช่ JS ★★ JS ต้องรอ hydrate
+         *      ซึ่งแปลว่าการ์ดจะนิ่งไว้ก่อนแล้วค่อยกระตุกขึ้นพร้อมกันทีเดียว
+         */
+        'sys-stagger grid gap-3',
         cols === 2 && 'sm:grid-cols-2',
         cols === 3 && 'sm:grid-cols-2 xl:grid-cols-3',
         cols === 4 && 'sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4',
