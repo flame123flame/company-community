@@ -31,138 +31,29 @@
 --   ★★ หมวดเยอะเกินแปลว่าทุกครั้งที่บันทึกต้องหยุดคิดว่าอันนี้หมวดไหน
 --      ★ ซึ่งเป็นแรงเสียดทานที่ทำให้คนเลิกบันทึก
 
-alter table public.expense_bills
-  drop constraint if exists expense_bills_category_check;
-
-alter table public.expense_bills
-  add constraint expense_bills_category_check
-  check (category in ('FOOD', 'COFFEE', 'TRANSPORT', 'SUPPLIES', 'FUN', 'OTHER'));
+-- ★★★ ส่วนนี้ก็ผิดเหมือนกัน → ย้ายไป 0067 แล้ว
+--
+--     ★ ผมเดาว่าชื่อ constraint คือ expense_bills_category_check
+--       ★★ ของจริงที่ 0026 ตั้งไว้คือ expense_bills_category (ไม่มี _check)
+--          ★ `drop ... if exists` จึงไม่เจอแล้วผ่านไปเงียบ ๆ
+--     ★★ ผลคือมีสอง constraint ซ้อนกัน แถวต้องผ่านทั้งคู่
+--        = ยังมีแค่ 3 หมวดเหมือนเดิม โดยไม่มี error ให้เห็นเลย
+--
+-- ★ ไฟล์นี้จึงไม่เหลือคำสั่งอะไรแล้ว — ของจริงทั้งหมดอยู่ที่ 0066 และ 0067
 
 
 -- ═════════════════════════════════════════════════════════════════════
--- 2 · อนุญาตให้บิลไม่มีผู้ร่วมจ่าย
+-- 2 · อนุญาตให้บิลไม่มีผู้ร่วมจ่าย → ย้ายไป 0066 แล้ว
 -- ═════════════════════════════════════════════════════════════════════
-
-create or replace function public.create_expense_bill(
-  p_actor    uuid,
-  p_title    text,
-  p_total    numeric,
-  p_category text,
-  p_date     date,
-  p_receipt  text,
-  p_split    text,
-  p_shares   jsonb
-)
-returns public.expense_bills
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_bill      public.expense_bills;
-  v_count     integer;
-  v_base      numeric(12,2);
-  v_remainder integer;   -- เศษเป็นสตางค์
-  v_sum       numeric(12,2) := 0;
-  v_share     jsonb;
-  v_idx       integer := 0;
-  v_amount    numeric(12,2);
-  v_debtor    uuid;
-begin
-  if not public.employee_code_is_valid(p_actor) then
-    raise exception 'FORBIDDEN';
-  end if;
-
-  if p_total is null or p_total <= 0 then
-    raise exception 'VALIDATION_FAILED: total must be positive';
-  end if;
-
-  /*
-   * ★★★ ศูนย์คนร่วมจ่าย = บิลของตัวเองคนเดียว ซึ่งถูกต้อง
-   *     ★ ของเดิม raise ตรงนี้ ★★ นั่นคือบรรทัดเดียวที่ขวาง
-   *       "บันทึกค่าใช้จ่ายของตัวเอง" มาตลอด
-   *     ★ ลูปข้างล่างวนศูนย์รอบแล้วจบ ไม่มีหนี้ถูกสร้าง ไม่มีใครถูกแจ้งเตือน
-   *       ★★ ซึ่งเป็นพฤติกรรมที่ถูกต้องเป๊ะสำหรับบิลที่ไม่มีคนอื่นเกี่ยวข้อง
-   */
-  v_count := jsonb_array_length(coalesce(p_shares, '[]'::jsonb));
-
-  /* ★ ทุกคนที่ถูกใส่ในบิลต้องเป็นพนักงานที่ใช้งานอยู่จริง
-     ไม่งั้นจะสร้างหนี้ผูกกับ uuid ที่ไม่มีตัวตนหรือคนที่ลาออกไปแล้ว */
-  for v_share in select * from jsonb_array_elements(p_shares) loop
-    v_debtor := (v_share ->> 'userId')::uuid;
-    if not public.employee_code_is_valid(v_debtor) then
-      raise exception 'MEMBER_NOT_FOUND';
-    end if;
-    if v_debtor = p_actor then
-      raise exception 'VALIDATION_FAILED: payer cannot owe themselves';
-    end if;
-  end loop;
-
-  insert into public.expense_bills (
-    title, total_amount, category, bill_date, receipt_path, payer_id, split_mode
-  )
-  values (
-    btrim(p_title), p_total, coalesce(p_category, 'FOOD'),
-    coalesce(p_date, current_date), p_receipt, p_actor,
-    coalesce(p_split, 'EQUAL')
-  )
-  returning * into v_bill;
-
-  /* ★ หารเท่ากันต้องมีคนหาร — ศูนย์คนก็ข้ามไปเลย ไม่ใช่หารด้วยศูนย์ */
-  if v_bill.split_mode = 'EQUAL' and v_count > 0 then
-    /* ★ ปัดลงก่อน แล้วค่อยแจกเศษ — ไม่ใช่ round() ซึ่งอาจทำให้ผลรวมเกิน */
-    v_base := floor(p_total * 100 / v_count) / 100;
-    v_remainder := round(p_total * 100)::integer - (round(v_base * 100)::integer * v_count);
-
-    for v_share in select * from jsonb_array_elements(p_shares) loop
-      v_amount := v_base + case when v_idx < v_remainder then 0.01 else 0 end;
-      insert into public.debts (bill_id, creditor_id, debtor_id, amount, description)
-      values (v_bill.id, p_actor, (v_share ->> 'userId')::uuid, v_amount, btrim(p_title));
-      v_idx := v_idx + 1;
-    end loop;
-
-  elsif v_bill.split_mode <> 'EQUAL' then
-    for v_share in select * from jsonb_array_elements(p_shares) loop
-      v_amount := (v_share ->> 'amount')::numeric(12,2);
-      if v_amount is null or v_amount <= 0 then
-        raise exception 'VALIDATION_FAILED: each share must be positive';
-      end if;
-      v_sum := v_sum + v_amount;
-      insert into public.debts (bill_id, creditor_id, debtor_id, amount, description)
-      values (v_bill.id, p_actor, (v_share ->> 'userId')::uuid, v_amount, btrim(p_title));
-    end loop;
-
-    /*
-     * ★★ ผลรวมของรายการย่อยต้องไม่เกินยอดบิล
-     *    อนุญาตให้ "น้อยกว่า" ได้ เพราะคนจ่ายอาจออกส่วนของตัวเองด้วย
-     *    ★ แต่ถ้า "มากกว่า" แปลว่ากรอกผิดแน่นอน — ปฏิเสธทั้งรายการ
-     */
-    if v_sum > p_total then
-      raise exception 'VALIDATION_FAILED: shares exceed total';
-    end if;
-  end if;
-
-  /* แจ้งเตือนทุกคนที่ถูกเพิ่ม (FR-X04) — ศูนย์คนก็ไม่มีใครถูกกวน */
-  for v_share in select * from jsonb_array_elements(p_shares) loop
-    perform public.notify(
-      (v_share ->> 'userId')::uuid,
-      'debtCreated',
-      'notify.type.debtCreated',
-      jsonb_build_object('title', v_bill.title),
-      '/office/wallet/owed'
-    );
-  end loop;
-
-  insert into public.audit_log (actor_id, action, target_type, target_id, detail)
-  values (p_actor, 'bill.create', 'expense_bill', v_bill.id::text,
-          jsonb_build_object('total', p_total, 'people', v_count));
-
-  return v_bill;
-end;
-$$;
-
-
-revoke all on function public.create_expense_bill(uuid, text, numeric, text, date, text, text, jsonb)
-  from public, anon, authenticated;
-grant execute on function public.create_expense_bill(uuid, text, numeric, text, date, text, text, jsonb)
-  to service_role;
+--
+-- ★★★ ส่วนนี้เคยอยู่ที่นี่และ "เขียนผิดฟังก์ชัน"
+--
+--     ★ ผมสั่ง create or replace ตัว 8 พารามิเตอร์ของ 0026
+--       ★★ แต่ตัวที่ระบบเรียกจริงคือตัว 9 พารามิเตอร์ของ 0027 ซึ่งมี
+--          p_include_self และ 0027 ลบตัว 8 ทิ้งไปแล้ว
+--       ★ create or replace จึง "สร้างตัวที่ถูกลบไปแล้วขึ้นมาใหม่"
+--         แล้วมีสองตัวที่ PostgREST เลือกไม่ถูก (PGRST203)
+--         ★★ ผลคือสร้างบิลพังทั้งระบบ ไม่ใช่แค่บิลคนเดียว
+--
+-- ★★ เอาออกจากไฟล์นี้เพื่อไม่ให้ใครรันซ้ำแล้วพังอีก — ของจริงอยู่ที่ 0066
+--    ★ ส่วนที่ 1 ข้างบน (หมวดค่าใช้จ่าย) ถูกต้องแล้ว รันซ้ำได้ปลอดภัย
