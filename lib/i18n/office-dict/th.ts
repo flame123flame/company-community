@@ -635,6 +635,7 @@ export const th = {
   'wallet.owed.title': 'ยอดค้างของฉัน',
   'wallet.owed.iOwe': 'ฉันค้างคนอื่น',
   'wallet.owed.owedToMe': 'คนอื่นค้างฉัน',
+  'wallet.summary.openOwed': 'ดูยอดค้าง',
   'wallet.owed.pendingConfirm': 'รอฉันยืนยัน {n} รายการ',
   'wallet.owed.empty': 'ไม่มีรายการค้าง',
   'wallet.owed.emptyHint': 'เคลียร์หมดแล้ว — ถ้าออกเงินให้ใครไว้ กด “สร้างรายการเงิน” เพื่อบันทึก',
@@ -791,6 +792,9 @@ export const th = {
 
   'wallet.category.FOOD': 'ค่าข้าว',
   'wallet.category.COFFEE': 'กาแฟ',
+  'wallet.category.TRANSPORT': 'เดินทาง',
+  'wallet.category.SUPPLIES': 'ของใช้',
+  'wallet.category.FUN': 'สังสรรค์',
   'wallet.category.OTHER': 'อื่น ๆ',
 
   'wallet.qr.title': 'QR รับเงินของฉัน',
@@ -1862,6 +1866,8 @@ export const th = {
   'wallet.create.receiptDone': 'แนบรูปแล้ว',
   'wallet.create.needAmount': 'กรอกยอดเงิน',
   'wallet.create.needPeople': 'เลือกคนที่หาร',
+  'wallet.create.soloHint': 'ไม่ได้เลือกใครเลย — บันทึกเป็นค่าใช้จ่ายของคุณคนเดียว ไม่มีใครถูกเรียกเก็บ',
+  'wallet.create.submitSolo': 'บันทึกค่าใช้จ่ายของฉัน',
   'wallet.create.savedToast': 'บันทึกแล้ว · แจ้ง {n} คน',
   'wallet.create.leftOver': 'เหลืออีก {amount}',
   'wallet.create.overBy': 'เกินไป {amount}',

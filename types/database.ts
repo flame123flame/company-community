@@ -37,7 +37,15 @@ export type ReportTargetType = 'restaurant' | 'listing'
  * CANCELLED    เจ้าหนี้ยกเลิก
  */
 export type DebtStatus = 'PENDING' | 'PAID_PENDING' | 'SETTLED' | 'CANCELLED'
-export type ExpenseCategory = 'FOOD' | 'COFFEE' | 'OTHER'
+/**
+ * หมวดค่าใช้จ่าย (0065)
+ *
+ * ★ เพิ่มเท่าที่ออฟฟิศใช้จริง ไม่ไล่ใส่ให้ครบแบบแอปบัญชี
+ *   ★★ หมวดเยอะเกินแปลว่าทุกครั้งที่บันทึกต้องหยุดคิดว่าอันนี้หมวดไหน
+ *      ซึ่งเป็นแรงเสียดทานที่ทำให้คนเลิกบันทึก
+ */
+export type ExpenseCategory =
+  | 'FOOD' | 'COFFEE' | 'TRANSPORT' | 'SUPPLIES' | 'FUN' | 'OTHER'
 export type SplitMode = 'EQUAL' | 'CUSTOM'
 /** โทนข้อความทวง (FR-B06) */
 /** สไตล์ทวงเงิน — ฐานข้อมูลเก็บเป็นข้อความอิสระ · ชุดที่ใช้ได้กำหนดใน lib/office/remind.ts */

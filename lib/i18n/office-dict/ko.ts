@@ -596,6 +596,7 @@ export const ko: OfficeDict = {
   "wallet.owed.title": "내 미정산",
   "wallet.owed.iOwe": "내가 낼 돈",
   "wallet.owed.owedToMe": "받을 돈",
+  "wallet.summary.openOwed": "ดูยอดค้าง",
   "wallet.owed.pendingConfirm": "내 확인 대기 {n}건",
   "wallet.owed.empty": "미정산이 없습니다",
   "wallet.owed.emptyHint": "모두 정리됐어요. 누군가 대신 냈다면 “정산 만들기”로 기록해 두세요.",
@@ -752,6 +753,9 @@ export const ko: OfficeDict = {
 
   "wallet.category.FOOD": "식비",
   "wallet.category.COFFEE": "커피",
+  "wallet.category.TRANSPORT": "เดินทาง",
+  "wallet.category.SUPPLIES": "ของใช้",
+  "wallet.category.FUN": "สังสรรค์",
   "wallet.category.OTHER": "기타",
 
   "wallet.qr.title": "내 입금 QR",
@@ -1799,6 +1803,8 @@ export const ko: OfficeDict = {
   "wallet.create.receiptDone": "แนบรูปแล้ว",
   "wallet.create.needAmount": "กรอกยอดเงิน",
   "wallet.create.needPeople": "เลือกคนที่หาร",
+  "wallet.create.soloHint": "ไม่ได้เลือกใครเลย — บันทึกเป็นค่าใช้จ่ายของคุณคนเดียว ไม่มีใครถูกเรียกเก็บ",
+  "wallet.create.submitSolo": "บันทึกค่าใช้จ่ายของฉัน",
   "wallet.create.savedToast": "บันทึกแล้ว · แจ้ง {n} คน",
   "wallet.create.leftOver": "เหลืออีก {amount}",
   "wallet.create.overBy": "เกินไป {amount}",

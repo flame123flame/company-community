@@ -17,6 +17,7 @@ import type { ExpenseCategory } from '@/types/database'
 import { SpendChart, type SpendItem } from './SpendChart'
 import { ChatAvatar } from './ChatAvatar'
 import { WalletHistory } from './WalletHistory'
+import { OutstandingBanner } from './OutstandingBanner'
 
 /*
  * ═══════════════════════════════════════════════════════════════════════
@@ -49,6 +50,11 @@ type Filter = { kind: 'all' } | { kind: 'category'; value: string } | { kind: 'd
 const CATEGORY_ICON: Record<string, string> = {
   FOOD: 'M7 3v8a3 3 0 0 0 3 3v7M7 3v5M10 3v5M17 3c-1.5 2-2 4-2 6s.5 3 2 3v9',
   COFFEE: 'M5 9h11v5a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5zM16 10h1.5a2.5 2.5 0 0 1 0 5H16M8 3v2M11 3v2M14 3v2',
+  /* ★ สามหมวดใหม่จาก 0065 — ไม่มีไอคอนก็ตกไปที่ OTHER ซึ่งอ่านว่า "หมวดอื่น"
+       ★★ ทั้งที่มันคือ "เดินทาง" ที่ระบบยังไม่รู้จัก — คนละความหมายกัน */
+  TRANSPORT: 'M5 17h14M6 17V9l2-4h8l2 4v8M6 13h12M8 17v2M16 17v2M8 9h8',
+  SUPPLIES: 'M4 8h16v12H4zM9 8V5a3 3 0 0 1 6 0v3M9 12h6',
+  FUN: 'M8 5v6a4 4 0 0 0 8 0V5M6 5h12M12 15v4M9 21h6',
   OTHER: 'M4 7h16l-1 12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2zM9 7V5a3 3 0 0 1 6 0v2',
 }
 
@@ -267,6 +273,13 @@ export function WalletSummary() {
 
   return (
     <div className="flex w-full flex-col gap-4 pb-6">
+      {/*
+        * ★★ ยอดค้างอยู่บนสุด — ย้ายหน้าแรกมาเป็นสรุปแล้ว คนที่ติดเงินใครอยู่
+        *    ต้องยังเห็น ไม่งั้นของที่ต้องจัดการจะถูกลืม
+        *    ★ ไม่ขึ้นเลยถ้าไม่มีอะไรค้าง
+        */}
+      <OutstandingBanner />
+
       {/* ── แถบควบคุมช่วงเวลา ─────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-2">
         <div role="tablist" aria-label={ot('wallet.summary.title')} className="flex rounded-full bg-surface p-1">

@@ -113,24 +113,54 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
   const { data: allRows } = await base().limit(5000)
   let paidOut = 0
   let gotIn = 0
+  /*
+   * ★★★ สรุปรายคนจากชุดเดียวกับยอดรวม
+   *
+   *     ★ ของเดิมหน้าสรุปบอกได้แค่ "กินกับใครบ่อย" (นับครั้ง) ★★ ซึ่งตอบ
+   *       ไม่ได้ว่า "ปีนี้จ่ายให้คนนี้ไปเท่าไร" ที่เป็นคำถามที่คนถามกันจริง
+   *     ★ คิดจาก allRows ที่กรองแล้ว ไม่ใช่จากหน้าที่เปิด — ตัวเลขรายคน
+   *       ที่เปลี่ยนตามหน้าคือตัวเลขที่ตอบอะไรไม่ได้
+   */
+  const per = new Map<string, { out: number; in: number; times: number }>()
   for (const r of allRows ?? []) {
-    if (r.status !== 'SETTLED') continue
-    if (r.debtor_id === actor.id) paidOut += Number(r.amount)
-    else gotIn += Number(r.amount)
+    const otherId = r.creditor_id === actor.id ? r.debtor_id : r.creditor_id
+    const cell = per.get(otherId) ?? { out: 0, in: 0, times: 0 }
+    cell.times += 1
+    if (r.status === 'SETTLED') {
+      if (r.debtor_id === actor.id) {
+        paidOut += Number(r.amount)
+        cell.out += Number(r.amount)
+      } else {
+        gotIn += Number(r.amount)
+        cell.in += Number(r.amount)
+      }
+    }
+    per.set(otherId, cell)
   }
+
+  /* ★ เรียงตาม "เงินที่เกี่ยวข้องกันทั้งหมด" ไม่ใช่จำนวนครั้ง
+       ★★ คนที่เจอกันสิบครั้งครั้งละยี่สิบบาท ไม่ได้สำคัญเท่าคนที่เจอครั้งเดียว
+          แต่เป็นเงินสองพัน — และหน้านี้เป็นหน้าเรื่องเงิน */
+  const people = [...per.entries()]
+    .map(([id, v]) => ({ id, ...v }))
+    .sort((a, b) => b.out + b.in - (a.out + a.in))
+    .slice(0, 8)
 
   /* ── ชื่อและรูปของคู่กรณี ───────────────────────────────────── */
   const others = [
-    ...new Set((rows ?? []).map((d) => (d.creditor_id === actor.id ? d.debtor_id : d.creditor_id))),
+    ...new Set([
+      ...(rows ?? []).map((d) => (d.creditor_id === actor.id ? d.debtor_id : d.creditor_id)),
+      ...people.map((p) => p.id),
+    ]),
   ]
-  const people = new Map<string, { name: string; avatarUrl: string | null }>()
+  const peopleMap = new Map<string, { name: string; avatarUrl: string | null }>()
   if (others.length > 0) {
     const { data: ps } = await admin
       .from('profiles')
       .select('id, display_name, nickname, avatar_url')
       .in('id', others)
     for (const p of ps ?? []) {
-      people.set(p.id, { name: p.nickname || p.display_name, avatarUrl: p.avatar_url })
+      peopleMap.set(p.id, { name: p.nickname || p.display_name, avatarUrl: p.avatar_url })
     }
   }
 
@@ -143,6 +173,8 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
   }
 
   const { ot } = await getOt()
+  const people2name = (id: string) => peopleMap.get(id)?.name ?? ot('common.unknownName')
+  const people2avatar = (id: string) => peopleMap.get(id)?.avatarUrl ?? null
 
   return ok({
     page,
@@ -151,9 +183,17 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
     pages: Math.max(1, Math.ceil((count ?? 0) / SIZE)),
     paidOut,
     gotIn,
+    people: people.map((p) => ({
+      id: p.id,
+      name: people2name(p.id),
+      avatarUrl: people2avatar(p.id),
+      out: p.out,
+      in: p.in,
+      times: p.times,
+    })),
     items: (rows ?? []).map((d) => {
       const otherId = d.creditor_id === actor.id ? d.debtor_id : d.creditor_id
-      const other = people.get(otherId)
+      const other = peopleMap.get(otherId)
       return {
         id: d.id,
         amount: Number(d.amount),

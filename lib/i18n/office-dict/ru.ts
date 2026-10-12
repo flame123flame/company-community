@@ -596,6 +596,7 @@ export const ru: OfficeDict = {
   "wallet.owed.title": "Мои долги",
   "wallet.owed.iOwe": "Я должен",
   "wallet.owed.owedToMe": "Мне должны",
+  "wallet.summary.openOwed": "ดูยอดค้าง",
   "wallet.owed.pendingConfirm": "ждут моего подтверждения: {n}",
   "wallet.owed.empty": "Ничего не висит",
   "wallet.owed.emptyHint": "Всё закрыто — если заплатите за кого-то, создайте запись, чтобы не забыть.",
@@ -752,6 +753,9 @@ export const ru: OfficeDict = {
 
   "wallet.category.FOOD": "Еда",
   "wallet.category.COFFEE": "Кофе",
+  "wallet.category.TRANSPORT": "เดินทาง",
+  "wallet.category.SUPPLIES": "ของใช้",
+  "wallet.category.FUN": "สังสรรค์",
   "wallet.category.OTHER": "Другое",
 
   "wallet.qr.title": "Мой QR для получения",
@@ -1799,6 +1803,8 @@ export const ru: OfficeDict = {
   "wallet.create.receiptDone": "แนบรูปแล้ว",
   "wallet.create.needAmount": "กรอกยอดเงิน",
   "wallet.create.needPeople": "เลือกคนที่หาร",
+  "wallet.create.soloHint": "ไม่ได้เลือกใครเลย — บันทึกเป็นค่าใช้จ่ายของคุณคนเดียว ไม่มีใครถูกเรียกเก็บ",
+  "wallet.create.submitSolo": "บันทึกค่าใช้จ่ายของฉัน",
   "wallet.create.savedToast": "บันทึกแล้ว · แจ้ง {n} คน",
   "wallet.create.leftOver": "เหลืออีก {amount}",
   "wallet.create.overBy": "เกินไป {amount}",

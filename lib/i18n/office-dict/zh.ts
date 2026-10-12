@@ -596,6 +596,7 @@ export const zh: OfficeDict = {
   "wallet.owed.title": "我的欠款",
   "wallet.owed.iOwe": "我欠别人",
   "wallet.owed.owedToMe": "别人欠我",
+  "wallet.summary.openOwed": "ดูยอดค้าง",
   "wallet.owed.pendingConfirm": "{n} 笔等我确认",
   "wallet.owed.empty": "没有待处理的账目",
   "wallet.owed.emptyHint": "都清了。如果你替人垫过钱，点“新建账目”记一笔。",
@@ -752,6 +753,9 @@ export const zh: OfficeDict = {
 
   "wallet.category.FOOD": "餐费",
   "wallet.category.COFFEE": "咖啡",
+  "wallet.category.TRANSPORT": "เดินทาง",
+  "wallet.category.SUPPLIES": "ของใช้",
+  "wallet.category.FUN": "สังสรรค์",
   "wallet.category.OTHER": "其他",
 
   "wallet.qr.title": "我的收款码",
@@ -1799,6 +1803,8 @@ export const zh: OfficeDict = {
   "wallet.create.receiptDone": "แนบรูปแล้ว",
   "wallet.create.needAmount": "กรอกยอดเงิน",
   "wallet.create.needPeople": "เลือกคนที่หาร",
+  "wallet.create.soloHint": "ไม่ได้เลือกใครเลย — บันทึกเป็นค่าใช้จ่ายของคุณคนเดียว ไม่มีใครถูกเรียกเก็บ",
+  "wallet.create.submitSolo": "บันทึกค่าใช้จ่ายของฉัน",
   "wallet.create.savedToast": "บันทึกแล้ว · แจ้ง {n} คน",
   "wallet.create.leftOver": "เหลืออีก {amount}",
   "wallet.create.overBy": "เกินไป {amount}",

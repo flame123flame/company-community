@@ -27,6 +27,8 @@ type Item = {
   otherAvatar: string | null
 }
 
+type Person = { id: string; name: string; avatarUrl: string | null; out: number; in: number; times: number }
+
 type Payload = {
   page: number
   size: number
@@ -34,6 +36,7 @@ type Payload = {
   pages: number
   paidOut: number
   gotIn: number
+  people: Person[]
   items: Item[]
 }
 
@@ -166,6 +169,48 @@ export function WalletHistory() {
           </div>
         ) : null}
       </div>
+
+      {/*
+        * ══ เงินของคุณกับแต่ละคน ═══════════════════════════════════
+        *
+        * ★★★ ตอบคำถาม "ปีนี้จ่ายให้คนนี้ไปเท่าไร" ที่หน้าสรุปเดิมตอบไม่ได้
+        *     ★ ของเดิมมีแค่ "กินกับใครบ่อย" ซึ่งนับครั้ง ไม่ใช่นับเงิน
+        *       ★★ คนที่เจอกันสิบครั้งครั้งละยี่สิบบาท ไม่ได้สำคัญเท่าคนที่
+        *          เจอครั้งเดียวแต่เป็นเงินสองพัน — และนี่คือหน้าเรื่องเงิน
+        *
+        * ★★ กดแล้วกรองประวัติให้เลย ไม่ใช่แค่โชว์ตัวเลข
+        *    ★ ตัวเลขที่กดไม่ได้ทำให้ต้องไปพิมพ์ชื่อในช่องค้นหาเอง
+        *      ★★ ซึ่งเป็นงานที่ระบบเพิ่งบอกคำตอบไปแล้วเมื่อสองวินาทีก่อน
+        */}
+      {(data?.people.length ?? 0) > 1 ? (
+        <div className="scrollbar-none -mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1">
+          {data!.people.map((p) => {
+            const on = typed === p.name
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setTyped(on ? '' : p.name)}
+                aria-pressed={on}
+                className={cn(
+                  'hist-row flex w-[9.5rem] shrink-0 flex-col items-center gap-1.5 rounded-2xl border px-3 py-3',
+                  on ? 'border-accent/50 bg-accent/10' : 'border-line bg-elevated/50',
+                )}
+              >
+                <ChatAvatar name={p.name} url={p.avatarUrl} size={38} />
+                <span dir="auto" className="w-full truncate text-center text-[12.5px] font-semibold text-ink">
+                  {p.name}
+                </span>
+                <span className="flex w-full items-baseline justify-center gap-1.5 text-[11px] tabular-nums">
+                  {p.out > 0 ? <span className="font-bold text-money-out">−{formatBaht(locale, p.out)}</span> : null}
+                  {p.in > 0 ? <span className="font-bold text-money-in">+{formatBaht(locale, p.in)}</span> : null}
+                  {p.out === 0 && p.in === 0 ? <span className="text-ink-faint">—</span> : null}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      ) : null}
 
       {/* ── ค้นหา + ตัวกรอง ─────────────────────────────────────── */}
       <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">

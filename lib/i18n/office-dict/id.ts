@@ -596,6 +596,7 @@ export const id: OfficeDict = {
   "wallet.owed.title": "Tagihan saya",
   "wallet.owed.iOwe": "Saya berutang",
   "wallet.owed.owedToMe": "Orang lain berutang ke saya",
+  "wallet.summary.openOwed": "ดูยอดค้าง",
   "wallet.owed.pendingConfirm": "{n} menunggu konfirmasi saya",
   "wallet.owed.empty": "Tidak ada tagihan tertunda",
   "wallet.owed.emptyHint": "Semua beres. Kalau Anda menalangi seseorang, tekan “Buat catatan uang”.",
@@ -752,6 +753,9 @@ export const id: OfficeDict = {
 
   "wallet.category.FOOD": "Uang makan",
   "wallet.category.COFFEE": "Kopi",
+  "wallet.category.TRANSPORT": "เดินทาง",
+  "wallet.category.SUPPLIES": "ของใช้",
+  "wallet.category.FUN": "สังสรรค์",
   "wallet.category.OTHER": "Lainnya",
 
   "wallet.qr.title": "QR terima uang saya",
@@ -1799,6 +1803,8 @@ export const id: OfficeDict = {
   "wallet.create.receiptDone": "แนบรูปแล้ว",
   "wallet.create.needAmount": "กรอกยอดเงิน",
   "wallet.create.needPeople": "เลือกคนที่หาร",
+  "wallet.create.soloHint": "ไม่ได้เลือกใครเลย — บันทึกเป็นค่าใช้จ่ายของคุณคนเดียว ไม่มีใครถูกเรียกเก็บ",
+  "wallet.create.submitSolo": "บันทึกค่าใช้จ่ายของฉัน",
   "wallet.create.savedToast": "บันทึกแล้ว · แจ้ง {n} คน",
   "wallet.create.leftOver": "เหลืออีก {amount}",
   "wallet.create.overBy": "เกินไป {amount}",

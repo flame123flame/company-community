@@ -596,6 +596,7 @@ export const vi: OfficeDict = {
   "wallet.owed.title": "Khoản còn nợ",
   "wallet.owed.iOwe": "Tôi nợ người khác",
   "wallet.owed.owedToMe": "Người khác nợ tôi",
+  "wallet.summary.openOwed": "ดูยอดค้าง",
   "wallet.owed.pendingConfirm": "{n} khoản chờ tôi xác nhận",
   "wallet.owed.empty": "Không còn khoản nào",
   "wallet.owed.emptyHint": "Đã xong hết. Nếu bạn ứng tiền cho ai, bấm “Tạo khoản tiền” để ghi lại.",
@@ -752,6 +753,9 @@ export const vi: OfficeDict = {
 
   "wallet.category.FOOD": "Tiền ăn",
   "wallet.category.COFFEE": "Cà phê",
+  "wallet.category.TRANSPORT": "เดินทาง",
+  "wallet.category.SUPPLIES": "ของใช้",
+  "wallet.category.FUN": "สังสรรค์",
   "wallet.category.OTHER": "Khác",
 
   "wallet.qr.title": "QR nhận tiền của tôi",
@@ -1799,6 +1803,8 @@ export const vi: OfficeDict = {
   "wallet.create.receiptDone": "แนบรูปแล้ว",
   "wallet.create.needAmount": "กรอกยอดเงิน",
   "wallet.create.needPeople": "เลือกคนที่หาร",
+  "wallet.create.soloHint": "ไม่ได้เลือกใครเลย — บันทึกเป็นค่าใช้จ่ายของคุณคนเดียว ไม่มีใครถูกเรียกเก็บ",
+  "wallet.create.submitSolo": "บันทึกค่าใช้จ่ายของฉัน",
   "wallet.create.savedToast": "บันทึกแล้ว · แจ้ง {n} คน",
   "wallet.create.leftOver": "เหลืออีก {amount}",
   "wallet.create.overBy": "เกินไป {amount}",

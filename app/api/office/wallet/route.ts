@@ -166,12 +166,20 @@ const createSchema = z
       .refine((n) => Number.isInteger(Math.round(n * 100)) && Math.abs(n * 100 - Math.round(n * 100)) < 1e-9, {
         message: 'valid.amountDecimals',
       }),
-    category: z.enum(['FOOD', 'COFFEE', 'OTHER']).default('FOOD'),
+    category: z.enum(['FOOD', 'COFFEE', 'TRANSPORT', 'SUPPLIES', 'FUN', 'OTHER']).default('FOOD'),
     billDate: z.string().date().optional().nullable(),
     receiptPath: z.string().max(300).optional().nullable(),
     splitMode: z.enum(['EQUAL', 'CUSTOM']).default('EQUAL'),
     includeSelf: z.boolean().default(true),
-    shares: z.array(shareSchema).min(1, 'valid.noPeople').max(50),
+    /*
+     * ★★★ ศูนย์คนก็ได้ — บิลที่ไม่มีใครร่วมจ่ายคือ "ค่าใช้จ่ายของตัวเอง"
+     *
+     *     ★ ของเดิมบังคับอย่างน้อยหนึ่งคน ★★ ซึ่งแปลว่าวันไหนจ่ายเอง
+     *       คนเดียวก็บันทึกไม่ได้เลย และหน้าสรุปไม่มีทางครบ
+     *     ★ ส่วนของเราคำนวณจาก ยอดรวม − ผลรวมของคนอื่น อยู่แล้ว
+     *       ★★ shares ว่าง จึงแปลว่า "ส่วนของฉัน = ยอดเต็ม" โดยอัตโนมัติ
+     */
+    shares: z.array(shareSchema).max(50).default([]),
     /*
      * ★★★ ร้าน — คอลัมน์ restaurant_id มีมาตั้งแต่ 0026 แต่ไม่เคยมีใครเขียน
      *

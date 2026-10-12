@@ -596,6 +596,7 @@ export const ja: OfficeDict = {
   "wallet.owed.title": "未精算",
   "wallet.owed.iOwe": "自分が払う分",
   "wallet.owed.owedToMe": "受け取る分",
+  "wallet.summary.openOwed": "ดูยอดค้าง",
   "wallet.owed.pendingConfirm": "確認待ち {n} 件",
   "wallet.owed.empty": "未精算はありません",
   "wallet.owed.emptyHint": "すべて完了しています。誰かの分を立て替えたら「精算をつくる」で記録できます。",
@@ -752,6 +753,9 @@ export const ja: OfficeDict = {
 
   "wallet.category.FOOD": "食事",
   "wallet.category.COFFEE": "コーヒー",
+  "wallet.category.TRANSPORT": "เดินทาง",
+  "wallet.category.SUPPLIES": "ของใช้",
+  "wallet.category.FUN": "สังสรรค์",
   "wallet.category.OTHER": "その他",
 
   "wallet.qr.title": "受取用QR",
@@ -1799,6 +1803,8 @@ export const ja: OfficeDict = {
   "wallet.create.receiptDone": "แนบรูปแล้ว",
   "wallet.create.needAmount": "กรอกยอดเงิน",
   "wallet.create.needPeople": "เลือกคนที่หาร",
+  "wallet.create.soloHint": "ไม่ได้เลือกใครเลย — บันทึกเป็นค่าใช้จ่ายของคุณคนเดียว ไม่มีใครถูกเรียกเก็บ",
+  "wallet.create.submitSolo": "บันทึกค่าใช้จ่ายของฉัน",
   "wallet.create.savedToast": "บันทึกแล้ว · แจ้ง {n} คน",
   "wallet.create.leftOver": "เหลืออีก {amount}",
   "wallet.create.overBy": "เกินไป {amount}",

@@ -15,7 +15,8 @@ import { cn } from '@/lib/cn'
 import { useLocale } from '@/lib/i18n/client'
 import { officeErrorText } from '@/lib/i18n/office-format'
 import { Untranslated, useOt } from '@/lib/i18n/office'
-import { categoryLabel, formatBaht } from '@/lib/office/wallet'
+import { CATEGORIES, categoryLabel, formatBaht } from '@/lib/office/wallet'
+import type { ExpenseCategory } from '@/types/database'
 import { shrinkImage } from '@/lib/image/shrink'
 import { computeSplit, customRemainder, loadPrefs, savePrefs, type BillPrefs } from '@/lib/office/billDraft'
 import { toBaht } from '@/lib/office/money'
@@ -78,7 +79,7 @@ export function WalletCreate() {
 
   /* ── รายละเอียดเสริม ──────────────────────────────────────── */
   const [title, setTitle] = useState('')
-  const [category, setCategory] = useState<'FOOD' | 'COFFEE' | 'OTHER'>('FOOD')
+  const [category, setCategory] = useState<ExpenseCategory>('FOOD')
   const [billDate, setBillDate] = useState(() => todayIso())
   const [delivery, setDelivery] = useState('')
   const [discount, setDiscount] = useState('')
@@ -263,8 +264,21 @@ export function WalletCreate() {
     }
   }
 
+  /*
+   * ★★★ จ่ายเองคนเดียว — ไม่ต้องเลือกใครเลย
+   *
+   *     ★ วันไหนกินข้าวคนเดียวหรือจ่ายเองไม่ได้ออกให้ใคร ของเดิมบันทึกไม่ได้
+   *       ★★ ระบบจึงเป็นเครื่องมือทวงหนี้ ไม่ใช่เครื่องมือดูค่าใช้จ่าย
+   *          ★ และหน้าสรุปไม่มีทางครบ เพราะเห็นเฉพาะมื้อที่มีคนอื่นเกี่ยวข้อง
+   *
+   * ★★ ไม่ได้ทำเป็นสวิตช์แยก แต่ดูจาก "ไม่ได้เลือกใครเลย" ตรง ๆ
+   *    ★ สวิตช์ที่ต้องกดก่อนคืออีกขั้นที่ต้องเรียนรู้ ★★ ส่วนการไม่เลือกใคร
+   *      คือสิ่งที่คนทำอยู่แล้วตอนที่มันยังบันทึกไม่ได้
+   */
+  const soloOnly = picked.length === 0
+
   /** ปุ่มบันทึกบอกสิ่งที่ขาด แทนที่จะ disable เงียบ ๆ */
-  const missing = !Number(amount) ? 'amount' : picked.length === 0 ? 'people' : null
+  const missing = !Number(amount) ? 'amount' : null
 
   async function submit() {
     if (busy) return
@@ -273,10 +287,6 @@ export function WalletCreate() {
     if (!Number(amount)) {
       setFieldError({ amount: ot('wallet.create.needAmount') })
       amountRef.current?.focus()
-      return
-    }
-    if (picked.length === 0) {
-      setFieldError({ people: ot('wallet.create.needPeople') })
       return
     }
     if (prefs.splitMode === 'CUSTOM' && remainder !== 0) {
@@ -786,6 +796,26 @@ export function WalletCreate() {
           }
         />
 
+        {/*
+          * ★★★ ไม่เลือกใครเลย = ค่าใช้จ่ายของตัวเอง บันทึกได้เลย
+          *
+          *     ★ ของเดิมปุ่มบันทึกจะบอกว่า "ต้องเลือกคนร่วมจ่าย" แล้วจบตรงนั้น
+          *       ★★ คนที่อยากบันทึกค่ากาแฟของตัวเองจึงไปต่อไม่ได้
+          *          แล้วก็ไม่กลับมาอีก
+          *
+          * ★★ บอกตรงนี้ ไม่ใช่รอให้ไปเจอตอนกดบันทึก
+          *    ★ ช่องนี้คือจุดที่คนกำลังสงสัยว่า "ไม่เลือกใครได้ไหม" พอดี
+          */}
+        {soloOnly ? (
+          <p className="mt-2 flex items-start gap-2 rounded-2xl bg-money-out-soft px-3.5 py-2.5 text-[12.5px] leading-relaxed text-ink">
+            <svg viewBox="0 0 24 24" aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-money-out" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 8h.01M11 12h1v4h1" />
+            </svg>
+            <Untranslated>{ot('wallet.create.soloHint')}</Untranslated>
+          </p>
+        ) : null}
+
         {/* ── กลุ่มที่บันทึกไว้ ─────────────────────────────── */}
         {(recent?.groups ?? []).length > 0 ? (
           <div className="mt-3 flex flex-wrap gap-1.5">
@@ -1033,7 +1063,7 @@ export function WalletCreate() {
 
           <Field label={ot('wallet.create.category')}>
             <div className="flex flex-wrap gap-1.5">
-              {(['FOOD', 'COFFEE', 'OTHER'] as const).map((c) => (
+              {CATEGORIES.map((c) => (
                 <Chip key={c} active={category === c} onClick={() => setCategory(c)}>
                   {/* ★ ใช้ categoryLabel ของโมดูล ไม่ประกอบชื่อกุญแจเอง
                         ★★ ผมเดาว่าเป็น wallet.cat.* แต่ของจริงคือ wallet.category.*
@@ -1183,7 +1213,7 @@ export function WalletCreate() {
         {/* ★ บนจอกว้างปุ่มอยู่ในคอลัมน์ขวาซึ่งเกาะอยู่แล้ว
              ★★ บนมือถือใช้แถบล่างแทน (อยู่นอก aside เพื่อให้ sticky มีที่เกาะ) */}
         <div className="mt-4 hidden lg:block">
-          <SaveButton ot={ot} busy={busy} missing={missing} onClick={submit} />
+          <SaveButton ot={ot} busy={busy} missing={missing} solo={soloOnly} onClick={submit} />
         </div>
       </aside>
 
@@ -1212,7 +1242,7 @@ export function WalletCreate() {
             </Untranslated>
           </p>
         ) : null}
-        <SaveButton ot={ot} busy={busy} missing={missing} onClick={submit} />
+        <SaveButton ot={ot} busy={busy} missing={missing} solo={soloOnly} onClick={submit} />
       </div>
 
       {/* ── ถามว่าบันทึกเป็นกลุ่มไหม ─────────────────────────── */}
@@ -1322,11 +1352,13 @@ function SaveButton({
   ot,
   busy,
   missing,
+  solo,
   onClick,
 }: {
   ot: ReturnType<typeof useOt>
   busy: boolean
   missing: 'amount' | 'people' | null
+  solo?: boolean
   onClick: () => void
 }) {
   return (
@@ -1336,7 +1368,8 @@ function SaveButton({
           ? ot('wallet.create.needAmount')
           : missing === 'people'
             ? ot('wallet.create.needPeople')
-            : ot('wallet.create.submit')}
+            : /* ★ คำบนปุ่มบอกว่ากำลังจะเกิดอะไร — บันทึกของตัวเอง ไม่ใช่สร้างบิลให้ใคร */
+              ot(solo ? 'wallet.create.submitSolo' : 'wallet.create.submit')}
       </Untranslated>
     </Button>
   )
