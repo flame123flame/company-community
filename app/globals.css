@@ -7430,3 +7430,52 @@ html:not([data-reveal='off']) .result-pop {
   --bub-5: #4d8bff;  /* น้ำเงิน · hue 222 */
   --bub-6: #b45cff;  /* ม่วง   · hue 279 */
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+ * แถบ "วิธีใช้" ตอนหุบ (FunGuide)
+ *
+ * ★★★ ตอนนี้ทุกหน้าเริ่มต้นด้วยการหุบ แถบนี้จึงเป็นสิ่งเดียวที่บอกว่า
+ *     มีคำอธิบายอยู่ข้างใน ★ มันต้องอ่านออกว่า "กดได้" ตั้งแต่แวบแรก
+ *
+ *     ★ ของเดิมเป็นเม็ดยาเส้นบางสีเทา หน้าตาเหมือนป้ายบอกสถานะ
+ *       ★★ ซึ่งตอนที่มันเป็นของที่โผล่หลังกดซ่อนเองก็พอรับได้ (คนกดเอง
+ *          ย่อมรู้ว่ามันคืออะไร) ★ แต่พอกลายเป็นค่าเริ่มต้น คนที่ไม่เคยเห็น
+ *          คำอธิบายมาก่อนจะไม่มีทางรู้ว่ามีอะไรซ่อนอยู่
+ *
+ * ★★ ยืมภาษาเดียวกับแผงที่กางออก (พื้นไล่สีจาง + เส้นขอบ) เพื่อให้เห็นว่า
+ *    มันคือของชิ้นเดียวกันที่ถูกพับไว้ ไม่ใช่ปุ่มแปลกปลอม
+ * ═══════════════════════════════════════════════════════════════════════ */
+.guide-peek {
+  border: 1px solid var(--color-line);
+  background:
+    radial-gradient(80% 140% at 0% 50%, color-mix(in srgb, var(--color-accent) 10%, transparent), transparent 70%),
+    color-mix(in srgb, var(--color-elevated) 70%, transparent);
+  backdrop-filter: blur(8px);
+  transition: border-color 180ms, transform 180ms, box-shadow 180ms;
+}
+.guide-peek:hover {
+  border-color: color-mix(in srgb, var(--color-accent) 45%, var(--color-line));
+  transform: translateY(-1px);
+  box-shadow: 0 14px 28px -20px color-mix(in srgb, var(--color-accent) 70%, transparent);
+}
+/* ★ โฟกัสด้วยคีย์บอร์ดต้องเห็นชัดเท่ากับการชี้ด้วยเมาส์ */
+.guide-peek:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.guide-peek-icon {
+  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 22%, transparent);
+}
+
+/* ★★ ลูกศรขยับลงเล็กน้อยตอนชี้ — บอกทิศที่มันจะกางออกโดยไม่ต้องใช้คำ */
+.guide-peek-arrow { transition: transform 180ms; }
+.guide-peek:hover .guide-peek-arrow { transform: translateY(2px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .guide-peek, .guide-peek-arrow { transition: none; }
+  .guide-peek:hover { transform: none; }
+  .guide-peek:hover .guide-peek-arrow { transform: none; }
+}

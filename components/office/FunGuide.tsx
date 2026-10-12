@@ -14,23 +14,34 @@ export type GuideArt =
   | 'vinyl' | 'stage' | 'connect4' | 'quiz' | 'makruk' | 'bubble' | 'frog'
 
 /*
- * ★★ จำว่า "ซ่อนคำอธิบาย" ไว้ในเครื่อง — ของสะดวกส่วนตัว ไม่ใช่ข้อมูลสำคัญ
- *    ★ คนใช้ครั้งแรกเห็นคำอธิบายเต็ม · คนใช้ทุกวันกดซ่อนครั้งเดียวแล้วไม่เห็นอีก
- *    ★ อ่าน/เขียน localStorage ห่อ try/catch — โหมดส่วนตัวบางเบราว์เซอร์โยน error
+ * ★★★ ค่าเริ่มต้นคือ "หุบไว้" ทุกหน้า — ผู้ใช้กดเปิดเอง
+ *
+ *     ★ ของเดิมกางเต็มทุกหน้าจนกว่าจะกดซ่อน ★★ แปลว่าทุกคนที่เปิดหน้าไหน
+ *       ก็ตามเป็นครั้งที่สิบ ยังต้องเลื่อนผ่านคำอธิบายก้อนใหญ่ก่อนถึงของจริง
+ *       ★ และต้องไปกดซ่อนทีละหน้า 25 หน้า ซึ่งไม่มีใครทำ
+ *     ★★ คำอธิบายมีค่าตอน "ไม่รู้ว่าหน้านี้ทำอะไร" ซึ่งเป็นครั้งเดียวต่อหน้า
+ *        ส่วนเวลาที่เหลือทั้งหมดมันคือของที่บังเครื่องมือ
+ *
+ * ★★ เก็บค่าชัดเจนทั้งสองทาง ไม่ใช่ "มีคีย์ = ซ่อน"
+ *    ★ '1' = หุบ · '0' = กางค้างไว้ · ไม่มีคีย์ = หุบ (ค่าเริ่มต้นใหม่)
+ *      ★★ ถ้าลบคีย์ตอนกางเหมือนเดิม คนที่กดเปิดแล้วเดินออกจากหน้าไป
+ *         จะกลับมาเจอว่ามันหุบอีก ทั้งที่เพิ่งสั่งให้เปิด
+ *    ★ ค่า '1' ของเดิมยังอ่านได้เหมือนเดิม — คนที่เคยกดซ่อนไม่รู้สึกอะไรเลย
+ *
+ * ★ อ่าน/เขียน localStorage ห่อ try/catch — โหมดส่วนตัวบางเบราว์เซอร์โยน error
  */
 const listeners = new Set<() => void>()
 const keyOf = (id: string) => `funGuide:hidden:${id}`
 function readHidden(id: string): boolean {
   try {
-    return window.localStorage.getItem(keyOf(id)) === '1'
+    return window.localStorage.getItem(keyOf(id)) !== '0'
   } catch {
-    return false
+    return true
   }
 }
 function writeHidden(id: string, hidden: boolean) {
   try {
-    if (hidden) window.localStorage.setItem(keyOf(id), '1')
-    else window.localStorage.removeItem(keyOf(id))
+    window.localStorage.setItem(keyOf(id), hidden ? '1' : '0')
   } catch {
     /* เก็บไม่ได้ก็แค่ไม่จำ — ใช้งานต่อได้ปกติ */
   }
@@ -96,20 +107,44 @@ export type GuideText = {
  *      ★★ ห้องเพลงไม่มีดิกออฟฟิศในหน้า — ส่งทั้งก้อนลงมาเพื่อแผงเดียวไม่คุ้ม
  */
 export function GuideView({ id, art, text }: { id: string; art: GuideArt; text: GuideText }) {
-  const hidden = useSyncExternalStore(subscribe, () => readHidden(id), () => false)
+  /*
+   * ★★ ค่าที่ server เดาไว้ต้องเป็น "หุบ" เหมือนกัน
+   *    ★ เดาเป็น "กาง" แล้วของจริงหุบ = แผงใหญ่โผล่มาหนึ่งเฟรมแล้วหายไป
+   *      ★★ ซึ่งดันเนื้อหาทั้งหน้าลงไปแล้วเด้งกลับ เห็นเป็นการกระตุกทุกครั้งที่โหลด
+   */
+  const hidden = useSyncExternalStore(subscribe, () => readHidden(id), () => true)
 
   if (hidden) {
+    /*
+     * ★★★ ตอนหุบต้องอ่านออกว่า "กดได้" ตั้งแต่แวบแรก
+     *
+     *     ★ ของเดิมเป็นเม็ดยาเส้นบาง สีเทา ตัวเล็ก ★★ หน้าตาเหมือนป้ายบอก
+     *       สถานะมากกว่าปุ่ม ★ พอมันกลายเป็นค่าเริ่มต้นของทุกหน้า
+     *       คนจะไม่มีทางรู้เลยว่ากดแล้วมีคำอธิบายอยู่ข้างใน
+     *
+     * ★★ สามอย่างที่บอกว่ากดได้: ไอคอนในกรอบสีเน้น · ลูกศรชี้ลงฝั่งขวา ·
+     *    ตัวแผงยกขึ้นตอนชี้ ★ ลูกศรลงเป็นภาษาที่ทุกคนอ่านออกว่า "กางออกมา"
+     * ★ aria-expanded บอกเครื่องอ่านหน้าจอว่ามันคือตัวพับเปิด-ปิด ไม่ใช่ลิงก์
+     */
     return (
       <button
         type="button"
         onClick={() => writeHidden(id, false)}
-        className="mt-2 inline-flex min-h-11 items-center gap-2 rounded-full border border-line bg-elevated/70 px-4 text-[13px] text-ink-soft backdrop-blur transition-colors hover:border-line-strong hover:text-ink"
+        aria-expanded={false}
+        className="guide-peek mt-2 flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-start"
       >
-        <svg viewBox="0 0 24 24" className="size-4 text-accent" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <circle cx="12" cy="12" r="9" />
-          <path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.4M12 17h.01" />
+        <span aria-hidden="true" className="guide-peek-icon grid size-9 shrink-0 place-items-center rounded-xl">
+          <svg viewBox="0 0 24 24" className="size-[18px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.4M12 17h.01" />
+          </svg>
+        </span>
+        <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-ink sm:text-sm">
+          <Untranslated>{text.show}</Untranslated>
+        </span>
+        <svg viewBox="0 0 24 24" aria-hidden="true" className="guide-peek-arrow size-4 shrink-0 text-ink-faint" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+          <path d="m6 9 6 6 6-6" />
         </svg>
-        <Untranslated>{text.show}</Untranslated>
       </button>
     )
   }
