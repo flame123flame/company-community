@@ -7664,3 +7664,17 @@ button:not(:disabled):not(.ck-sq-dark):not(.ck-sq-light):not(.c4-col):not(.gal-t
   background: linear-gradient(180deg,
     color-mix(in srgb, var(--money-in) 10%, transparent), transparent);
 }
+
+/* ── แถวในประวัติการโอน ──────────────────────────────────────────
+ * ★ ยกขึ้นเล็กน้อยตอนชี้ พร้อมเงาที่อิงสีของขอบ — บอกว่ากดได้
+ *   ★★ ไม่ใช้ scale เพราะแถวกว้างเต็มคอลัมน์ การขยายจะดันขอบออกนอกกรอบ
+ */
+.hist-row { transition: transform 180ms, border-color 180ms, box-shadow 180ms; }
+.hist-row:hover {
+  transform: translateY(-2px);
+  border-color: var(--color-line-strong);
+  box-shadow: 0 16px 30px -24px color-mix(in srgb, var(--color-ink) 70%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .hist-row, .hist-row:hover { transition: none; transform: none; }
+}

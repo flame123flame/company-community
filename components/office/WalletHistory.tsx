@@ -7,6 +7,7 @@ import { useLocale } from '@/lib/i18n/client'
 import { formatBaht } from '@/lib/office/wallet'
 import { officeErrorText } from '@/lib/i18n/office-format'
 import { Untranslated, useOt } from '@/lib/i18n/office'
+import { CountUp } from '@/components/ui/CountUp'
 import { ChatAvatar } from './ChatAvatar'
 import { DebtDetailSheet } from './DebtDetailSheet'
 
@@ -117,28 +118,54 @@ export function WalletHistory() {
 
   return (
     <section className="mt-8">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="text-lg font-black tracking-tight text-ink">
-            <Untranslated>{ot('wallet.history.title')}</Untranslated>
-          </h2>
-          <p className="mt-0.5 text-xs text-ink-soft">
-            <Untranslated>{ot('wallet.history.hint')}</Untranslated>
-          </p>
+      <header className="min-w-0">
+        <h2 className="text-lg font-black tracking-tight text-ink">
+          <Untranslated>{ot('wallet.history.title')}</Untranslated>
+        </h2>
+        <p className="mt-0.5 text-xs text-ink-soft">
+          <Untranslated>{ot('wallet.history.hint')}</Untranslated>
+        </p>
+      </header>
+
+      {/*
+        * ══ แถบสรุปของชุดที่กรองอยู่ ═══════════════════════════════
+        *
+        * ★★★ ของเดิมเป็นเม็ดยาเล็กสองเม็ดมุมขวาบน
+        *     ★ มันคือตัวเลขที่ตอบคำถามใหญ่ที่สุดของทั้งเซกชัน
+        *       ("ปีนี้จ่ายให้คนนี้ไปเท่าไร") แต่ถูกวางเป็นของประดับ
+        *       ★★ ตัวเลขสำคัญที่สุดต้องเป็นของที่ใหญ่ที่สุด
+        *
+        * ★★ มีช่องที่สาม "สุทธิ" ที่ของเดิมไม่มี
+        *    ★ สองยอดแยกกันยังต้องลบในหัวเอง ★★ ซึ่งเป็นงานที่ระบบทำแทนได้
+        *      และเป็นตัวเลขที่คนอยากรู้จริงเวลาเทียบกับใครสักคน
+        */}
+      <div className="mt-3 overflow-hidden rounded-[22px] border border-line bg-elevated/60 backdrop-blur-md">
+        <div className="grid grid-cols-3 divide-x divide-line rtl:divide-x-reverse">
+          <Stat label={ot('wallet.history.sumOut')} value={data?.paidOut ?? 0} tone="out" locale={locale} />
+          <Stat label={ot('wallet.history.sumIn')} value={data?.gotIn ?? 0} tone="in" locale={locale} />
+          <Stat
+            label={ot('wallet.history.net')}
+            value={(data?.gotIn ?? 0) - (data?.paidOut ?? 0)}
+            tone="net"
+            locale={locale}
+          />
         </div>
 
-        {/* ★ ยอดรวมของ "ชุดที่กรองอยู่" ไม่ใช่ของหน้าที่เปิด — ไม่งั้นมันตอบอะไรไม่ได้ */}
-        {data ? (
-          <div className="flex shrink-0 items-center gap-2 text-xs">
-            <span className="rounded-full bg-money-out-soft px-2.5 py-1 font-semibold text-money-out tabular-nums">
-              <Untranslated>{ot('wallet.history.sumOut')}</Untranslated> ฿{formatBaht(locale, data.paidOut)}
-            </span>
-            <span className="rounded-full bg-money-in-soft px-2.5 py-1 font-semibold text-money-in tabular-nums">
-              <Untranslated>{ot('wallet.history.sumIn')}</Untranslated> ฿{formatBaht(locale, data.gotIn)}
-            </span>
+        {/*
+          * ★ แถบสัดส่วน — เห็นทันทีว่าฝั่งไหนหนักกว่าโดยไม่ต้องเทียบตัวเลข
+          *   ★★ ไม่ขึ้นเลยถ้าทั้งสองฝั่งเป็นศูนย์ ★ แถบว่างเปล่าคือของที่
+          *      กินที่โดยไม่บอกอะไร
+          */}
+        {data && data.paidOut + data.gotIn > 0 ? (
+          <div className="mx-3 mb-3 flex h-1.5 overflow-hidden rounded-full bg-surface">
+            <span
+              className="bg-money-out-solid transition-[width] duration-700"
+              style={{ width: `${(data.paidOut / (data.paidOut + data.gotIn)) * 100}%` }}
+            />
+            <span className="flex-1 bg-money-in-solid" />
           </div>
         ) : null}
-      </header>
+      </div>
 
       {/* ── ค้นหา + ตัวกรอง ─────────────────────────────────────── */}
       <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -208,23 +235,52 @@ export function WalletHistory() {
       ) : null}
 
       {loading && items.length === 0 ? (
-        <ul className="mt-3 grid gap-2">
+        <ul className="mt-3 grid gap-2 lg:grid-cols-2">
           {[0, 1, 2, 3].map((i) => (
-            <li key={i} className="h-[4.5rem] animate-pulse rounded-2xl bg-surface" />
+            <li key={i} className="h-20 animate-pulse rounded-2xl bg-surface" />
           ))}
         </ul>
       ) : items.length === 0 ? (
-        <p className="mt-3 rounded-2xl border border-dashed border-line px-4 py-10 text-center text-sm text-ink-faint">
-          <Untranslated>{q ? ot('wallet.history.noMatch', { q }) : ot('wallet.history.empty')}</Untranslated>
-        </p>
+        <div className="mt-3 rounded-[22px] border border-dashed border-line px-4 py-12 text-center">
+          <span aria-hidden="true" className="mx-auto grid size-12 place-items-center rounded-2xl bg-surface text-ink-faint">
+            <svg viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.5-3.5" />
+            </svg>
+          </span>
+          <p className="mt-3 text-sm text-ink-faint">
+            <Untranslated>{q ? ot('wallet.history.noMatch', { q }) : ot('wallet.history.empty')}</Untranslated>
+          </p>
+        </div>
       ) : (
-        <ul className={cn('mt-3 grid gap-2 lg:grid-cols-2', loading && 'opacity-60')}>
-          {items.map((it) => (
-            <li key={it.id}>
-              <Row item={it} locale={locale} onOpen={() => setOpen(it)} />
-            </li>
+        /*
+         * ★★★ จัดกลุ่มตามเดือน พร้อมหัวข้อที่เกาะบนสุดตอนเลื่อน
+         *
+         *     ★ ประวัติคือของที่คนอ่านด้วยคำถาม "ช่วงนั้นจ่ายอะไรบ้าง"
+         *       ★★ กองเรียงกันรวดโดยไม่มีหัวข้อเดือน แปลว่าต้องอ่านวันที่
+         *          ของทุกแถวเองเพื่อรู้ว่าข้ามเดือนตรงไหน
+         *     ★ หัวข้อบอกยอดรวมของเดือนนั้นด้วย — ตัวเลขที่ลิสต์ไม่เคยบอก
+         */
+        <div className={cn('mt-3 space-y-5', loading && 'opacity-60')}>
+          {groupByMonth(items, locale).map((g) => (
+            <section key={g.key}>
+              <h3 className="sticky top-0 z-10 -mx-1 flex items-baseline justify-between gap-3 bg-page/85 px-1 py-1.5 backdrop-blur">
+                <span className="text-[12px] font-black uppercase tracking-wide text-ink-soft">{g.label}</span>
+                {/* ★ นับเฉพาะเดือนนี้ ไม่ใช่ "ทั้งหมด" — คำว่าทั้งหมดอยู่ท้ายลิสต์แล้ว */}
+                <span className="shrink-0 text-[11px] tabular-nums text-ink-faint">
+                  <Untranslated>{ot('wallet.history.countShort', { n: g.items.length })}</Untranslated>
+                </span>
+              </h3>
+              <ul className="sys-stagger mt-1.5 grid gap-2 lg:grid-cols-2">
+                {g.items.map((it) => (
+                  <li key={it.id}>
+                    <Row item={it} locale={locale} onOpen={() => setOpen(it)} />
+                  </li>
+                ))}
+              </ul>
+            </section>
           ))}
-        </ul>
+        </div>
       )}
 
       {/* ── แบ่งหน้า ─────────────────────────────────────────────── */}
@@ -290,52 +346,152 @@ function Row({ item, locale, onOpen }: { item: Item; locale: string; onOpen: () 
   const ot = useOt()
   const out = item.direction === 'out'
   const date = new Date(item.paidAt ?? item.createdAt)
+  const dead = item.status === 'CANCELLED'
 
   return (
     <button
       type="button"
       onClick={onOpen}
-      className="flex min-h-[4.5rem] w-full items-center gap-3 rounded-2xl border border-line bg-elevated/50 px-3.5 py-3 text-start backdrop-blur-md transition-colors hover:border-line-strong hover:bg-surface"
+      className={cn(
+        'hist-row group relative flex min-h-20 w-full items-center gap-3 overflow-hidden rounded-2xl',
+        'border border-line bg-elevated/55 py-3 pe-3.5 ps-4 text-start backdrop-blur-md',
+      )}
     >
-      <ChatAvatar name={item.otherName} url={item.otherAvatar} size={40} />
+      {/* ★ แถบสีที่ขอบซ้าย — บอกทิศทางตั้งแต่ก่อนตาไปถึงตัวเลข */}
+      <span
+        aria-hidden="true"
+        className={cn(
+          'absolute bottom-0 start-0 top-0 w-1',
+          dead ? 'bg-line-strong' : out ? 'bg-money-out-solid' : 'bg-money-in-solid',
+        )}
+      />
+
+      <span className="relative shrink-0">
+        <ChatAvatar name={item.otherName} url={item.otherAvatar} size={42} />
+        <span
+          aria-hidden="true"
+          className={cn(
+            'absolute -bottom-0.5 -end-0.5 grid size-[18px] place-items-center rounded-full ring-2 ring-elevated',
+            dead ? 'bg-line-strong' : out ? 'bg-money-out-solid' : 'bg-money-in-solid',
+          )}
+        >
+          <svg viewBox="0 0 24 24" className="size-2.5 text-white" fill="none" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round">
+            <path d={out ? 'M12 19V5M5 12l7-7 7 7' : 'M12 5v14M5 12l7 7 7-7'} />
+          </svg>
+        </span>
+      </span>
 
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">
-          {/*
-            * ★★ ลูกศรบอกทิศก่อนชื่อ — กวาดตาแล้วรู้ทันทีว่า "จ่ายออก" หรือ "รับเข้า"
-            *    ★ สีอย่างเดียวไม่พอสำหรับคนตาบอดสี รูปร่างจึงต้องต่างด้วย
-            */}
-          <svg viewBox="0 0 24 24" aria-hidden="true" className={cn('size-3.5 shrink-0', out ? 'text-money-out' : 'text-money-in')} fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
-            <path d={out ? 'M12 19V5M5 12l7-7 7 7' : 'M12 5v14M5 12l7 7 7-7'} />
-          </svg>
-          <span dir="auto" className="truncate text-sm font-semibold text-ink">
+          <span dir="auto" className="truncate text-[14.5px] font-bold text-ink">
             {item.otherName}
           </span>
           {item.hasSlip ? (
             <span
               title={ot('wallet.owed.detailSlip')}
-              className="shrink-0 rounded-full bg-link/15 px-1.5 py-0.5 text-[10px] font-bold text-link"
+              className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-link/15 px-1.5 py-0.5 text-[10px] font-bold text-link"
             >
+              <svg viewBox="0 0 24 24" aria-hidden="true" className="size-2.5" fill="none" stroke="currentColor" strokeWidth="3">
+                <path d="M4 7h16v12H4zM8 4h8M8 11h8M8 15h5" />
+              </svg>
               <Untranslated>{ot('wallet.history.slipTag')}</Untranslated>
             </span>
           ) : null}
         </span>
 
-        <span dir="auto" className="mt-0.5 block truncate text-xs text-ink-soft">
+        <span dir="auto" className="mt-0.5 block truncate text-[12.5px] text-ink-soft">
           {item.billTitle || item.description || ot('wallet.history.noNote')}
         </span>
 
-        <span className="mt-0.5 flex items-center gap-1.5 text-[11px] text-ink-faint">
-          <span className="tabular-nums">{date.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+        <span className="mt-1 flex items-center gap-1.5 text-[11px] text-ink-faint">
+          <span className="tabular-nums">
+            {date.toLocaleDateString(locale, { day: 'numeric', month: 'short' })}
+          </span>
           <StatusTag status={item.status} />
         </span>
       </span>
 
-      <span className={cn('shrink-0 text-base font-black tabular-nums', out ? 'text-money-out' : 'text-money-in')}>
-        {out ? '−' : '+'}฿{formatBaht(locale, item.amount)}
+      <span className="flex shrink-0 flex-col items-end gap-1">
+        <span
+          className={cn(
+            'text-[17px] font-black leading-none tabular-nums',
+            dead ? 'text-ink-faint line-through' : out ? 'text-money-out' : 'text-money-in',
+          )}
+        >
+          {out ? '−' : '+'}฿{formatBaht(locale, item.amount)}
+        </span>
+        {/* ★ ลูกศรโผล่ตอนชี้ — บอกว่าแถวนี้กดเข้าไปดูต่อได้ */}
+        <svg
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+          className="size-4 text-ink-faint opacity-0 transition-opacity group-hover:opacity-100 rtl:-scale-x-100"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="m9 6 6 6-6 6" />
+        </svg>
       </span>
     </button>
   )
+}
+
+/** ช่องตัวเลขในแถบสรุป */
+function Stat({
+  label,
+  value,
+  tone,
+  locale,
+}: {
+  label: string
+  value: number
+  tone: 'out' | 'in' | 'net'
+  locale: string
+}) {
+  /* ★ สุทธิใช้สีตามเครื่องหมายของตัวเอง — ติดลบคือจ่ายออกมากกว่า */
+  const colour =
+    tone === 'out' ? 'text-money-out' : tone === 'in' ? 'text-money-in' : value < 0 ? 'text-money-out' : 'text-money-in'
+  const sign = tone === 'net' ? (value < 0 ? '−' : '+') : ''
+
+  return (
+    <div className="px-3 py-3 text-center sm:px-4 sm:py-4">
+      <p className="text-[10.5px] font-semibold uppercase tracking-wide text-ink-faint">
+        <Untranslated>{label}</Untranslated>
+      </p>
+      <p className={cn('mt-1 text-[clamp(1.05rem,3.4vw,1.5rem)] font-black leading-none tabular-nums', colour)}>
+        {sign}
+        <span className="text-[0.62em] align-top font-bold">฿</span>
+        <CountUp value={Math.abs(value)} format={(n) => formatBaht(locale, n)} />
+      </p>
+    </div>
+  )
+}
+
+/**
+ * จัดกลุ่มตามเดือน โดยคงลำดับเดิมไว้
+ *
+ * ★ ข้อมูลเรียงจากใหม่ไปเก่ามาแล้วจาก server ★★ จึงไม่ต้องเรียงซ้ำ
+ *   แค่ตัดกลุ่มตอนเดือนเปลี่ยน — เรียงซ้ำคือโอกาสที่ลำดับจะเพี้ยน
+ */
+function groupByMonth(items: Item[], locale: string) {
+  const out: { key: string; label: string; items: Item[] }[] = []
+  for (const it of items) {
+    const d = new Date(it.paidAt ?? it.createdAt)
+    const key = `${d.getFullYear()}-${d.getMonth()}`
+    const last = out[out.length - 1]
+    if (last && last.key === key) {
+      last.items.push(it)
+      continue
+    }
+    out.push({
+      key,
+      label: d.toLocaleDateString(locale, { month: 'long', year: 'numeric' }),
+      items: [it],
+    })
+  }
+  return out
 }
 
 function StatusTag({ status }: { status: Item['status'] }) {
